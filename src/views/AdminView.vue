@@ -95,14 +95,15 @@
                 <span v-if="u.email" class="text-xs text-gray-400">{{ u.email }}</span>
               </div>
               <button
-                v-if="u.username !== userStore.username"
+                v-if="userStore.username === 'admin' && u.username !== userStore.username"
                 class="text-xs px-2 py-1 rounded cursor-pointer border-none"
                 :class="u.role === 'admin' ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-500 hover:bg-blue-100'"
                 @click="toggleRole(u)"
               >
                 {{ u.role === 'admin' ? '取消管理' : '设为管理' }}
               </button>
-              <span v-else class="text-xs text-gray-400">当前账号</span>
+              <span v-else-if="u.username === userStore.username" class="text-xs text-gray-400">当前账号</span>
+              <span v-else class="text-xs text-gray-400">仅 admin 可管理</span>
             </div>
           </div>
         </div>

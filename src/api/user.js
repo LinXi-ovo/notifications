@@ -7,10 +7,9 @@ const ROLE_TABLE = 'UserRoles'
 export async function login(username, password) {
   const user = await Bmob.User.login(username, password)
   const enriched = await enrichUser(user)
-  // 写入本地缓存
+  // 写入 localStorage 持久化
   if (enriched) {
-    const cached = Bmob.User.current()
-    if (cached) cached.role = enriched.role
+    localStorage.setItem('bmob_user_role', enriched.role)
   }
   return enriched
 }
@@ -18,11 +17,16 @@ export async function login(username, password) {
 /** 注册 */
 export async function register(params) {
   const user = await Bmob.User.register(params)
-  return await enrichUser(user)
+  const enriched = await enrichUser(user)
+  if (enriched) {
+    localStorage.setItem('bmob_user_role', enriched.role)
+  }
+  return enriched
 }
 
 /** 退出登录 */
 export function logout() {
+  localStorage.removeItem('bmob_user_role')
   Bmob.User.logout()
 }
 
@@ -30,7 +34,6 @@ export function logout() {
 export function getCurrentUser() {
   const user = Bmob.User.current()
   if (!user) return null
-  // 角色信息在内存里（login 时已缓存）
   return normalizeUser(user)
 }
 
@@ -118,18 +121,18 @@ export async function setUserRole(userId, role, username) {
     await nq.save()
   }
 
-  // 刷新当前用户缓存
+  // 如果更新的是当前用户，刷新 localStorage
   const current = Bmob.User.current()
   if (current && current.objectId === userId) {
-    current.role = role
+    localStorage.setItem('bmob_user_role', role)
   }
 }
 
 /** 规范化用户数据（用于本地缓存） */
 function normalizeUser(user) {
   if (!user) return null
-  // 优先取内存中的 role（login 时已加载），没有则用 username 兜底
-  const role = user.role || 'user'
+  // 从 localStorage 读取角色（跨页面刷新持久化），再 fallback 到 Bmob 缓存
+  const role = localStorage.getItem('bmob_user_role') || user.role || 'user'
   return {
     id: user.objectId,
     username: user.username,
