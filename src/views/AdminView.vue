@@ -92,7 +92,7 @@
                 <span class="text-xs px-1.5 py-0.5 rounded" :class="u.role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-500'">
                   {{ u.role === 'admin' ? '管理员' : '用户' }}
                 </span>
-                <span v-if="u.email" class="text-xs text-gray-400">{{ u.email }}</span>
+                <span v-if="u.email && (userStore.isSuperAdmin || u.username === userStore.username)" class="text-xs text-gray-400">{{ u.email }}</span>
               </div>
               <button
                 v-if="userStore.isSuperAdmin && u.username !== userStore.username"
