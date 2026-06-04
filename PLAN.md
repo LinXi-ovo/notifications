@@ -1,6 +1,6 @@
 # PLAN.md — 项目进度跟踪
 
-> 📢 大学微信通知聚合器 · Vite + Vue 3 + Tiptap + LeanCloud
+> 📢 大学微信通知聚合器 · Vite + Vue 3 + Tiptap + Bmob
 
 ---
 
@@ -9,15 +9,17 @@
 **目标**：项目骨架搭好，能跑起来
 
 - [x] `npm create vite` 初始化 Vue 3 项目
-- [x] 安装全部依赖（Tailwind, Vue Router, Pinia, LeanCloud SDK, Tiptap）
+- [x] 安装全部依赖（Tailwind, Vue Router, Pinia, hydrogen-js-sdk, Tiptap）
 - [x] 配置 Tailwind + Vite
-- [ ] 注册 LeanCloud 应用，获取 App ID/Key
-- [x] 创建 `.env.example` + `src/api/leancloud.js`
 - [x] 创建完整目录结构 + 组件骨架
-- [ ] 配置 GitHub Actions deploy.yml
-- [ ] 在 LeanCloud 创建 Category 初始数据（综测/保研/活动/课程/作业/其他）
+- [x] 写 API 层（Bmob 封装：查询/用户/文件）
+- [x] 创建 `.env.example` + `src/api/bmob.js`
 - [x] 写 README.md（含数据迁移方案附录）
-- [ ] git init + 首次 commit
+- [x] git init + 首次 commit
+- [x] 将后端从 LeanCloud 切换为 Bmob
+- [ ] 注册 Bmob 应用，获取 Secret Key + API 安全码
+- [ ] 在 Bmob 创建数据表
+- [ ] 配置 GitHub Actions deploy.yml
 
 ---
 

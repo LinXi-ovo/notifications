@@ -9,20 +9,20 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.5.13",
-    "vue-router": "^4.5.1",
-    "pinia": "^3.0.2",
-    "leancloud-storage": "^4.14.0",
-    "@tiptap/vue-3": "^2.11.7",
-    "@tiptap/starter-kit": "^2.11.7",
     "@tiptap/extension-image": "^2.11.7",
     "@tiptap/extension-link": "^2.11.7",
-    "@tiptap/extension-placeholder": "^2.11.7"
+    "@tiptap/extension-placeholder": "^2.11.7",
+    "@tiptap/starter-kit": "^2.11.7",
+    "@tiptap/vue-3": "^2.11.7",
+    "hydrogen-js-sdk": "^3.0.2",
+    "pinia": "^3.0.2",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "vite": "^8.0.12",
+    "@tailwindcss/vite": "^4.1.6",
     "@vitejs/plugin-vue": "^5.2.4",
     "tailwindcss": "^4.1.6",
-    "@tailwindcss/vite": "^4.1.6"
+    "vite": "^8.0.12"
   }
 }

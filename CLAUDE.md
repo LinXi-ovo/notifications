@@ -13,13 +13,13 @@
 | CSS | Tailwind CSS v3 | 移动端优先，响应式内建 |
 | 状态管理 | Pinia | Vue 3 官方推荐，1KB 大小 |
 | 路由 | Vue Router 4 | 配合 Vue 3 的路由方案 |
-| 后端即服务 | LeanCloud 国内版 (leancloud.cn) | 国内节点，纯前端 SDK，内置 ACL |
+| 后端即服务 | Bmob 后端云 (bmob.cn) | 国内节点，Parse 衍生，内置用户系统 + ACL |
 | 富文本编辑器 | Tiptap + @tiptap/vue-3 | 基于 ProseMirror，WYSIWYG，Vue 3 原生支持 |
 | 部署 | GitHub Pages (主力) + Gitee Pages (国内加速) | 双推方案 |
 
 ### 关键设计思路
 
-- **纯前端 SPA + BaaS**：无需自建服务器，数据层由 LeanCloud 提供，前端直连 SDK
+- **纯前端 SPA + BaaS**：无需自建服务器，数据层由 Bmob 提供，前端直连 SDK
 - **富文本内容内嵌媒体**：图片/音频/视频/PDF 全部嵌入在 Tiptap HTML 内容中，不设独立的附件列表
 - **File 注册表**：维护文件名 → CDN URL 的映射，渲染时自动替换，方便未来迁移
 - **ACL 权限**：登录用户可读，管理员可写，未登录不可见
@@ -50,8 +50,8 @@
 notifications-aggregator/
 ├── .github/workflows/deploy.yml
 ├── src/
-│   ├── api/            # LeanCloud API 封装
-│   │   ├── leancloud.js
+│   ├── api/            # Bmob API 封装
+│   │   ├── bmob.js
 │   │   ├── notification.js
 │   │   ├── category.js
 │   │   ├── favorite.js

@@ -20,7 +20,7 @@
 | 前端框架 | Vue 3 + Composition API |
 | CSS | Tailwind CSS v4 |
 | 富文本编辑器 | Tiptap |
-| 数据层 | LeanCloud 国内版 (leancloud.cn) |
+| 数据层 | Bmob 后端云 (bmob.cn) |
 | 部署 | GitHub Pages + Gitee Pages |
 
 ## 开发
@@ -41,19 +41,18 @@ npm run preview
 
 ## 环境变量
 
-复制 `.env.example` 为 `.env`，填入你的 LeanCloud 配置：
+复制 `.env.example` 为 `.env`，填入你的 Bmob 配置：
 
 ```env
-VITE_LC_APP_ID=your_app_id_here
-VITE_LC_APP_KEY=your_app_key_here
-VITE_LC_SERVER_URL=https://your-api.leancloud.cn
+VITE_BMOB_SECRET_KEY=your_secret_key_here
+VITE_BMOB_API_SAFE_CODE=your_api_safe_code_here
 ```
 
 ## 项目结构
 
 ```
 src/
-├── api/          # LeanCloud API 封装
+├── api/          # Bmob API 封装
 ├── components/   # Vue 组件（卡片、编辑器、导航…）
 ├── views/        # 页面视图（首页、详情、管理…）
 ├── router/       # 路由配置
@@ -76,8 +75,8 @@ src/
 ### 迁移步骤
 
 ```
-① 从 LeanCloud 导出所有表为 JSON
-   LeanCloud 控制台 → 数据存储 → 导出 → 全部表
+① 从 Bmob 导出所有表为 JSON
+   Bmob 控制台 → 数据表 → 导出
 
 ② 下载所有媒体文件
    遍历 File 注册表（存储了所有文件名↔URL 的映射），逐个下载到本地
@@ -86,9 +85,9 @@ src/
    可以是：阿里云 OSS、腾讯云 COS、自己的服务器、或其他 BaaS 服务
 
 ④ 批量替换 CDN 域名
-   在导出的 JSON 中，把 leancloud.cn 的 CDN 域名全部替换为新域名
+   在导出的 JSON 中，把 Bmob 的 CDN 域名全部替换为新域名
    纯文本替换即可，不需要解析 HTML：
-   https://xxx.leancloud.cn/ → https://new-cdn.example.com/
+   https://bmob-cdn.com/ → https://new-cdn.example.com/
 
 ⑤ 导入到新系统
    替换后的 JSON 直接导入新后端。
@@ -100,7 +99,7 @@ src/
 
 | 担忧 | 实际情况 |
 |---|---|
-| HTML 绑定 LeanCloud？ | ❌ HTML 里只是普通的 `<img src="...">`，域名随时可替换 |
+| HTML 绑定 Bmob？ | ❌ HTML 里只是普通的 `<img src="...">`，域名随时可替换 |
 | 媒体文件锁定？ | ❌ File 注册表记录了所有文件映射，下载+替换一步到位 |
 | 需要特殊解析工具？ | ❌ 纯文本全局替换，VS Code 或 sed 一行命令搞定 |
 | 数据格式私有？ | ❌ 导出的是标准 JSON + HTML，任何系统都能读 |

@@ -26,23 +26,23 @@
     ├── 路由：Vue Router 4
     ├── 状态：Pinia
     │
-    └── 数据层：LeanCloud JS SDK (国内版 leancloud.cn)
-              ├── Notification 表
-              ├── Category 表
-              ├── File 表（文件注册表）
-              ├── Favorite 表
+    └── 数据层：Bmob JS SDK (hydrogen-js-sdk, bmob.cn)
+              ├── Notifications 表
+              ├── Categories 表
+              ├── Files 表（文件注册表）
+              ├── Favorites 表
               └── User（内置用户系统）
 ```
 
-### 为什么选择 LeanCloud？
+### 为什么选择 Bmob？
 
 | 要求 | 方案 |
 |---|---|
-| 国内速度快 | ✅ 华北/华东数据中心 |
+| 国内速度快 | ✅ 国内节点 |
 | 不需要后端服务器 | ✅ 纯前端 SDK，SPA 直连 |
-| 小范围分享权限控制 | ✅ 内置 ACL：登录用户可读，管理员可写 |
-| 免费够用 | ✅ 1GB 存储、2万次 API/天 |
-| 中文文档 | ✅ 中文官网 + SDK 中文文档 |
+| 小范围分享权限控制 | ✅ 内置 User + 权限表系统 |
+| 免费够用 | ✅ 100MB 存储、2万次/天 API |
+| 中文文档 | ✅ 中文官网 doc.bmobapp.com |
 
 ## 3. 技术栈
 
@@ -53,7 +53,7 @@
 | CSS | Tailwind CSS v3 |
 | 状态管理 | Pinia |
 | 路由 | Vue Router 4 |
-| 数据层 | LeanCloud JS SDK (leancloud-storage) |
+| 数据层 | Bmob JS SDK (hydrogen-js-sdk) |
 | 富文本编辑器 | Tiptap + @tiptap/vue-3 |
 | 编辑器扩展 | @tiptap/starter-kit, @tiptap/extension-image, @tiptap/extension-link |
 | 部署 | GitHub Pages + Gitee Pages 双推 |
@@ -93,7 +93,7 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `name` | String | 文件名（内容中引用用这个名字） |
-| `url` | String | LeanCloud CDN 完整 URL |
+| `url` | String | Bmob CDN 完整 URL |
 | `mimeType` | String | MIME 类型 |
 | `size` | Number | 文件大小 |
 | `uploader` | Pointer(User) | 上传者 |
@@ -200,7 +200,7 @@
 
 ✅ 所见即所得
 ✅ 粘贴/拖入/工具栏三种方式插入媒体
-✅ 自动上传到 LeanCloud，渲染时自动替换 CDN URL
+✅ 自动上传到 Bmob，渲染时自动替换 CDN URL
 ```
 
 ## 6. 内嵌媒体预览
@@ -223,7 +223,7 @@
 ### 迁移步骤
 
 ```
-① 从 LeanCloud 导出所有表为 JSON（控制台一键导出）
+① 从 Bmob 导出所有表为 JSON（控制台 → 数据表 → 导出）
 ② 遍历 File 表，下载所有媒体文件到本地
 ③ 将媒体文件上传到新服务（阿里云OSS/腾讯云COS/自己服务器）
 ④ 在导出的 JSON 中批量替换 CDN 域名：
@@ -242,7 +242,7 @@
 
 | 阶段 | 内容 | 预计 |
 |---|---|---|
-| 一 | 项目基础搭建（Vite+Vue+Tailwind+LeanCloud） | 1 天 |
+| 一 | 项目基础搭建（Vite+Vue+Tailwind+Bmob） | 1 天 |
 | 二 | 核心浏览功能（列表、筛选、搜索、详情） | 2 天 |
 | 三 | 管理功能（编辑器、通知CRUD、分类管理） | 3 天 |
 | 四 | 收藏与分享（收藏、权限、部署上线） | 1 天 |
