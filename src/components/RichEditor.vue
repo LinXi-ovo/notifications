@@ -228,19 +228,33 @@ function compressImage(file, { maxWidth = 1200, quality = 0.8 } = {}) {
 
 // ── 链接输入 ──
 watch(showLinkInput, (v) => {
-  if (v) nextTick(() => linkInputRef.value?.focus())
+  if (v) {
+    // 保存选区状态，等用户输入完 URL 后恢复
+    savedRange.value = editor.value?.state.selection
+    nextTick(() => linkInputRef.value?.focus())
+  }
 })
+
+let savedRange = ref(null)
 
 function applyLink() {
   const url = linkUrl.value.trim()
   const ed = editor.value
   if (!url || !ed) return cancelLink()
-  const { from, to } = ed.state.selection
-  ed.chain().focus().setTextSelection({ from, to }).run()
-  if (from === to) {
-    ed.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
+  // 恢复选区到编辑器
+  ed.commands.focus()
+  if (savedRange.value) {
+    const { from, to } = savedRange.value
+    if (from === to) {
+      // 没选文字：插入可见链接
+      ed.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
+    } else {
+      // 选中文字：设为链接（Tiptap 官方推荐方式）
+      ed.chain().focus().setTextSelection({ from, to }).extendMarkRange('link').setLink({ href: url }).run()
+    }
   } else {
-    ed.chain().focus().setLink({ href: url }).run()
+    // 选区丢失时兜底
+    ed.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
   }
   cancelLink()
 }
@@ -248,6 +262,7 @@ function applyLink() {
 function cancelLink() {
   showLinkInput.value = false
   linkUrl.value = ''
+  savedRange.value = null
 }
 
 // ── 工具栏操作 ──
