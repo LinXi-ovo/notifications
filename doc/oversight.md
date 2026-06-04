@@ -67,6 +67,26 @@
 
 ---
 
+## 2026-06-05：Vue 响应式系统干扰 ProseMirror 编辑器内部状态
+
+**场景**：在 RichEditor 组件模板内用 `v-show` 放置链接输入框，用户点击 🔗 按钮时输入框闪现后编辑器崩溃。
+
+**根因**：即使 `v-show` 不增删 DOM（只是切换 CSS display），以下流程仍触发了崩溃：
+1. `showLinkInput = true` → Vue 更新响应式系统
+2. 模板重新求值 → ProseMirror 感知到外部 DOM/状态变化
+3. `nextTick` 聚焦输入框 → 编辑器失焦 → ProseMirror 内部清理与 Vue 变更检测产生冲突
+
+`v-if` 更糟（直接增删 DOM 节点），但 `v-show` 也不安全——**任何在编辑器组件模板内的响应式状态变化，都可能触发 ProseMirror 的内部状态机出错**。
+
+**教训**：Tiptap（ProseMirror）有自己独立的 DOM 管理和状态系统。Vue 的响应式更新（即使只是 CSS 显隐）如果发生在编辑器所在的组件树内，可能与 ProseMirror 的内部状态冲突。编辑器相关的 UI 控件（弹窗、输入框、下拉菜单）应该：
+- ❌ 放入编辑器组件的模板内（即使 `v-show`）
+- ✅ 通过 `<Teleport to="body">` 渲染到组件树之外
+- ✅ 或者作为一个完全独立的兄弟组件（非嵌套）
+
+**修复**：改用 `<Teleport to="body"><div v-if="showLinkInput">...`，输入框 DOM 渲染在 `<body>` 下，和编辑器组件树彻底隔离。同时将 `watch(showLinkInput, ...)` 改为 `handleInsertLink()` 同步保存选区，消除响应式副作用的时机窗口。
+
+---
+
 ## 2026-06-05：图片压缩未兜底
 
 **场景**：上传部分特殊格式图片时，`compressImage` 的 `Image.onerror` 触发，上传失败报"图片加载失败"。
