@@ -88,24 +88,20 @@
 **状态**：🔄 进行中（存储桶已创建，待接入代码）
 
 **已完成**：
-- 腾讯云 COS 存储桶已创建（广州地域，公有读私有写）
-- 配置信息（SecretId / SecretKey）待填入
+- ✅ 腾讯云 COS 存储桶已创建（广州地域，公有读私有写）
+- ✅ COS JS SDK 接入，编辑器上传走 COS（替换 Base64）
+- ✅ CORS 跨域配置（Pages 域名 + localhost）
+- ✅ 上传图片自动压缩 + `Cache-Control` 缓存一年
+- ✅ GitHub Secrets 配置（COS_SECRET_ID / COS_SECRET_KEY）
 
 **待完成**：
-- [ ] 前端接入 COS JS SDK，替换 `doUpload` 的 Base64 上传
 - [ ] COS 防盗链配置（Referer 白名单，只允许 Pages 域名访问）
-- [ ] 上传文件时加 `Cache-Control` 响应头（浏览器一年缓存）
-- [ ] PDF/Office 内嵌预览（COS 自带文档预览能力）
+- [ ] PDF.js 内嵌预览（浏览器端渲染，解决 COS 无法预览问题）
 - [ ] 更新 README 文档
 
 ### 3. AI 智能生成通知 🤖
 
 **状态**：✅ 已完成（DeepSeek + AiGenerator 组件）
-- 详情页 PDF 内嵌预览（PDF.js）
-
-**触发条件**：当需要上传 PDF 或大文件时切换。
-
-### 3. AI 智能生成通知 🤖
 
 **问题**：从微信复制通知 → 手动粘贴到编辑器 → 格式化 → 传附件，操作链长。
 

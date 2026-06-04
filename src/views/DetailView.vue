@@ -76,6 +76,8 @@
 
         <!-- 图片放大 -->
         <Lightbox :visible="lightbox.show" :src="lightbox.src" :alt="lightbox.alt" @close="lightbox.show = false" />
+        <!-- PDF 预览 -->
+        <PdfPreview :visible="pdfPreview.show" :url="pdfPreview.url" :filename="pdfPreview.filename" @close="pdfPreview.show = false" />
       </div>
 
       <!-- 未找到 -->
@@ -94,6 +96,7 @@ import { useUserStore } from '@/stores/user'
 import { getNotification } from '@/api/notification'
 import { PRIORITY_LABEL } from '@/utils/constants'
 import Lightbox from '@/components/Lightbox.vue'
+import PdfPreview from '@/components/PdfPreview.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -104,6 +107,7 @@ const loading = ref(true)
 const isFav = ref(false)
 const contentRef = ref(null)
 const lightbox = ref({ show: false, src: '', alt: '' })
+const pdfPreview = ref({ show: false, url: '', filename: '' })
 
 const priorityLabel = computed(() => PRIORITY_LABEL[notification.value?.priority]?.label || '')
 const priorityBadgeClass = computed(() => {
@@ -146,6 +150,14 @@ watch([contentRef, notification], async () => {
     img.addEventListener('click', (e) => {
       e.stopPropagation()
       lightbox.value = { show: true, src: img.src, alt: img.alt || '' }
+    })
+  })
+  // PDF 链接点击预览
+  const pdfLinks = contentRef.value.querySelectorAll('a[href$=".pdf"]')
+  pdfLinks.forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault()
+      pdfPreview.value = { show: true, url: a.href, filename: a.textContent.trim() || 'document.pdf' }
     })
   })
 })
