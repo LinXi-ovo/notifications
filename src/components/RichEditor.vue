@@ -230,7 +230,13 @@ function onFileSelected(e) {
 
 function insertLink() {
   const url = prompt('请输入链接地址：')
-  if (url && editor.value) {
+  if (!url || !editor.value) return
+  const { from, to } = editor.value.state.selection
+  if (from === to) {
+    // 没有选中文字，直接插入可见链接
+    editor.value.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
+  } else {
+    // 有选中文字，设为链接
     editor.value.chain().focus().setLink({ href: url }).run()
   }
 }
