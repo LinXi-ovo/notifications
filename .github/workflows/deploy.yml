@@ -31,6 +31,7 @@ jobs:
         env:
           VITE_BMOB_SECRET_KEY: ${{ secrets.BMOB_SECRET_KEY }}
           VITE_BMOB_API_SAFE_CODE: ${{ secrets.BMOB_API_SAFE_CODE }}
+          VITE_DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

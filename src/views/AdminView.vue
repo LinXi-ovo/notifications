@@ -46,6 +46,7 @@
             <div class="flex gap-2">
               <button class="px-3 py-1.5 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer" @click="exportJSON">📥 导出 JSON</button>
               <button class="px-3 py-1.5 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer" @click="exportHTML">📄 导出 HTML</button>
+              <button class="px-3 py-1.5 text-sm text-purple-600 bg-purple-50 border border-purple-200 rounded hover:bg-purple-100 cursor-pointer" @click="openAiGenerator">🤖 AI 生成</button>
               <button class="px-3 py-1.5 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 cursor-pointer border-none" @click="openCreate">＋ 新建通知</button>
             </div>
           </div>
@@ -109,6 +110,14 @@
         </div>
 
       </template>
+
+      <!-- AI 生成 -->
+      <AiGenerator
+        v-if="showAiGenerator"
+        :categories="categories"
+        @close="showAiGenerator = false"
+        @apply="handleAiResult"
+      />
     </main>
   </div>
 </template>
@@ -123,6 +132,7 @@ import { getCategories } from '@/api/category'
 import { getAllUsers, setUserRole } from '@/api/user'
 import NotificationForm from '@/components/NotificationForm.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AiGenerator from '@/components/AiGenerator.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -133,6 +143,8 @@ const editingNotification = ref(null)
 const users = ref([])
 const showUserManager = ref(false)
 const activeTab = ref('notifications')
+const showAiGenerator = ref(false)
+const categories = ref([])
 
 const needsAdminInit = computed(() => {
   // admin 账号还没在 UserRoles 表注册时显示引导
@@ -143,6 +155,7 @@ const needsAdminInit = computed(() => {
 onMounted(() => {
   store.fetchList({ pageSize: 100 })
   loadUsers()
+  loadCategories()
 })
 
 async function loadUsers() {
@@ -151,6 +164,26 @@ async function loadUsers() {
   } catch (e) {
     console.error('加载用户列表失败:', e)
   }
+}
+
+async function loadCategories() {
+  try {
+    categories.value = await getCategories()
+  } catch (e) {
+    console.error('加载分类失败:', e)
+  }
+}
+
+function openAiGenerator() {
+  showAiGenerator.value = true
+}
+
+function handleAiResult(data) {
+  // 切换到通知管理并打开编辑表单
+  activeTab.value = 'notifications'
+  showForm.value = true
+  showAiGenerator.value = false
+  editingNotification.value = data
 }
 
 async function toggleRole(u) {
