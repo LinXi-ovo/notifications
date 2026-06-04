@@ -2,13 +2,15 @@ import Bmob from './bmob'
 
 const TABLE = 'Notifications'
 
-/** 获取通知列表 */
+/** 获取通知列表（默认排除回收站的） */
 export async function getNotifications({ type, search, page = 1, pageSize = 20 } = {}) {
   const q = Bmob.Query(TABLE)
 
+  // 排除已删除
+  q.equalTo('deleted', '!=', true)
+
   if (type) q.equalTo('type', '==', type)
   if (search) {
-    // Bmob 模糊搜索需付费套餐，先用客户端过滤
     q.equalTo('title', '==', { $regex: search })
   }
 
@@ -18,8 +20,8 @@ export async function getNotifications({ type, search, page = 1, pageSize = 20 }
 
   const results = await q.find() || []
 
-  // 获取总数
   const countQ = Bmob.Query(TABLE)
+  countQ.equalTo('deleted', '!=', true)
   if (type) countQ.equalTo('type', '==', type)
   let total = results.length
   try { total = await countQ.count() } catch (e) { /* fallback */ }
@@ -53,10 +55,55 @@ export async function updateNotification(id, data) {
   return result
 }
 
-/** 删除通知 */
+/** 软删除：标记 deleted + 记录删除时间（送入回收站） */
 export async function deleteNotification(id) {
   const q = Bmob.Query(TABLE)
+  q.set('id', id)
+  q.set('deleted', true)
+  q.set('deletedAt', Date.now())
+  return await q.save()
+}
+
+/** 获取回收站通知列表 */
+export async function getTrashNotifications() {
+  const q = Bmob.Query(TABLE)
+  q.equalTo('deleted', '==', true)
+  q.order('-deletedAt')
+  q.limit(200)
+  const results = await q.find() || []
+  return results.map(normalizeNotification)
+}
+
+/** 从回收站恢复 */
+export async function restoreNotification(id) {
+  const q = Bmob.Query(TABLE)
+  q.set('id', id)
+  q.set('deleted', false)
+  q.set('deletedAt', null)
+  return await q.save()
+}
+
+/** 永久删除（30 天后自动调用） */
+export async function permanentlyDeleteNotification(id) {
+  const q = Bmob.Query(TABLE)
   return await q.destroy(id)
+}
+
+/** 清理超过 30 天的回收站通知 */
+export async function cleanExpiredTrash() {
+  const q = Bmob.Query(TABLE)
+  q.equalTo('deleted', '==', true)
+  const items = await q.find() || []
+  const now = Date.now()
+  const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000
+  for (const item of items) {
+    if (item.deletedAt && (now - item.deletedAt > THIRTY_DAYS)) {
+      try {
+        const dq = Bmob.Query(TABLE)
+        await dq.destroy(item.objectId)
+      } catch (e) { /* ignore */ }
+    }
+  }
 }
 
 /** 规范化通知数据（字段映射） */
@@ -73,6 +120,8 @@ function normalizeNotification(item) {
     priority: item.priority ?? 0,
     tags: item.tags || [],
     status: item.status || 'active',
+    deleted: !!item.deleted,
+    deletedAt: item.deletedAt || null,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt
   }

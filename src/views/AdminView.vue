@@ -27,6 +27,13 @@
           >
             👥 管理员管理（{{ users.length }} 人）
           </button>
+          <button
+            class="px-4 py-2 text-sm font-medium rounded-t cursor-pointer border-none transition-colors"
+            :class="activeTab === 'trash' ? 'bg-white text-red-500 border border-b-white border-gray-200 -mb-px' : 'text-gray-500 hover:text-gray-700'"
+            @click="openTrash"
+          >
+            🗑️ 回收站（{{ trashCount }}）
+          </button>
         </div>
 
         <!-- ════ 通知管理标签 ════ -->
@@ -64,7 +71,7 @@
               </div>
               <div class="flex gap-1 shrink-0">
                 <button class="px-2 py-1 text-xs text-blue-500 bg-blue-50 rounded hover:bg-blue-100 cursor-pointer border-none" @click="openEdit(item)">编辑</button>
-                <button class="px-2 py-1 text-xs text-red-500 bg-red-50 rounded hover:bg-red-100 cursor-pointer border-none" @click="handleDelete(item)">删除</button>
+                <button class="px-2 py-1 text-xs text-red-500 bg-red-50 rounded hover:bg-red-100 cursor-pointer border-none" @click="trashItem(item)">🗑️</button>
               </div>
             </div>
             <div v-if="store.list.length === 0" class="text-center py-12 text-gray-400">
@@ -109,6 +116,27 @@
           </div>
         </div>
 
+        <!-- ════ 回收站 ════ -->
+        <div v-if="activeTab === 'trash'" class="space-y-0">
+          <div v-if="trashItems.length === 0" class="text-center py-12 text-gray-400">
+            <p>回收站是空的</p>
+          </div>
+          <template v-for="(group, date) in trashByDate" :key="date">
+            <h4 class="text-sm text-gray-500 mt-4 mb-2 sticky top-0 bg-gray-50 py-1">{{ date }}</h4>
+            <div v-for="item in group" :key="item.id" class="bg-white rounded-lg border px-4 py-3 mb-2 flex items-center justify-between">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-800 truncate m-0">{{ item.title }}</p>
+                <p class="text-xs text-gray-400 mt-0.5 m-0">{{ formatDate(item.createdAt) }}</p>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                <button class="text-xs px-2 py-1 text-green-500 bg-green-50 rounded hover:bg-green-100 cursor-pointer border-none" @click="restoreItem(item)">↩ 恢复</button>
+                <button class="text-xs px-2 py-1 text-red-500 bg-red-100 rounded hover:bg-red-200 cursor-pointer border-none" @click="permaDelete(item)">永久删除</button>
+              </div>
+            </div>
+          </template>
+          <p v-if="trashItems.length > 0" class="text-xs text-gray-400 text-center pt-4">超过 30 天的通知会自动永久删除</p>
+        </div>
+
       </template>
 
       <!-- AI 生成 -->
@@ -127,11 +155,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
-import { deleteNotification, getNotifications } from '@/api/notification'
+import { deleteNotification, getNotifications, getTrashNotifications, restoreNotification, permanentlyDeleteNotification, cleanExpiredTrash } from '@/api/notification'
 import { getCategories } from '@/api/category'
 import { getAllUsers, setUserRole } from '@/api/user'
 import NotificationForm from '@/components/NotificationForm.vue'
-import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AiGenerator from '@/components/AiGenerator.vue'
 
 const router = useRouter()
@@ -145,6 +172,18 @@ const showUserManager = ref(false)
 const activeTab = ref('notifications')
 const showAiGenerator = ref(false)
 const categories = ref([])
+const trashItems = ref([])
+const trashCount = computed(() => trashItems.value.length)
+
+const trashByDate = computed(() => {
+  const groups = {}
+  trashItems.value.forEach(item => {
+    const d = item.deletedAt ? new Date(item.deletedAt).toLocaleDateString('zh-CN') : '未知'
+    if (!groups[d]) groups[d] = []
+    groups[d].push(item)
+  })
+  return groups
+})
 
 const needsAdminInit = computed(() => {
   // admin 账号还没在 UserRoles 表注册时显示引导
@@ -156,6 +195,7 @@ onMounted(() => {
   store.fetchList({ pageSize: 100 })
   loadUsers()
   loadCategories()
+  cleanExpiredTrash()
 })
 
 async function loadUsers() {
@@ -225,10 +265,39 @@ function handleSaved() {
   store.fetchList({ pageSize: 100 })
 }
 
-function handleDelete(item) {
-  if (!confirm(`确定删除「${item.title}」？`)) return
+// ── 回收站操作 ──
+function trashItem(item) {
   deleteNotification(item.id).then(() => {
     store.fetchList({ pageSize: 100 })
+  }).catch(e => {
+    alert('删除失败: ' + (e.message || e))
+  })
+}
+
+async function loadTrash() {
+  try {
+    trashItems.value = await getTrashNotifications()
+  } catch (e) {
+    console.error('加载回收站失败:', e)
+  }
+}
+
+function openTrash() {
+  activeTab.value = 'trash'
+  loadTrash()
+}
+
+function restoreItem(item) {
+  restoreNotification(item.id).then(() => {
+    trashItems.value = trashItems.value.filter(i => i.id !== item.id)
+  }).catch(e => {
+    alert('恢复失败: ' + (e.message || e))
+  })
+}
+
+function permaDelete(item) {
+  permanentlyDeleteNotification(item.id).then(() => {
+    trashItems.value = trashItems.value.filter(i => i.id !== item.id)
   }).catch(e => {
     alert('删除失败: ' + (e.message || e))
   })
