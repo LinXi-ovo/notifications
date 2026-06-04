@@ -72,7 +72,7 @@
         <hr class="border-gray-200 mb-6" />
 
         <!-- 正文内容（HTML 渲染） -->
-        <div ref="contentRef" class="prose prose-sm max-w-none text-gray-800 leading-relaxed [&_img]:cursor-pointer [&_img]:hover:opacity-90 [&_img]:transition-opacity" v-html="safeContent"></div>
+        <div ref="contentRef" class="prose prose-sm max-w-none text-gray-800 leading-relaxed [&_img]:cursor-pointer [&_img]:hover:opacity-90 [&_img]:transition-opacity [&_a]:text-blue-600 [&_a]:underline [&_a]:hover:text-blue-800" v-html="safeContent"></div>
 
         <!-- 图片放大 -->
         <Lightbox :visible="lightbox.show" :src="lightbox.src" :alt="lightbox.alt" @close="lightbox.show = false" />
