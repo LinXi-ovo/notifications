@@ -20,7 +20,6 @@
 - [x] 注册 Bmob 应用，获取 Secret Key + API 安全码
 - [x] 在 Bmob 创建数据表 + 初始分类数据
 - [ ] 配置 GitHub Actions deploy.yml
-- [ ] 配置 GitHub Actions deploy.yml
 
 ---
 
@@ -28,12 +27,12 @@
 
 **目标**：用户能看到通知列表、筛选、搜索、详情
 
-- [ ] 路由系统（HomeView / DetailView / LoginView / AdminView / FavoritesView）
-- [ ] CategoryNav 从 LeanCloud 动态加载分类
-- [ ] SearchBar 搜索（标题+内容，300ms 防抖）
-- [ ] NotificationCard 组件（优先级样式、分类图标、收藏按钮）
-- [ ] NotificationList 列表（排序、分页、加载状态）
-- [ ] NotificationDetail 详情页（Tiptap 只读渲染、媒体内嵌预览）
+- [x] 路由系统（HomeView / DetailView / LoginView / AdminView / FavoritesView）
+- [x] CategoryNav 从 Bmob 动态加载分类
+- [x] SearchBar 搜索（300ms 防抖）
+- [x] NotificationCard 组件（优先级样式、分类图标）
+- [x] NotificationList 列表（排序、分页、加载/空状态）
+- [x] NotificationDetail 详情页（HTML 渲染、原文链接）
 - [ ] 图片点击放大（lightbox）
 - [ ] 音频内嵌播放器
 - [ ] 视频内嵌播放器
@@ -85,7 +84,7 @@
 
 ## 当前状态
 
-**当前阶段**：第一阶段 ✅ 完成
-**完成度**：90%
-**最新更新**：2026-06-04 — Bmob 连接成功，Phase 2 开始
-**备注**：初始分类为 [综测, 保研, 活动, 课程, 作业, 其他]
+**当前阶段**：第二阶段（进行中）
+**完成度**：60%
+**最新更新**：2026-06-04 — 列表页 + 详情页完成，媒体预览待做
+**备注**：初始分类 [综测, 保研, 活动, 课程, 作业, 其他]，Bmob 连接正常
