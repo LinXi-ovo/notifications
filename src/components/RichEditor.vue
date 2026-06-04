@@ -145,8 +145,13 @@ async function doUpload(file, type) {
     // 图片上传前先压缩，节省 COS 存储
     let fileToUpload
     if (type === 'image') {
-      const compressed = await compressImage(file)
-      fileToUpload = new File([compressed], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+      try {
+        const compressed = await compressImage(file)
+        fileToUpload = new File([compressed], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+      } catch {
+        // 压缩失败时直接上传原图
+        fileToUpload = file
+      }
     } else {
       fileToUpload = file
     }
