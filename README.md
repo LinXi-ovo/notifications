@@ -2,6 +2,14 @@
 
 > 大学微信通知聚合器 —— 将分散在微信群中的通知集中到自己的网页来良好组织和展示。
 
+---
+
+**🔗 在线地址**：[notifications-3kx.pages.dev](https://notifications-3kx.pages.dev)（Cloudflare Pages，主力）
+**🔗 备用地址**：[linxi-ovo.github.io/notifications](https://linxi-ovo.github.io/notifications/)（GitHub Pages）
+**🔗 Gitee 镜像**：[gitee.com/Linxi-ovo/notifications](https://gitee.com/Linxi-ovo/notifications)（国内加速，需手动部署）
+
+---
+
 ## 功能
 
 - 📰 **通知浏览**：按分类查看、搜索、筛选通知
@@ -21,7 +29,7 @@
 | CSS | Tailwind CSS v4 |
 | 富文本编辑器 | Tiptap |
 | 数据层 | Bmob 后端云 (bmob.cn) |
-| 部署 | GitHub Pages + Gitee Pages |
+| 部署 | Cloudflare Pages（主力）+ GitHub Pages（备用）+ Gitee Pages（镜像） |
 
 ## 开发
 
@@ -85,6 +93,31 @@ VITE_BMOB_API_SAFE_CODE=your_api_safe_code_here
 - **Base64 方案**：`FileReader` 读取 → 生成 data: URI → 插入编辑器 HTML
 - **COS 方案**：腾讯云 JS SDK 直传到 COS 存储桶（前端直传，不走我们的服务器）
 - 两种都不需要自建后端
+
+## 部署架构
+
+```
+┌─ 推送 main 分支 ─────────────────────────────┐
+│                                               │
+│  GitHub                                       │
+│  └─ GitHub Actions（自动构建）                  │
+│     ├─ Cloudflare Pages（主力，国内访问快）      │
+│     ├─ GitHub Pages（备用）                    │
+│     └─ Gitee（镜像，需手动部署）               │
+│                                               │
+│  同学直接访问 Cloudflare Pages 链接即可         │
+└───────────────────────────────────────────────┘
+```
+
+### GitHub Secrets 配置
+
+部署需要以下 GitHub Secrets（已配好，无需重复操作）：
+
+| Secret | 说明 |
+|---|---|
+| `BMOB_SECRET_KEY` | Bmob 后端云密钥 |
+| `BMOB_API_SAFE_CODE` | Bmob API 安全码 |
+| `CF_API_TOKEN` | Cloudflare API 令牌 |
 
 ## 项目结构
 
