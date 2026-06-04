@@ -38,11 +38,10 @@ jobs:
           path: dist
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: 818dc74db2f2afdcb8626c40823215cc
-          command: pages deploy dist --project-name=notifications --branch=main
+        run: npx wrangler pages deploy dist --project-name=notifications --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 818dc74db2f2afdcb8626c40823215cc
 
   deploy-github:
     runs-on: ubuntu-latest
