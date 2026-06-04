@@ -9,8 +9,23 @@
       @insert-audio="pickFile('audio')"
       @insert-video="pickFile('video')"
       @insert-file="pickFile('file')"
-      @insert-link="insertLink"
+      @insert-link="showLinkInput = true"
     />
+
+    <!-- 链接输入框 -->
+    <div v-if="showLinkInput" class="flex items-center gap-2 px-3 py-2 border-b border-gray-200 bg-blue-50">
+      <span class="text-xs text-gray-500 shrink-0">🔗 链接</span>
+      <input
+        ref="linkInputRef"
+        v-model="linkUrl"
+        placeholder="输入或粘贴链接地址..."
+        class="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+        @keydown.enter="applyLink"
+        @keydown.escape="cancelLink"
+      />
+      <button class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer border-none" @click="applyLink">确定</button>
+      <button class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 bg-transparent cursor-pointer border-none" @click="cancelLink">✕</button>
+    </div>
 
     <!-- 编辑器 -->
     <div v-show="!showSource" class="px-4 py-3 min-h-[200px] prose prose-sm max-w-none [&_a]:text-blue-600 [&_a]:underline [&_a]:hover:text-blue-800" @click="focusEditor">
@@ -50,6 +65,9 @@ const fileInput = ref(null)
 const showSource = ref(false)
 const sourceContent = ref('')
 const focused = ref(false)
+const showLinkInput = ref(false)
+const linkUrl = ref('')
+const linkInputRef = ref(null)
 let pendingType = 'image'
 
 // ── 编辑器 ──
@@ -208,6 +226,30 @@ function compressImage(file, { maxWidth = 1200, quality = 0.8 } = {}) {
   })
 }
 
+// ── 链接输入 ──
+watch(showLinkInput, (v) => {
+  if (v) nextTick(() => linkInputRef.value?.focus())
+})
+
+function applyLink() {
+  const url = linkUrl.value.trim()
+  const ed = editor.value
+  if (!url || !ed) return cancelLink()
+  const { from, to } = ed.state.selection
+  ed.chain().focus().setTextSelection({ from, to }).run()
+  if (from === to) {
+    ed.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
+  } else {
+    ed.chain().focus().setLink({ href: url }).run()
+  }
+  cancelLink()
+}
+
+function cancelLink() {
+  showLinkInput.value = false
+  linkUrl.value = ''
+}
+
 // ── 工具栏操作 ──
 function pickFile(type) {
   pendingType = type
@@ -226,19 +268,6 @@ function pickFile(type) {
 function onFileSelected(e) {
   const file = e.target?.files?.[0]
   if (file) doUpload(file, pendingType)
-}
-
-function insertLink() {
-  setTimeout(() => {
-    const url = prompt('请输入链接地址：')
-    if (!url || !editor.value) return
-    const { from, to } = editor.value.state.selection
-    if (from === to) {
-      editor.value.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
-    } else {
-      editor.value.chain().focus().setLink({ href: url }).run()
-    }
-  }, 50)
 }
 
 function toggleSource() {
