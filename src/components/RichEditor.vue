@@ -158,15 +158,15 @@ async function doUpload(file, type) {
     } else {
       const label = type === 'audio' ? '🔊' : type === 'video' ? '🎬' : '📎'
       if (type === 'audio') {
-        ed.chain().focus().insertHTML(
+        ed.chain().focus().insertContent(
           `<p><audio controls src="${url}"></audio> ${file.name}</p>`
         ).run()
       } else if (type === 'video') {
-        ed.chain().focus().insertHTML(
+        ed.chain().focus().insertContent(
           `<p><video controls src="${url}" style="max-width:100%;max-height:400px"></video> ${file.name}</p>`
         ).run()
       } else if (file.type === 'application/pdf') {
-        ed.chain().focus().insertHTML(
+        ed.chain().focus().insertContent(
           `<p><a href="${url}" target="_blank" class="inline-flex items-center gap-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg no-underline text-sm">📄 ${file.name} <span class="text-xs text-red-400">点击预览</span></a></p>`
         ).run()
       } else {
