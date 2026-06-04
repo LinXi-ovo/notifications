@@ -22,3 +22,55 @@
 **如何避免再犯**：
 - 涉及浏览器端上传/读取外部资源的改动，检查清单增加「CORS 配置」项
 - 特别是：COS、R2、S3 等对象存储，首次接入必配 CORS
+
+---
+
+## 2026-06-04：PDF.js Worker 路径错误（Vite）
+
+**场景**：集成 PDF.js 做内嵌预览，弹窗显示空白、页码 1/0。
+
+**根因**：`new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url)` 在 Vite 构建时解析不到正确的 worker 路径。
+
+**教训**：
+- ❌ `new URL(... import.meta.url).toString()` — Vite 构建时路径解析可能出错
+- ✅ `import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'` — `?url` 后缀让 Vite 返回正确的资源 URL
+
+**修复**：改用 `?url` 导入，worker 正常加载。
+
+---
+
+## 2026-06-05：编辑器工具栏空安全漏检
+
+**场景**：编辑器初始化未完成时点击工具栏按钮（H1、加粗等），页面崩溃。
+
+**根因**：`ed.value?.chain().focus()` — `?.` 只保证 `chain()` 不报错，但返回 `undefined`，后续 `.focus()` 在 `undefined` 上调用导致 TypeError。
+
+**教训**：可选链 `?.` 只保一步，不保后续调用链。需要 `&&` 短路或者完整 if 判断。
+
+**修复**：
+- ❌ `ed.value?.chain().focus().run()` — 编辑器未就绪时报错
+- ✅ `ed.value && ed.value.chain().focus().run()` — 编辑器未就绪时跳过
+
+---
+
+## 2026-06-05：插入链接用 prompt() 导致闪退
+
+**场景**：🔗 按钮弹出浏览器 `prompt()` 输入框，输入后确认时编辑器崩溃，已有链接也被清除。
+
+**根因**：`prompt()` 是浏览器同步弹窗，会阻塞并重置编辑器焦点和选区状态。确认后编辑器内的选区已丢失，`setLink` 操作失败。
+
+**教训**：在富文本编辑器等有状态组件中，避免使用浏览器原生 `prompt()`/`confirm()`/`alert()`。应使用内联组件替代。
+
+**修复**：替换为 Vue 内联输入框 + Enter/Escape 键盘事件。
+
+---
+
+## 2026-06-05：图片压缩未兜底
+
+**场景**：上传部分特殊格式图片时，`compressImage` 的 `Image.onerror` 触发，上传失败报"图片加载失败"。
+
+**根因**：压缩函数假定所有图片都能被 `Image()` 元素正常解码，但部分格式（如 WebP/HEIC 变种）可能加载失败。
+
+**教训**：任何非核心功能（如压缩）都应有兜底路径，不能因为辅助功能阻塞主流程（上传）。
+
+**修复**：`compressImage` 失败时 catch，直接上传原图。
