@@ -269,7 +269,7 @@ function handleSaved() {
 function trashItem(item) {
   deleteNotification(item.id).then(() => {
     store.fetchList({ pageSize: 100 })
-    if (activeTab.value === 'trash') loadTrash()
+    loadTrash() // 刷新回收站数量
   }).catch(e => {
     alert('删除失败: ' + (e.message || e))
   })
