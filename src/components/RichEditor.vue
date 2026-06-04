@@ -9,23 +9,27 @@
       @insert-audio="pickFile('audio')"
       @insert-video="pickFile('video')"
       @insert-file="pickFile('file')"
-      @insert-link="showLinkInput = true"
+      @insert-link="handleInsertLink"
     />
 
-    <!-- 链接输入框（v-show 不增删 DOM，避免干扰编辑器） -->
-    <div v-show="showLinkInput" class="flex items-center gap-2 px-3 py-2 border-b border-gray-200 bg-blue-50">
-      <span class="text-xs text-gray-500 shrink-0">🔗 链接</span>
-      <input
-        ref="linkInputRef"
-        v-model="linkUrl"
-        placeholder="输入或粘贴链接地址..."
-        class="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
-        @keydown.enter="applyLink"
-        @keydown.escape="cancelLink"
-      />
-      <button class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer border-none" @click="applyLink">确定</button>
-      <button class="px-2 py-1 text-xs text-gray-500 hover:text-gray-700 bg-transparent cursor-pointer border-none" @click="cancelLink">✕</button>
-    </div>
+    <!-- 链接输入框：Teleport 到 body，完全脱离编辑器组件树，避免 Vue 响应式干扰 ProseMirror -->
+    <Teleport to="body">
+      <div v-if="showLinkInput" class="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/20" @click.self="cancelLink">
+        <div class="flex items-center gap-2 px-4 py-3 bg-white rounded-lg shadow-xl border min-w-[400px]">
+          <span class="text-sm text-gray-500 shrink-0">🔗 链接</span>
+          <input
+            ref="linkInputRef"
+            v-model="linkUrl"
+            placeholder="输入或粘贴链接地址..."
+            class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-400"
+            @keydown.enter="applyLink"
+            @keydown.escape="cancelLink"
+          />
+          <button class="px-3 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer border-none" @click="applyLink">确定</button>
+          <button class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 bg-transparent cursor-pointer border-none" @click="cancelLink">✕</button>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- 编辑器 -->
     <div v-show="!showSource" class="px-4 py-3 min-h-[200px] prose prose-sm max-w-none [&_a]:text-blue-600 [&_a]:underline [&_a]:hover:text-blue-800" @click="focusEditor">
@@ -227,15 +231,14 @@ function compressImage(file, { maxWidth = 1200, quality = 0.8 } = {}) {
 }
 
 // ── 链接输入 ──
-watch(showLinkInput, (v) => {
-  if (v) {
-    // 保存选区状态，等用户输入完 URL 后恢复
-    savedRange.value = editor.value?.state.selection
-    nextTick(() => linkInputRef.value?.focus())
-  }
-})
+let savedSelection = null  // 普通变量，无需响应式
 
-let savedRange = ref(null)
+function handleInsertLink() {
+  // 在设置 showLinkInput 之前保存选区——此时编辑器还有焦点
+  savedSelection = editor.value?.state.selection
+  showLinkInput.value = true
+  nextTick(() => linkInputRef.value?.focus())
+}
 
 function applyLink() {
   try {
@@ -245,10 +248,10 @@ function applyLink() {
 
     ed.commands.focus()
 
-    if (savedRange.value && savedRange.value.from !== savedRange.value.to) {
+    if (savedSelection && savedSelection.from !== savedSelection.to) {
       // 选中了文字 → 设为超链接
       ed.chain()
-        .setTextSelection({ from: savedRange.value.from, to: savedRange.value.to })
+        .setTextSelection({ from: savedSelection.from, to: savedSelection.to })
         .extendMarkRange('link')
         .setLink({ href: url })
         .run()
@@ -268,7 +271,7 @@ function applyLink() {
 function cancelLink() {
   showLinkInput.value = false
   linkUrl.value = ''
-  savedRange.value = null
+  savedSelection = null
 }
 
 // ── 工具栏操作 ──
