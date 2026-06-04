@@ -39,6 +39,7 @@ import LinkExt from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 import Toolbar from './RichEditor/Toolbar.vue'
+import { uploadFile } from '@/api/cos'
 
 const props = defineProps({
   modelValue: { type: String, default: '' }
@@ -122,38 +123,45 @@ function handleDrop(e) {
   }
 }
 
-// ── 上传文件：Base64 内嵌（临时方案，无需 Bmob 文件域名）──
+// ── 上传文件到腾讯云 COS ──
 async function doUpload(file, type) {
   const ed = editor.value
   if (!ed) return
 
+  // 文件大小限制（COS 限制 5GB，前端设 50MB 做保护）
+  if (file.size > 50 * 1024 * 1024) {
+    alert('文件过大（>50MB），请压缩后重试。')
+    return
+  }
+
+  const uploadingMsg = '⏳ 上传中...'
   try {
-    let dataUrl
+    // 图片上传前先压缩，节省 COS 存储
+    let fileToUpload
     if (type === 'image') {
-      // 图片自动压缩，控制 base64 大小在 Bmob 限制（~472KB）以内
-      dataUrl = await compressImage(file, { maxWidth: 1200, quality: 0.8 })
-    } else if (file.size > 2 * 1024 * 1024) {
-      alert('文件过大（>2MB），请压缩后重试。')
-      return
+      const compressed = await compressImage(file)
+      fileToUpload = new File([compressed], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
     } else {
-      dataUrl = await fileToBase64(file)
+      fileToUpload = file
     }
 
+    const url = await uploadFile(fileToUpload)
+
     if (type === 'image') {
-      ed.chain().focus().setImage({ src: dataUrl }).run()
+      ed.chain().focus().setImage({ src: url }).run()
     } else {
       const label = type === 'audio' ? '🔊' : type === 'video' ? '🎬' : '📎'
       if (type === 'audio') {
         ed.chain().focus().insertHTML(
-          `<p><audio controls src="${dataUrl}"></audio> ${file.name}</p>`
+          `<p><audio controls src="${url}"></audio> ${file.name}</p>`
         ).run()
       } else if (type === 'video') {
         ed.chain().focus().insertHTML(
-          `<p><video controls src="${dataUrl}" style="max-width:100%;max-height:400px"></video> ${file.name}</p>`
+          `<p><video controls src="${url}" style="max-width:100%;max-height:400px"></video> ${file.name}</p>`
         ).run()
       } else {
         ed.chain().focus().insertContent(
-          `<p><a href="${dataUrl}" target="_blank">📎 ${file.name}</a></p>`
+          `<p><a href="${url}" target="_blank">📎 ${file.name}</a></p>`
         ).run()
       }
     }
@@ -163,34 +171,22 @@ async function doUpload(file, type) {
   }
 }
 
-// File → Base64 DataURL
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result)
-    reader.onerror = () => reject(new Error('读取文件失败'))
-    reader.readAsDataURL(file)
-  })
-}
-
-// 图片压缩：canvas 缩放到 maxWidth + JPEG 压缩
+// 图片压缩：canvas 缩放到 1200px + JPEG 压缩
 function compressImage(file, { maxWidth = 1200, quality = 0.8 } = {}) {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
-      // 计算缩放尺寸（保持宽高比）
       let { width, height } = img
       if (width > maxWidth) {
         height = Math.round(height * (maxWidth / width))
         width = maxWidth
       }
-      // canvas 绘制并导出 JPEG
       const canvas = document.createElement('canvas')
       canvas.width = width
       canvas.height = height
       const ctx = canvas.getContext('2d')
       ctx.drawImage(img, 0, 0, width, height)
-      resolve(canvas.toDataURL('image/jpeg', quality))
+      canvas.toBlob(resolve, 'image/jpeg', quality)
     }
     img.onerror = () => reject(new Error('图片加载失败'))
     img.src = URL.createObjectURL(file)
