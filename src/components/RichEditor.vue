@@ -127,20 +127,22 @@ async function doUpload(file, type) {
   const ed = editor.value
   if (!ed) return
 
-  // 限制文件大小（Base64 建议 1MB 以内）
-  if (file.size > 2 * 1024 * 1024) {
-    alert('文件过大（>2MB），请压缩后重试。后续升级腾讯云 COS 后可上传大文件。')
-    return
-  }
-
   try {
-    const dataUrl = await fileToBase64(file)
+    let dataUrl
+    if (type === 'image') {
+      // 图片自动压缩，控制 base64 大小在 Bmob 限制（~472KB）以内
+      dataUrl = await compressImage(file, { maxWidth: 1200, quality: 0.8 })
+    } else if (file.size > 2 * 1024 * 1024) {
+      alert('文件过大（>2MB），请压缩后重试。')
+      return
+    } else {
+      dataUrl = await fileToBase64(file)
+    }
 
     if (type === 'image') {
       ed.chain().focus().setImage({ src: dataUrl }).run()
     } else {
       const label = type === 'audio' ? '🔊' : type === 'video' ? '🎬' : '📎'
-      // 音频用 <audio> 控件，视频用 <video> 控件，其他文件用链接
       if (type === 'audio') {
         ed.chain().focus().insertHTML(
           `<p><audio controls src="${dataUrl}"></audio> ${file.name}</p>`
@@ -168,6 +170,30 @@ function fileToBase64(file) {
     reader.onload = () => resolve(reader.result)
     reader.onerror = () => reject(new Error('读取文件失败'))
     reader.readAsDataURL(file)
+  })
+}
+
+// 图片压缩：canvas 缩放到 maxWidth + JPEG 压缩
+function compressImage(file, { maxWidth = 1200, quality = 0.8 } = {}) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      // 计算缩放尺寸（保持宽高比）
+      let { width, height } = img
+      if (width > maxWidth) {
+        height = Math.round(height * (maxWidth / width))
+        width = maxWidth
+      }
+      // canvas 绘制并导出 JPEG
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => reject(new Error('图片加载失败'))
+    img.src = URL.createObjectURL(file)
   })
 }
 
