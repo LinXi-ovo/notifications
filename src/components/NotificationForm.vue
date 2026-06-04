@@ -80,11 +80,14 @@
 import { ref, reactive, onMounted } from 'vue'
 import { createNotification, updateNotification } from '@/api/notification'
 import { getCategories } from '@/api/category'
+import { useUserStore } from '@/stores/user'
 import RichEditor from '@/components/RichEditor.vue'
 
 const props = defineProps({
   notification: { type: Object, default: null }
 })
+
+const userStore = useUserStore()
 
 const emit = defineEmits(['saved', 'cancel'])
 
@@ -135,6 +138,10 @@ async function handleSave() {
     const data = {
       ...form,
       tags: tagsInput.value ? tagsInput.value.split(/[,，]/).map(t => t.trim()).filter(Boolean) : []
+    }
+    // 新建通知时自动填入创建者姓名
+    if (!isEdit.value && !data.sourcePerson && userStore.isLoggedIn) {
+      data.sourcePerson = userStore.username
     }
     if (isEdit.value && props.notification?.id) {
       await updateNotification(props.notification.id, data)
