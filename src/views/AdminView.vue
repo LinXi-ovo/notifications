@@ -143,7 +143,7 @@ async function toggleRole(u) {
   const newRole = u.role === 'admin' ? 'user' : 'admin'
   if (!confirm(`确定${newRole === 'admin' ? '将' : '取消'}"${u.username}"${newRole === 'admin' ? '设为管理员' : '的管理员权限'}？`)) return
   try {
-    await setUserRole(u.id, newRole)
+    await setUserRole(u.id, newRole, u.username)
     u.role = newRole
   } catch (e) {
     alert('操作失败: ' + (e.message || e))
