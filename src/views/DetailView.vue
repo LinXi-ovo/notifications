@@ -157,7 +157,9 @@ watch([contentRef, notification], async () => {
   pdfLinks.forEach(a => {
     a.addEventListener('click', (e) => {
       e.preventDefault()
-      pdfPreview.value = { show: true, url: a.href, filename: a.textContent.trim() || 'document.pdf' }
+      const urlParts = a.href.split('/')
+      const filename = decodeURIComponent(urlParts[urlParts.length - 1]) || 'document.pdf'
+      pdfPreview.value = { show: true, url: a.href, filename }
     })
   })
 })

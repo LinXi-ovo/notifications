@@ -19,7 +19,12 @@
       <!-- PDF 渲染区 -->
       <div class="flex-1 overflow-auto bg-gray-100 p-4 flex flex-col items-center">
         <div v-if="loading" class="py-12 text-gray-400">⏳ 加载中...</div>
-        <canvas v-for="n in renderPages" :key="n" :ref="el => setCanvasRef(el, n)" class="shadow-lg mb-4"></canvas>
+        <div v-else-if="loadError" class="py-12 text-red-500 text-center">
+          <p class="text-lg mb-2">❌ PDF 加载失败</p>
+          <p class="text-sm text-gray-500">{{ loadError }}</p>
+          <a :href="url" target="_blank" class="text-sm text-blue-500 hover:underline mt-2 inline-block">直接下载查看</a>
+        </div>
+        <canvas v-show="!loading && !loadError" ref="canvasRef" class="shadow-lg"></canvas>
       </div>
     </div>
   </div>
@@ -28,12 +33,9 @@
 <script setup>
 import { ref, watch, nextTick } from 'vue'
 import * as pdfjs from 'pdfjs-dist'
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
-// PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString()
+pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -43,25 +45,37 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const canvasRef = ref(null)
 const loading = ref(false)
+const loadError = ref('')
 const pageNum = ref(1)
 const totalPages = ref(0)
-const renderPages = ref(1)
-const canvasRefs = {}
 let pdfDoc = null
-
-function setCanvasRef(el, n) {
-  canvasRefs[n] = el
-}
 
 function close() {
   emit('close')
 }
 
+async function renderPage(num) {
+  if (!pdfDoc || !canvasRef.value) return
+  const page = await pdfDoc.getPage(num)
+  // 根据容器宽度自适应缩放
+  const container = canvasRef.value.parentElement
+  const maxWidth = Math.min(container?.clientWidth || 800, 900) - 32
+  const viewport = page.getViewport({ scale: 1 })
+  const scale = maxWidth / viewport.width
+  const scaled = page.getViewport({ scale })
+  const canvas = canvasRef.value
+  canvas.height = scaled.height
+  canvas.width = scaled.width
+  canvas.style.width = `${scaled.width}px`
+  canvas.style.height = `${scaled.height}px`
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport: scaled }).promise
+}
+
 function prevPage() {
   if (pageNum.value > 1) {
     pageNum.value--
-    renderPages.value = pageNum.value
     nextTick(() => renderPage(pageNum.value))
   }
 }
@@ -69,34 +83,28 @@ function prevPage() {
 function nextPage() {
   if (pageNum.value < totalPages.value) {
     pageNum.value++
-    renderPages.value = pageNum.value
     nextTick(() => renderPage(pageNum.value))
   }
-}
-
-async function renderPage(num) {
-  if (!pdfDoc || !canvasRefs[num]) return
-  const page = await pdfDoc.getPage(num)
-  const viewport = page.getViewport({ scale: 1.5 })
-  const canvas = canvasRefs[num]
-  canvas.height = viewport.height
-  canvas.width = viewport.width
-  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
 }
 
 async function loadPdf() {
   if (!props.url) return
   loading.value = true
+  loadError.value = ''
   pageNum.value = 1
   pdfDoc = null
   try {
-    pdfDoc = await pdfjs.getDocument(props.url).promise
+    pdfDoc = await pdfjs.getDocument({
+      url: props.url,
+      cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.0.227/cmaps/',
+      cMapPacked: true
+    }).promise
     totalPages.value = pdfDoc.numPages
-    renderPages.value = 1
     await nextTick()
     await renderPage(1)
   } catch (e) {
     console.error('PDF 加载失败:', e)
+    loadError.value = e.message || '未知错误'
   } finally {
     loading.value = false
   }
