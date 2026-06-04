@@ -31,12 +31,26 @@
         <!-- 工具栏 -->
         <div v-else class="flex items-center justify-between mb-4">
           <p class="text-sm text-gray-500 m-0">共 {{ store.total }} 条通知</p>
-          <button
-            class="px-3 py-1.5 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 cursor-pointer border-none"
-            @click="openCreate"
-          >
-            ＋ 新建通知
-          </button>
+          <div class="flex gap-2">
+            <button
+              class="px-3 py-1.5 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer"
+              @click="exportJSON"
+            >
+              📥 导出 JSON
+            </button>
+            <button
+              class="px-3 py-1.5 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer"
+              @click="exportHTML"
+            >
+              📄 导出 HTML
+            </button>
+            <button
+              class="px-3 py-1.5 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 cursor-pointer border-none"
+              @click="openCreate"
+            >
+              ＋ 新建通知
+            </button>
+          </div>
         </div>
 
         <!-- 通知列表 -->
@@ -86,7 +100,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
-import { deleteNotification } from '@/api/notification'
+import { deleteNotification, getNotifications } from '@/api/notification'
+import { getCategories } from '@/api/category'
 import NotificationForm from '@/components/NotificationForm.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
@@ -123,6 +138,96 @@ function handleDelete(item) {
   }).catch(e => {
     alert('删除失败: ' + (e.message || e))
   })
+}
+
+// ── 数据导出 ──
+async function getAllData() {
+  // 获取所有通知（不分页）
+  const { data: notifications } = await getNotifications({ pageSize: 1000 })
+  const categories = await getCategories()
+  return { notifications, categories, exportedAt: new Date().toISOString() }
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function exportJSON() {
+  try {
+    const data = await getAllData()
+    const json = JSON.stringify(data, null, 2)
+    downloadFile(json, `通知聚合_备份_${new Date().toISOString().slice(0, 10)}.json`, 'application/json')
+  } catch (e) {
+    alert('导出失败: ' + (e.message || e))
+  }
+}
+
+async function exportHTML() {
+  try {
+    const { notifications, categories } = await getAllData()
+
+    const catMap = {}
+    categories.forEach(c => { catMap[c.value] = c })
+
+    const itemsHtml = notifications.map(n => {
+      const cat = catMap[n.type]
+      const icon = cat ? cat.icon : '📌'
+      const tags = (n.tags || []).map(t => `<span class="tag">#${t}</span>`).join('')
+      return `
+        <article>
+          <h2>${icon} ${escapeHtml(n.title)}</h2>
+          <div class="meta">${n.sourcePerson || ''}${n.sourcePerson && n.sourceGroup ? ' · ' : ''}${n.sourceGroup || ''} · ${n.createdAt ? new Date(n.createdAt).toLocaleDateString('zh-CN') : ''}</div>
+          <div class="content">${n.content || ''}</div>
+          ${tags ? `<div class="tags">${tags}</div>` : ''}
+          ${n.originalLink ? `<a href="${n.originalLink}" class="source-link" target="_blank">🔗 原文链接</a>` : ''}
+          <hr/>
+        </article>`
+    }).join('\n')
+
+    const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>通知聚合 — 导出</title>
+<style>
+  body { font-family: -apple-system, 'PingFang SC', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+  article { background: #fff; padding: 20px; margin-bottom: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+  h1 { color: #333; }
+  h2 { margin: 0 0 8px; font-size: 18px; color: #222; }
+  .meta { font-size: 13px; color: #999; margin-bottom: 12px; }
+  .content { font-size: 15px; line-height: 1.7; color: #444; }
+  .content img { max-width: 100%; border-radius: 4px; }
+  .tags { margin-top: 8px; }
+  .tag { display: inline-block; font-size: 12px; background: #f0f0f0; color: #666; padding: 2px 8px; border-radius: 3px; margin-right: 4px; }
+  .source-link { display: inline-block; margin-top: 8px; font-size: 13px; color: #3b82f6; }
+  hr { border: none; border-top: 1px solid #eee; margin: 0; }
+  .footer { text-align: center; color: #aaa; font-size: 13px; padding: 20px 0; }
+</style>
+</head>
+<body>
+<h1>📢 通知聚合 — 数据导出</h1>
+<p style="color:#999;font-size:14px">导出时间: ${new Date().toLocaleString('zh-CN')} · 共 ${notifications.length} 条通知</p>
+${itemsHtml}
+<div class="footer">由 通知聚合器 导出</div>
+</body>
+</html>`
+
+    downloadFile(html, `通知聚合_导出_${new Date().toISOString().slice(0, 10)}.html`, 'text/html; charset=utf-8')
+  } catch (e) {
+    alert('导出失败: ' + (e.message || e))
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div')
+  div.textContent = str
+  return div.innerHTML
 }
 
 function formatDate(dateStr) {
