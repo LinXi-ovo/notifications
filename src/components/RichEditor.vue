@@ -5,37 +5,34 @@
       :editor="editor"
       :showSource="showSource"
       @toggle-source="toggleSource"
-      @insert-image="insertImage"
-      @insert-audio="insertAudio"
-      @insert-video="insertVideo"
-      @insert-file="insertFile"
+      @insert-image="pickFile('image')"
+      @insert-audio="pickFile('audio')"
+      @insert-video="pickFile('video')"
+      @insert-file="pickFile('file')"
       @insert-link="insertLink"
     />
 
-    <!-- 编辑器 / HTML 源码 -->
-    <div v-show="!showSource" ref="editorRef" class="px-4 py-3 min-h-[200px] prose prose-sm max-w-none"></div>
+    <!-- 编辑器 -->
+    <div v-show="!showSource" class="px-4 py-3 min-h-[200px] prose prose-sm max-w-none" @click="focusEditor">
+      <EditorContent :editor="editor" />
+    </div>
 
+    <!-- HTML 源码 -->
     <textarea
       v-show="showSource"
-      :value="sourceContent"
+      v-model="sourceContent"
       @input="onSourceInput"
       class="w-full px-4 py-3 min-h-[200px] font-mono text-sm border-none resize-none focus:outline-none"
     ></textarea>
 
     <!-- 隐藏的文件输入 -->
-    <input
-      ref="fileInput"
-      type="file"
-      accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
-      class="hidden"
-      @change="onFileSelected"
-    />
+    <input ref="fileInput" type="file" class="hidden" @change="onFileSelected" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useEditor } from '@tiptap/vue-3'
+import { ref, watch, onBeforeUnmount, nextTick } from 'vue'
+import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import ImageExt from '@tiptap/extension-image'
 import LinkExt from '@tiptap/extension-link'
@@ -47,22 +44,19 @@ import Toolbar from './RichEditor/Toolbar.vue'
 const props = defineProps({
   modelValue: { type: String, default: '' }
 })
-
 const emit = defineEmits(['update:modelValue'])
 
-const editorRef = ref(null)
 const fileInput = ref(null)
 const showSource = ref(false)
 const sourceContent = ref('')
 const focused = ref(false)
-const pendingFileType = ref('image')
+let pendingType = 'image'
 
+// ── 编辑器 ──
 const editor = useEditor({
   content: props.modelValue || '',
   extensions: [
-    StarterKit.configure({
-      heading: { levels: [1, 2, 3] }
-    }),
+    StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
     Underline,
     ImageExt.configure({ inline: false }),
     LinkExt.configure({ openOnClick: false }),
@@ -76,16 +70,18 @@ const editor = useEditor({
   onFocus: () => { focused.value = true },
   onBlur: () => { focused.value = false },
   onCreate: ({ editor }) => {
-    // 粘贴 / 拖入文件处理
     editor.view.dom.addEventListener('paste', handlePaste)
     editor.view.dom.addEventListener('drop', handleDrop)
   }
 })
 
-// 同步外部内容变化
+// 外部内容变化同步到编辑器
 watch(() => props.modelValue, (val) => {
-  if (editor.value && !showSource.value && val !== editor.value.getHTML()) {
-    editor.value.commands.setContent(val || '')
+  if (!editor.value || showSource.value) return
+  const current = editor.value.getHTML()
+  const incoming = val || ''
+  if (incoming !== current && incoming !== sourceContent.value) {
+    editor.value.commands.setContent(incoming, false)
   }
 })
 
@@ -97,55 +93,78 @@ onBeforeUnmount(() => {
   }
 })
 
-function handlePaste(event) {
-  const items = event.clipboardData?.items
+function focusEditor() {
+  editor.value?.chain().focus().run()
+}
+
+// ── 粘贴 / 拖入 ──
+function handlePaste(e) {
+  const items = e.clipboardData?.items
   if (!items) return
   for (const item of items) {
     if (item.type.startsWith('image/')) {
-      event.preventDefault()
+      e.preventDefault()
       const file = item.getAsFile()
-      if (file) uploadMedia(file, 'image')
+      if (file) doUpload(file, 'image')
       return
     }
   }
 }
 
-function handleDrop(event) {
-  const files = event.dataTransfer?.files
-  if (!files || files.length === 0) return
-  event.preventDefault()
-
+function handleDrop(e) {
+  const files = e.dataTransfer?.files
+  if (!files?.length) return
+  e.preventDefault()
   for (const file of files) {
-    if (file.type.startsWith('image/')) {
-      uploadMedia(file, 'image')
-    } else if (file.type.startsWith('audio/')) {
-      uploadMedia(file, 'audio')
-    } else if (file.type.startsWith('video/')) {
-      uploadMedia(file, 'video')
-    } else {
-      uploadMedia(file, 'file')
-    }
+    if (file.type.startsWith('image/')) doUpload(file, 'image')
+    else if (file.type.startsWith('audio/')) doUpload(file, 'audio')
+    else if (file.type.startsWith('video/')) doUpload(file, 'video')
+    else doUpload(file, 'file')
   }
 }
 
-function insertImage() {
-  pendingFileType.value = 'image'
+// ── 上传文件 ──
+async function doUpload(file, type) {
+  const ed = editor.value
+  if (!ed) return
+  try {
+    // Bmob v3 File.save() 返回数组 ["url"]
+    const bmobFile = Bmob.File(file.name, file)
+    const result = await bmobFile.save()
+    const url = Array.isArray(result) ? result[0] : (result.url || result)
+
+    if (type === 'image') {
+      ed.chain().focus().setImage({ src: url }).run()
+    } else {
+      const label = type === 'audio' ? '🔊' : type === 'video' ? '🎬' : '📎'
+      ed.chain().focus().insertContent(`<p><a href="${url}" target="_blank">${label} ${file.name}</a></p>`).run()
+    }
+  } catch (e) {
+    console.error('上传失败:', e)
+    // Bmob 文件域名未配置时提示具体信息
+    const msg = e.error || e.message || JSON.stringify(e)
+    alert('上传失败: ' + msg)
+  }
+}
+
+// ── 工具栏操作 ──
+function pickFile(type) {
+  pendingType = type
+  // 设置 accept 属性
+  const acceptMap = {
+    image: 'image/*',
+    audio: 'audio/*',
+    video: 'video/*',
+    file: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar'
+  }
+  fileInput.value.accept = acceptMap[type] || '*/*'
+  fileInput.value.value = ''
   fileInput.value?.click()
 }
 
-function insertAudio() {
-  pendingFileType.value = 'audio'
-  fileInput.value?.click()
-}
-
-function insertVideo() {
-  pendingFileType.value = 'video'
-  fileInput.value?.click()
-}
-
-function insertFile() {
-  pendingFileType.value = 'file'
-  fileInput.value?.click()
+function onFileSelected(e) {
+  const file = e.target?.files?.[0]
+  if (file) doUpload(file, pendingType)
 }
 
 function insertLink() {
@@ -155,63 +174,23 @@ function insertLink() {
   }
 }
 
-function onFileSelected(event) {
-  const file = event.target?.files?.[0]
-  if (!file) return
-  uploadMedia(file, pendingFileType.value)
-  fileInput.value.value = ''
-}
-
-async function uploadMedia(file, type) {
-  const ed = editor.value
-  if (!ed) return
-
-  try {
-    const bmobFile = new Bmob.File(file.name, file)
-    const result = await bmobFile.save()
-    const url = result.url
-
-    if (type === 'image') {
-      ed.chain().focus().setImage({ src: url }).run()
-    } else if (type === 'audio') {
-      ed.chain().focus().insertContent({
-        type: 'paragraph',
-        content: [{ type: 'text', marks: [{ type: 'link', attrs: { href: url } }], text: `🔊 ${file.name}` }]
-      }).run()
-      // 后续可优化为自定义音频节点
-    } else if (type === 'video') {
-      ed.chain().focus().insertContent({
-        type: 'paragraph',
-        content: [{ type: 'text', marks: [{ type: 'link', attrs: { href: url } }], text: `🎬 ${file.name}` }]
-      }).run()
-    } else {
-      ed.chain().focus().insertContent({
-        type: 'paragraph',
-        content: [{ type: 'text', marks: [{ type: 'link', attrs: { href: url } }], text: `📎 ${file.name}` }]
-      }).run()
-    }
-  } catch (e) {
-    console.error('上传失败:', e)
-    alert('上传失败: ' + (e.message || e))
-  }
-}
-
 function toggleSource() {
+  showSource.value = !showSource.value
   if (showSource.value) {
-    // 切回可视化：将源码写回编辑器
-    showSource.value = false
-    if (editor.value) {
-      editor.value.commands.setContent(sourceContent.value || '')
-    }
-  } else {
-    // 切到源码：从编辑器取出 HTML
+    // 切到源码：取当前 HTML
     sourceContent.value = editor.value?.getHTML() || ''
-    showSource.value = true
+  } else {
+    // 切回可视化：把源码写回编辑器（暂时禁用 onUpdate 防循环）
+    nextTick(() => {
+      if (editor.value) {
+        editor.value.commands.setContent(sourceContent.value || '<p></p>', false)
+        emit('update:modelValue', editor.value.getHTML())
+      }
+    })
   }
 }
 
-function onSourceInput(e) {
-  sourceContent.value = e.target.value
+function onSourceInput() {
   emit('update:modelValue', sourceContent.value)
 }
 </script>
