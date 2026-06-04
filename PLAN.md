@@ -19,7 +19,7 @@
 - [x] 将后端从 LeanCloud 切换为 Bmob
 - [x] 注册 Bmob 应用，获取 Secret Key + API 安全码
 - [x] 在 Bmob 创建数据表 + 初始分类数据
-- [ ] 配置 GitHub Actions deploy.yml
+- [x] 配置 GitHub Actions deploy.yml
 
 ---
 
@@ -33,9 +33,9 @@
 - [x] NotificationCard 组件（优先级样式、分类图标）
 - [x] NotificationList 列表（排序、分页、加载/空状态）
 - [x] NotificationDetail 详情页（HTML 渲染、原文链接）
-- [ ] 图片点击放大（lightbox）
-- [ ] 音频内嵌播放器
-- [ ] 视频内嵌播放器
+- [x] 图片点击放大（lightbox）
+- [x] 音频内嵌播放器（native audio controls）
+- [x] 视频内嵌播放器（native video controls）
 - [ ] PDF/Office 内嵌预览或下载
 
 ---
@@ -47,7 +47,7 @@
 - [x] 登录系统（LoginForm + 注册/登录切换）
 - [x] NotificationForm（含分类/优先级/标签等分层展开字段）
 - [x] AdminView 管理后台（列表 + 新建 + 编辑 + 删除）
-- [ ] 数据导出（HTML / JSON）
+- [x] 数据导出（HTML / JSON）
 - [x] 路由守卫（限制未登录访问）
 - [x] CategoryManagerView 分类管理
 - [x] Tiptap 富文本编辑器（工具栏 + 图片粘贴/拖入上传 + HTML 源码切换）
@@ -79,9 +79,9 @@
 
 ## 当前状态
 
-**当前阶段**：第三阶段（进行中）
-**完成度**：85%
-**最新更新**：2026-06-04 — 路由守卫 + 收藏功能 + 文件存储方案切换完成
+**当前阶段**：第三阶段 ✅ 完成 · 第四阶段进行中
+**完成度**：92%
+**最新更新**：2026-06-04 — Lightbox 图片放大完成
 **备注**：Bmob 文件服务需备案域名 ≥10 天 → 临时用 Base64 内嵌 + 图片自动压缩，后续可升级到腾讯云 COS
 
 ## 文件存储决策
