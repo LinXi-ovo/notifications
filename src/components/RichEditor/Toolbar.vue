@@ -44,14 +44,14 @@ const emit = defineEmits(['toggle-source', 'insert-image', 'insert-audio', 'inse
 const ed = computed(() => props.editor)
 
 const textButtons = computed(() => [
-  { title: '加粗', icon: '<b>B</b>', action: () => ed.value?.chain().focus().toggleBold().run(), active: () => ed.value?.isActive('bold') },
-  { title: '斜体', icon: '<i class="italic">I</i>', action: () => ed.value?.chain().focus().toggleItalic().run(), active: () => ed.value?.isActive('italic') },
-  { title: '下划线', icon: '<u>U</u>', action: () => ed.value?.chain().focus().toggleUnderline().run(), active: () => ed.value?.isActive('underline') },
-  { title: '标题1', icon: 'H1', action: () => ed.value?.chain().focus().toggleHeading({ level: 1 }).run(), active: () => ed.value?.isActive('heading', { level: 1 }) },
-  { title: '标题2', icon: 'H2', action: () => ed.value?.chain().focus().toggleHeading({ level: 2 }).run(), active: () => ed.value?.isActive('heading', { level: 2 }) },
-  { title: '标题3', icon: 'H3', action: () => ed.value?.chain().focus().toggleHeading({ level: 3 }).run(), active: () => ed.value?.isActive('heading', { level: 3 }) },
-  { title: '无序列表', icon: '•≡', action: () => ed.value?.chain().focus().toggleBulletList().run(), active: () => ed.value?.isActive('bulletList') },
-  { title: '有序列表', icon: '1.', action: () => ed.value?.chain().focus().toggleOrderedList().run(), active: () => ed.value?.isActive('orderedList') },
+  { title: '加粗', icon: '<b>B</b>', action: () => ed.value && ed.value.chain().focus().toggleBold().run(), active: () => ed.value?.isActive('bold') },
+  { title: '斜体', icon: '<i class="italic">I</i>', action: () => ed.value && ed.value.chain().focus().toggleItalic().run(), active: () => ed.value?.isActive('italic') },
+  { title: '下划线', icon: '<u>U</u>', action: () => ed.value && ed.value.chain().focus().toggleUnderline().run(), active: () => ed.value?.isActive('underline') },
+  { title: '标题1', icon: 'H1', action: () => ed.value && ed.value.chain().focus().toggleHeading({ level: 1 }).run(), active: () => ed.value?.isActive('heading', { level: 1 }) },
+  { title: '标题2', icon: 'H2', action: () => ed.value && ed.value.chain().focus().toggleHeading({ level: 2 }).run(), active: () => ed.value?.isActive('heading', { level: 2 }) },
+  { title: '标题3', icon: 'H3', action: () => ed.value && ed.value.chain().focus().toggleHeading({ level: 3 }).run(), active: () => ed.value?.isActive('heading', { level: 3 }) },
+  { title: '无序列表', icon: '•≡', action: () => ed.value && ed.value.chain().focus().toggleBulletList().run(), active: () => ed.value?.isActive('bulletList') },
+  { title: '有序列表', icon: '1.', action: () => ed.value && ed.value.chain().focus().toggleOrderedList().run(), active: () => ed.value?.isActive('orderedList') },
 ])
 
 const mediaButtons = computed(() => [
