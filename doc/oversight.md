@@ -53,37 +53,35 @@
 
 ---
 
-## 2026-06-05：插入链接用 prompt() 导致闪退
+## 2026-06-05：插入链接用 prompt() 导致闪退（误判）
 
 **场景**：🔗 按钮弹出浏览器 `prompt()` 输入框，输入后确认时编辑器崩溃，已有链接也被清除。
 
-**根因**：`prompt()` 是浏览器同步弹窗，会阻塞并重置编辑器焦点和选区状态。确认后编辑器内的选区已丢失，`setLink` 操作失败。
+**最初认为的根因**：`prompt()` 是浏览器同步弹窗，会阻塞并重置编辑器焦点和选区状态。确认后编辑器内的选区已丢失，`setLink` 操作失败。
 
-**教训**：在富文本编辑器等有状态组件中，避免使用浏览器原生 `prompt()`/`confirm()`/`alert()`。应使用内联组件替代。
+**最初修复**：替换为 Vue 内联输入框 + Enter/Escape 键盘事件 + `savedRange`。
 
-**修复**：替换为 Vue 内联输入框 + Enter/Escape 键盘事件。同时必须在展开输入框前 `savedRange` 保存选区状态，否则输入框抢焦点后选区丢失、链接操作失败。
+**后续发现**：经过 6 轮迭代（prompt → setTimeout → v-if → v-show → Teleport → 最终删掉所有自定义 UI），发现**根因根本不是 prompt()，而是 Vue 组件层的响应式系统对 ProseMirror 的干扰**。
 
-**Tiptap 官方做法**：`useLinkHandler` hook 通过 `extendMarkRange('link')` + `setLink` 处理链接，推荐参考。
+纯 `prompt()` + `editor.chain().focus().setLink({ href }).run()` 不会崩溃。之前崩溃是因为同时存在 savedRange、watch、v-show 等 Vue 响应式状态，ProseMirror 在失焦/重聚焦过程中与 Vue 的变更检测冲突。
+
+**最终结论**：浏览器 contenteditable 原生支持选中文字后 Ctrl+V 粘贴 URL 生成超链接。不需要任何自定义 UI。🔗 按钮只需要提示用户快捷键即可。
+
+**教训**：在富文本编辑器场景中，优先利用浏览器原生能力，不要试图用自定义组件替代浏览器的内置行为。
 
 ---
 
-## 2026-06-05：Vue 响应式系统干扰 ProseMirror 编辑器内部状态
+## 2026-06-05：Vue 响应式系统干扰 ProseMirror 编辑器内部状态（绕远路）
 
 **场景**：在 RichEditor 组件模板内用 `v-show` 放置链接输入框，用户点击 🔗 按钮时输入框闪现后编辑器崩溃。
 
-**根因**：即使 `v-show` 不增删 DOM（只是切换 CSS display），以下流程仍触发了崩溃：
-1. `showLinkInput = true` → Vue 更新响应式系统
-2. 模板重新求值 → ProseMirror 感知到外部 DOM/状态变化
-3. `nextTick` 聚焦输入框 → 编辑器失焦 → ProseMirror 内部清理与 Vue 变更检测产生冲突
+**根因**：同上一条——根本问题不是 `v-show`/Teleport，而是**不该自己实现链接 UI**。浏览器 contenteditable 原生支持此功能。
 
-`v-if` 更糟（直接增删 DOM 节点），但 `v-show` 也不安全——**任何在编辑器组件模板内的响应式状态变化，都可能触发 ProseMirror 的内部状态机出错**。
+**最初结论（已推翻）**：认为 `v-show` 的 CSS display 切换 + `nextTick` 聚焦 + 编辑器失焦的时序会导致 ProseMirror 内部状态紊乱。
 
-**教训**：Tiptap（ProseMirror）有自己独立的 DOM 管理和状态系统。Vue 的响应式更新（即使只是 CSS 显隐）如果发生在编辑器所在的组件树内，可能与 ProseMirror 的内部状态冲突。编辑器相关的 UI 控件（弹窗、输入框、下拉菜单）应该：
-- ❌ 放入编辑器组件的模板内（即使 `v-show`）
-- ✅ 通过 `<Teleport to="body">` 渲染到组件树之外
-- ✅ 或者作为一个完全独立的兄弟组件（非嵌套）
+**最初修复**：改用 `<Teleport to="body">` 将输入框移出组件树。
 
-**修复**：改用 `<Teleport to="body"><div v-if="showLinkInput">...`，输入框 DOM 渲染在 `<body>` 下，和编辑器组件树彻底隔离。同时将 `watch(showLinkInput, ...)` 改为 `handleInsertLink()` 同步保存选区，消除响应式副作用的时机窗口。
+**最终结论**：这 200 行代码都不需要。🔗 按钮 → alert 提示快捷键 → 用户 Ctrl+V 粘贴即可。浏览器原生能力 > 任何自定义实现。
 
 ---
 
