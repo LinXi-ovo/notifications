@@ -13,15 +13,10 @@
         />
       </div>
 
-      <!-- 内容（临时 textarea，Phase 3 替换为 Tiptap） -->
+      <!-- 富文本编辑器 -->
       <div>
-        <label class="block text-sm text-gray-600 mb-1">内容 * <span class="text-gray-400">（支持 HTML）</span></label>
-        <textarea
-          v-model="form.content"
-          rows="8"
-          class="w-full px-3 py-2 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 font-mono"
-          required
-        ></textarea>
+        <label class="block text-sm text-gray-600 mb-1">内容 *</label>
+        <RichEditor v-model="form.content" />
       </div>
 
       <!-- 更多选项 -->
@@ -82,9 +77,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { createNotification, updateNotification } from '@/api/notification'
 import { getCategories } from '@/api/category'
+import RichEditor from '@/components/RichEditor.vue'
 
 const props = defineProps({
   notification: { type: Object, default: null }
