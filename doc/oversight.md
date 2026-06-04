@@ -61,7 +61,9 @@
 
 **教训**：在富文本编辑器等有状态组件中，避免使用浏览器原生 `prompt()`/`confirm()`/`alert()`。应使用内联组件替代。
 
-**修复**：替换为 Vue 内联输入框 + Enter/Escape 键盘事件。
+**修复**：替换为 Vue 内联输入框 + Enter/Escape 键盘事件。同时必须在展开输入框前 `savedRange` 保存选区状态，否则输入框抢焦点后选区丢失、链接操作失败。
+
+**Tiptap 官方做法**：`useLinkHandler` hook 通过 `extendMarkRange('link')` + `setLink` 处理链接，推荐参考。
 
 ---
 

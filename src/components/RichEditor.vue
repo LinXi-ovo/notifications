@@ -12,8 +12,8 @@
       @insert-link="showLinkInput = true"
     />
 
-    <!-- 链接输入框 -->
-    <div v-if="showLinkInput" class="flex items-center gap-2 px-3 py-2 border-b border-gray-200 bg-blue-50">
+    <!-- 链接输入框（v-show 不增删 DOM，避免干扰编辑器） -->
+    <div v-show="showLinkInput" class="flex items-center gap-2 px-3 py-2 border-b border-gray-200 bg-blue-50">
       <span class="text-xs text-gray-500 shrink-0">🔗 链接</span>
       <input
         ref="linkInputRef"
@@ -238,25 +238,31 @@ watch(showLinkInput, (v) => {
 let savedRange = ref(null)
 
 function applyLink() {
-  const url = linkUrl.value.trim()
-  const ed = editor.value
-  if (!url || !ed) return cancelLink()
-  // 恢复选区到编辑器
-  ed.commands.focus()
-  if (savedRange.value) {
-    const { from, to } = savedRange.value
-    if (from === to) {
-      // 没选文字：插入可见链接
-      ed.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
+  try {
+    const url = linkUrl.value.trim()
+    const ed = editor.value
+    if (!url || !ed) return cancelLink()
+
+    ed.commands.focus()
+
+    if (savedRange.value && savedRange.value.from !== savedRange.value.to) {
+      // 选中了文字 → 设为超链接
+      ed.chain()
+        .setTextSelection({ from: savedRange.value.from, to: savedRange.value.to })
+        .extendMarkRange('link')
+        .setLink({ href: url })
+        .run()
     } else {
-      // 选中文字：设为链接（Tiptap 官方推荐方式）
-      ed.chain().focus().setTextSelection({ from, to }).extendMarkRange('link').setLink({ href: url }).run()
+      // 没选文字 → 直接插入可点击的链接
+      ed.chain().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
     }
-  } else {
-    // 选区丢失时兜底
-    ed.chain().focus().insertContent(`<a href="${url}" target="_blank">${url}</a>`).run()
+    cancelLink()
+  } catch (e) {
+    console.error('链接失败:', e)
+    cancelLink()
+    // 兜底：直接插入链接文本
+    editor.value?.chain().focus().insertContent(`<a href="${linkUrl.value}" target="_blank">${linkUrl.value}</a>`).run()
   }
-  cancelLink()
 }
 
 function cancelLink() {
