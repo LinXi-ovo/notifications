@@ -95,7 +95,7 @@
                 <span v-if="u.email" class="text-xs text-gray-400">{{ u.email }}</span>
               </div>
               <button
-                v-if="userStore.username === 'admin' && u.username !== userStore.username"
+                v-if="userStore.isSuperAdmin && u.username !== userStore.username"
                 class="text-xs px-2 py-1 rounded cursor-pointer border-none"
                 :class="u.role === 'admin' ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-500 hover:bg-blue-100'"
                 @click="toggleRole(u)"
