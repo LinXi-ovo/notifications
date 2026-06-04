@@ -269,6 +269,7 @@ function handleSaved() {
 function trashItem(item) {
   deleteNotification(item.id).then(() => {
     store.fetchList({ pageSize: 100 })
+    if (activeTab.value === 'trash') loadTrash()
   }).catch(e => {
     alert('删除失败: ' + (e.message || e))
   })
@@ -290,6 +291,7 @@ function openTrash() {
 function restoreItem(item) {
   restoreNotification(item.id).then(() => {
     trashItems.value = trashItems.value.filter(i => i.id !== item.id)
+    store.fetchList({ pageSize: 100 })
   }).catch(e => {
     alert('恢复失败: ' + (e.message || e))
   })
