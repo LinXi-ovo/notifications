@@ -108,6 +108,12 @@ function handlePaste(e) {
       if (file) doUpload(file, 'image')
       return
     }
+    if (item.type === 'application/pdf' || item.type.includes('spreadsheet') || item.type.includes('sheet')) {
+      e.preventDefault()
+      const file = item.getAsFile()
+      if (file) doUpload(file, 'file')
+      return
+    }
   }
 }
 
@@ -158,6 +164,10 @@ async function doUpload(file, type) {
       } else if (type === 'video') {
         ed.chain().focus().insertHTML(
           `<p><video controls src="${url}" style="max-width:100%;max-height:400px"></video> ${file.name}</p>`
+        ).run()
+      } else if (file.type === 'application/pdf') {
+        ed.chain().focus().insertHTML(
+          `<p><a href="${url}" target="_blank" class="inline-flex items-center gap-1 px-3 py-2 bg-red-50 text-red-600 rounded-lg no-underline text-sm">📄 ${file.name} <span class="text-xs text-red-400">点击预览</span></a></p>`
         ).run()
       } else {
         ed.chain().focus().insertContent(
