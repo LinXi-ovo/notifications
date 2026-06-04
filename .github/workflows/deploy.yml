@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy
 
 on:
   push:
@@ -32,12 +32,19 @@ jobs:
           VITE_BMOB_SECRET_KEY: ${{ secrets.BMOB_SECRET_KEY }}
           VITE_BMOB_API_SAFE_CODE: ${{ secrets.BMOB_API_SAFE_CODE }}
 
-      - name: Upload artifact
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-  deploy:
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: 818dc74db2f2afdcb8626c40823215cc
+          command: pages deploy dist --project-name=notifications --branch=main
+
+  deploy-github:
     runs-on: ubuntu-latest
     needs: build
     environment:
