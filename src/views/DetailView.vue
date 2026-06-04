@@ -72,7 +72,10 @@
         <hr class="border-gray-200 mb-6" />
 
         <!-- 正文内容（HTML 渲染） -->
-        <div class="prose prose-sm max-w-none text-gray-800 leading-relaxed" v-html="safeContent"></div>
+        <div ref="contentRef" class="prose prose-sm max-w-none text-gray-800 leading-relaxed [&_img]:cursor-pointer [&_img]:hover:opacity-90 [&_img]:transition-opacity" v-html="safeContent"></div>
+
+        <!-- 图片放大 -->
+        <Lightbox :visible="lightbox.show" :src="lightbox.src" :alt="lightbox.alt" @close="lightbox.show = false" />
       </div>
 
       <!-- 未找到 -->
@@ -85,11 +88,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getNotification } from '@/api/notification'
 import { PRIORITY_LABEL } from '@/utils/constants'
+import Lightbox from '@/components/Lightbox.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -98,6 +102,8 @@ const userStore = useUserStore()
 const notification = ref(null)
 const loading = ref(true)
 const isFav = ref(false)
+const contentRef = ref(null)
+const lightbox = ref({ show: false, src: '', alt: '' })
 
 const priorityLabel = computed(() => PRIORITY_LABEL[notification.value?.priority]?.label || '')
 const priorityBadgeClass = computed(() => {
@@ -129,6 +135,19 @@ onMounted(async () => {
     }
   }
   loading.value = false
+})
+
+// 内容加载后，给图片绑定点击放大
+watch([contentRef, notification], async () => {
+  if (!contentRef.value) return
+  await nextTick()
+  const imgs = contentRef.value.querySelectorAll('img')
+  imgs.forEach(img => {
+    img.addEventListener('click', (e) => {
+      e.stopPropagation()
+      lightbox.value = { show: true, src: img.src, alt: img.alt || '' }
+    })
+  })
 })
 
 function formatDate(dateStr) {
