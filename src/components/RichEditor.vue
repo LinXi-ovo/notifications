@@ -211,19 +211,9 @@ function compressImage(file, { maxWidth = 1200, quality = 0.8 } = {}) {
   })
 }
 
-// ── 链接插入：用浏览器原生 prompt，不涉及 Vue 组件，零副作用 ──
+// ── 链接插入：提示用户快捷键，浏览器原生行为最可靠 ──
 function handleInsertLink() {
-  const url = window.prompt('输入链接地址：')
-  if (!url || !url.trim()) return
-  const ed = editor.value
-  if (!ed) return
-  try {
-    ed.chain().focus().setLink({ href: url.trim() }).run()
-  } catch (e) {
-    // 兜底：直接插入链接文本
-    console.error('链接失败:', e)
-    ed.chain().focus().insertContent(`<a href="${url.trim()}" target="_blank">${url.trim()}</a>`).run()
-  }
+  alert('💡 选中文字后按 Ctrl+V 粘贴链接地址，浏览器会自动生成超链接。\n\n也可以直接输入链接文本，编辑器会自动识别。')
 }
 
 // ── 工具栏操作 ──

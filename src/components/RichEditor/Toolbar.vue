@@ -59,7 +59,7 @@ const mediaButtons = computed(() => [
   { title: '插入音频', icon: '🎵', handler: () => emit('insert-audio') },
   { title: '插入视频', icon: '🎬', handler: () => emit('insert-video') },
   { title: '插入文件', icon: '📎', handler: () => emit('insert-file') },
-  { title: '插入链接', icon: '🔗', handler: () => emit('insert-link') },
+  { title: '粘贴链接（Ctrl+V）', icon: '🔗', handler: () => emit('insert-link') },
 ])
 
 function toolBtnClass(active) {
