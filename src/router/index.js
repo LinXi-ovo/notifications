@@ -25,7 +25,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const user = getCurrentUser()
   const isLoggedIn = !!user
-  const isAdmin = user?.username === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.username === 'admin'
 
   if (to.meta.requiresAuth && !isLoggedIn) return next('/login')
   if (to.meta.requiresAdmin && !isAdmin) return next('/')

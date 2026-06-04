@@ -90,6 +90,37 @@
             <p>还没有通知</p>
           </div>
         </div>
+
+        <!-- 管理员管理 -->
+        <details class="mt-6 text-sm" :open="showUserManager">
+          <summary class="cursor-pointer text-gray-500 hover:text-gray-700 font-medium" @click="showUserManager = !showUserManager">
+            👥 管理员管理（{{ users.length }} 人）
+          </summary>
+          <div v-if="users.length" class="mt-3 space-y-2">
+            <div
+              v-for="u in users"
+              :key="u.id"
+              class="bg-white rounded-lg border px-4 py-3 flex items-center justify-between"
+            >
+              <div>
+                <span class="font-medium text-gray-800">{{ u.username }}</span>
+                <span class="text-xs ml-2 px-1.5 py-0.5 rounded" :class="u.role === 'admin' ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-500'">
+                  {{ u.role === 'admin' ? '管理员' : '用户' }}
+                </span>
+                <span v-if="u.email" class="text-xs text-gray-400 ml-2">{{ u.email }}</span>
+              </div>
+              <button
+                v-if="u.username !== userStore.username"
+                class="text-xs px-2 py-1 rounded cursor-pointer border-none"
+                :class="u.role === 'admin' ? 'bg-red-50 text-red-500 hover:bg-red-100' : 'bg-blue-50 text-blue-500 hover:bg-blue-100'"
+                @click="toggleRole(u)"
+              >
+                {{ u.role === 'admin' ? '取消管理' : '设为管理' }}
+              </button>
+              <span v-else class="text-xs text-gray-400">当前账号</span>
+            </div>
+          </div>
+        </details>
       </template>
     </main>
   </div>
@@ -102,6 +133,7 @@ import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
 import { deleteNotification, getNotifications } from '@/api/notification'
 import { getCategories } from '@/api/category'
+import { getAllUsers, setUserRole } from '@/api/user'
 import NotificationForm from '@/components/NotificationForm.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
@@ -111,10 +143,32 @@ const store = useNotificationStore()
 
 const showForm = ref(false)
 const editingNotification = ref(null)
+const users = ref([])
+const showUserManager = ref(false)
 
 onMounted(() => {
   store.fetchList({ pageSize: 100 })
+  loadUsers()
 })
+
+async function loadUsers() {
+  try {
+    users.value = await getAllUsers()
+  } catch (e) {
+    console.error('加载用户列表失败:', e)
+  }
+}
+
+async function toggleRole(u) {
+  const newRole = u.role === 'admin' ? 'user' : 'admin'
+  if (!confirm(`确定${newRole === 'admin' ? '将' : '取消'}"${u.username}"${newRole === 'admin' ? '设为管理员' : '的管理员权限'}？`)) return
+  try {
+    await setUserRole(u.id, newRole)
+    u.role = newRole
+  } catch (e) {
+    alert('操作失败: ' + (e.message || e))
+  }
+}
 
 function openCreate() {
   editingNotification.value = null
