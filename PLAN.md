@@ -108,12 +108,31 @@
 **方案**：
 - 在 AdminView 增加「AI 生成」入口
 - 粘贴原始内容（微信消息、原文链接、截图等）到输入框
-- 调用 AI API（如 Claude API）分析、提取字段、生成结构化通知
+- 调用 DeepSeek API 分析、提取字段、生成结构化通知
 - 自动填入标题、内容（含格式化 HTML）、分类、标签、来源等
 - 支持上传附件（图片/PDF）让 AI 提取内容并内嵌
 
-**技术选型**：Claude API（`anthropic-sdk`）+ Vite 环境变量管理 API Key
-**复杂度**：中高，需要 API Key、提示词工程、解析结果
+**技术选型**：
+
+| 层 | 选型 | 理由 |
+|---|---|---|
+| SDK | `openai` npm 包 | DeepSeek 完全兼容 OpenAI 格式，改 `baseURL` 即可；文档最全、社区最大、支持流式 |
+| 模型 | DeepSeek 最新模型 | 用户偏好，性价比高 |
+| API 代理 | Cloudflare Worker | 隐藏 API Key 不暴露到浏览器，和 Pages 同一平台 |
+| API Key 来源 | VITE_DEEPSEEK_API_KEY | 通过 GitHub Secrets 注入构建环境 |
+
+**架构**：
+```
+浏览器 AdminView
+  ↓ 调 Worker（不含 Key）
+Cloudflare Worker
+  ↓ 拼接 Key 转发
+DeepSeek API
+  ↓ 返回结果
+Worker 解析 → 返回结构化通知
+```
+
+**复杂度**：中高，需要 Worker 部署、提示词工程、结果解析
 
 ---
 
@@ -121,8 +140,16 @@
 
 **当前阶段**：第三阶段 ✅ 完成 · 第四阶段进行中
 **完成度**：92%
-**最新更新**：2026-06-04 — 部署到 Cloudflare Pages + 未来规划记录
+**最新更新**：2026-06-04 — 下一步：管理员权限管理
 **备注**：Bmob 文件服务需备案域名 ≥10 天 → 临时用 Base64 内嵌 + 图片自动压缩，后续可升级到腾讯云 COS
+
+## 执行顺序
+
+| 优先级 | 任务 | 预估 |
+|---|---|---|
+| P0 | 管理员权限管理（role 字段 + 管理页面） | 小 |
+| P1 | 文件存储升级（Base64 → COS） | 中 |
+| P2 | AI 智能生成通知（DeepSeek + Worker 代理） | 大 |
 
 ## 文件存储决策
 
