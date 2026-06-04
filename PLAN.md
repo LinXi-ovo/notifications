@@ -17,8 +17,9 @@
 - [x] 写 README.md（含数据迁移方案附录）
 - [x] git init + 首次 commit
 - [x] 将后端从 LeanCloud 切换为 Bmob
-- [ ] 注册 Bmob 应用，获取 Secret Key + API 安全码
-- [ ] 在 Bmob 创建数据表
+- [x] 注册 Bmob 应用，获取 Secret Key + API 安全码
+- [x] 在 Bmob 创建数据表 + 初始分类数据
+- [ ] 配置 GitHub Actions deploy.yml
 - [ ] 配置 GitHub Actions deploy.yml
 
 ---
@@ -84,7 +85,7 @@
 
 ## 当前状态
 
-**当前阶段**：第一阶段（进行中）
-**完成度**：70%
-**最新更新**：2026-06-04 — 项目骨架完成，待配 LeanCloud 和 GitHub Actions
+**当前阶段**：第一阶段 ✅ 完成
+**完成度**：90%
+**最新更新**：2026-06-04 — Bmob 连接成功，Phase 2 开始
 **备注**：初始分类为 [综测, 保研, 活动, 课程, 作业, 其他]
