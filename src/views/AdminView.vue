@@ -74,6 +74,13 @@
 
         <!-- ════ 管理员管理标签 ════ -->
         <div v-if="activeTab === 'users'">
+          <!-- 初始管理员注册引导 -->
+          <div v-if="needsAdminInit" class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-sm text-yellow-700 flex items-center justify-between">
+            <span>需要将当前账号注册为系统管理员</span>
+            <button class="px-3 py-1.5 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 cursor-pointer border-none" @click="initAdminRole">
+              注册为管理员
+            </button>
+          </div>
           <div class="space-y-2">
             <div
               v-for="u in users"
@@ -106,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
@@ -125,6 +132,12 @@ const editingNotification = ref(null)
 const users = ref([])
 const showUserManager = ref(false)
 const activeTab = ref('notifications')
+
+const needsAdminInit = computed(() => {
+  // admin 账号还没在 UserRoles 表注册时显示引导
+  const me = users.value.find(u => u.username === userStore.username)
+  return me && me.role !== 'admin'
+})
 
 onMounted(() => {
   store.fetchList({ pageSize: 100 })
@@ -147,6 +160,19 @@ async function toggleRole(u) {
     u.role = newRole
   } catch (e) {
     alert('操作失败: ' + (e.message || e))
+  }
+}
+
+async function initAdminRole() {
+  try {
+    const me = users.value.find(u => u.username === userStore.username)
+    if (!me) return
+    await setUserRole(me.id, 'admin', me.username)
+    me.role = 'admin'
+    // 刷新 store 里的角色
+    userStore.refresh()
+  } catch (e) {
+    alert('注册失败: ' + (e.message || e))
   }
 }
 
