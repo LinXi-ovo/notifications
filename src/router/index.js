@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { getCurrentUser } from '@/api/user'
 import HomeView from '@/views/HomeView.vue'
 import DetailView from '@/views/DetailView.vue'
 import LoginView from '@/views/LoginView.vue'
@@ -7,12 +8,12 @@ import FavoritesView from '@/views/FavoritesView.vue'
 import CategoryManagerView from '@/views/CategoryManagerView.vue'
 
 const routes = [
-  { path: '/', name: 'home', component: HomeView },
-  { path: '/detail/:id', name: 'detail', component: DetailView },
-  { path: '/favorites', name: 'favorites', component: FavoritesView },
-  { path: '/login', name: 'login', component: LoginView },
-  { path: '/admin', name: 'admin', component: AdminView },
-  { path: '/admin/categories', name: 'categories', component: CategoryManagerView },
+  { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
+  { path: '/detail/:id', name: 'detail', component: DetailView, meta: { requiresAuth: true } },
+  { path: '/favorites', name: 'favorites', component: FavoritesView, meta: { requiresAuth: true } },
+  { path: '/login', name: 'login', component: LoginView, meta: { guest: true } },
+  { path: '/admin', name: 'admin', component: AdminView, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/admin/categories', name: 'categories', component: CategoryManagerView, meta: { requiresAuth: true, requiresAdmin: true } },
 ]
 
 const router = createRouter({
@@ -20,13 +21,16 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫：TODO - Phase 3 实现完整的 auth 检查
-// router.beforeEach((to, from, next) => {
-//   const user = getCurrentUser()
-//   if (to.meta.requiresAuth && !user) return next('/login')
-//   if (to.meta.requiresAdmin && !isAdmin(user)) return next('/')
-//   if (to.meta.guest && user) return next('/')
-//   next()
-// })
+// 路由守卫：未登录→登录页，非管理员→首页
+router.beforeEach((to, from, next) => {
+  const user = getCurrentUser()
+  const isLoggedIn = !!user
+  const isAdmin = user?.username === 'admin'
+
+  if (to.meta.requiresAuth && !isLoggedIn) return next('/login')
+  if (to.meta.requiresAdmin && !isAdmin) return next('/')
+  if (to.meta.guest && isLoggedIn) return next('/')
+  next()
+})
 
 export default router

@@ -34,7 +34,8 @@
           v-for="item in store.list"
           :key="item.id"
           :notification="item"
-          :is-fav="favorites.has(item.id)"
+          :is-fav="favStore.ids.has(item.id)"
+          @toggle-favorite="handleToggleFavorite"
         />
       </div>
 
@@ -73,6 +74,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
+import { useFavoriteStore } from '@/stores/favorite'
 import { getCategories } from '@/api/category'
 import CategoryNav from '@/components/CategoryNav.vue'
 import SearchBar from '@/components/SearchBar.vue'
@@ -80,11 +82,12 @@ import NotificationCard from '@/components/NotificationCard.vue'
 
 const store = useNotificationStore()
 const userStore = useUserStore()
+const favStore = useFavoriteStore()
 
 const categories = ref([])
 const currentType = ref(null)
 const searchQuery = ref('')
-const favorites = ref(new Set())
+const searchTimeout = ref(null)
 
 const totalPages = computed(() => Math.ceil(store.total / store.pageSize) || 1)
 
@@ -95,6 +98,9 @@ onMounted(async () => {
     console.error('加载分类失败:', e)
   }
   store.fetchList()
+  if (userStore.isLoggedIn) {
+    favStore.refresh()
+  }
 })
 
 function handleTypeChange(type) {
@@ -104,6 +110,13 @@ function handleTypeChange(type) {
 
 function handleSearch(query) {
   searchQuery.value = query
-  store.setSearch(query)
+  if (searchTimeout.value) clearTimeout(searchTimeout.value)
+  searchTimeout.value = setTimeout(() => {
+    store.setSearch(query)
+  }, 300)
+}
+
+function handleToggleFavorite(id) {
+  favStore.toggle(id)
 }
 </script>
