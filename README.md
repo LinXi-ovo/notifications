@@ -6,7 +6,7 @@
 
 **🔗 在线地址**：[notifications-3kx.pages.dev](https://notifications-3kx.pages.dev)（Cloudflare Pages，主力）
 **🔗 备用地址**：[linxi-ovo.github.io/notifications](https://linxi-ovo.github.io/notifications/)（GitHub Pages）
-**🔗 Gitee 镜像**：[gitee.com/Linxi-ovo/notifications](https://gitee.com/Linxi-ovo/notifications)（国内加速，需手动部署）
+**🔗 Gitee 镜像**：暂未开通（需实名认证，可选）
 
 ---
 
@@ -29,7 +29,7 @@
 | CSS | Tailwind CSS v4 |
 | 富文本编辑器 | Tiptap |
 | 数据层 | Bmob 后端云 (bmob.cn) |
-| 部署 | Cloudflare Pages（主力）+ GitHub Pages（备用）+ Gitee Pages（镜像） |
+| 部署 | Cloudflare Pages（主力）+ GitHub Pages（备用） |
 
 ## 开发
 
@@ -103,7 +103,7 @@ VITE_BMOB_API_SAFE_CODE=your_api_safe_code_here
 │  └─ GitHub Actions（自动构建）                  │
 │     ├─ Cloudflare Pages（主力，国内访问快）      │
 │     ├─ GitHub Pages（备用）                    │
-│     └─ Gitee（镜像，需手动部署）               │
+│     └─ Gitee（镜像，需实名认证 → 可选）     │
 │                                               │
 │  同学直接访问 Cloudflare Pages 链接即可         │
 └───────────────────────────────────────────────┘
