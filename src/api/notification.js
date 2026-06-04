@@ -79,7 +79,7 @@ export async function restoreNotification(id) {
   const q = Bmob.Query(TABLE)
   q.set('id', id)
   q.set('deleted', false)
-  q.set('deletedAt', null)
+  q.set('deletedAt', 0)
   return await q.save()
 }
 
