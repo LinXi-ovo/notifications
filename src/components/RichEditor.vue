@@ -38,7 +38,6 @@ import ImageExt from '@tiptap/extension-image'
 import LinkExt from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
-import Bmob from '@/api/bmob'
 import Toolbar from './RichEditor/Toolbar.vue'
 
 const props = defineProps({
@@ -123,28 +122,53 @@ function handleDrop(e) {
   }
 }
 
-// ── 上传文件 ──
+// ── 上传文件：Base64 内嵌（临时方案，无需 Bmob 文件域名）──
 async function doUpload(file, type) {
   const ed = editor.value
   if (!ed) return
+
+  // 限制文件大小（Base64 建议 1MB 以内）
+  if (file.size > 2 * 1024 * 1024) {
+    alert('文件过大（>2MB），请压缩后重试。后续升级腾讯云 COS 后可上传大文件。')
+    return
+  }
+
   try {
-    // Bmob v3 File.save() 返回数组 ["url"]
-    const bmobFile = Bmob.File(file.name, file)
-    const result = await bmobFile.save()
-    const url = Array.isArray(result) ? result[0] : (result.url || result)
+    const dataUrl = await fileToBase64(file)
 
     if (type === 'image') {
-      ed.chain().focus().setImage({ src: url }).run()
+      ed.chain().focus().setImage({ src: dataUrl }).run()
     } else {
       const label = type === 'audio' ? '🔊' : type === 'video' ? '🎬' : '📎'
-      ed.chain().focus().insertContent(`<p><a href="${url}" target="_blank">${label} ${file.name}</a></p>`).run()
+      // 音频用 <audio> 控件，视频用 <video> 控件，其他文件用链接
+      if (type === 'audio') {
+        ed.chain().focus().insertHTML(
+          `<p><audio controls src="${dataUrl}"></audio> ${file.name}</p>`
+        ).run()
+      } else if (type === 'video') {
+        ed.chain().focus().insertHTML(
+          `<p><video controls src="${dataUrl}" style="max-width:100%;max-height:400px"></video> ${file.name}</p>`
+        ).run()
+      } else {
+        ed.chain().focus().insertContent(
+          `<p><a href="${dataUrl}" target="_blank">📎 ${file.name}</a></p>`
+        ).run()
+      }
     }
   } catch (e) {
     console.error('上传失败:', e)
-    // Bmob 文件域名未配置时提示具体信息
-    const msg = e.error || e.message || JSON.stringify(e)
-    alert('上传失败: ' + msg)
+    alert('上传失败: ' + (e.message || e))
   }
+}
+
+// File → Base64 DataURL
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('读取文件失败'))
+    reader.readAsDataURL(file)
+  })
 }
 
 // ── 工具栏操作 ──
