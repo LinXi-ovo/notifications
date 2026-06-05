@@ -58,6 +58,14 @@
       >
         ➕ {{ p.name }}
       </button>
+      <span class="text-gray-400 dark:text-gray-500">|</span>
+      <button
+        class="px-2 py-0.5 rounded bg-yellow-100 dark:bg-yellow-800/30 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-700/40 transition-colors"
+        @click="showJsonViewer = true"
+        :disabled="!mission?.nodes?.length"
+      >
+        📄 查看 JSON
+      </button>
     </div>
 
     <!-- 主区域: 画布 + 侧栏 -->
@@ -310,6 +318,25 @@
         </div>
       </div>
     </div>
+
+    <!-- JSON 查看器（调试模式） -->
+    <div v-if="showJsonViewer" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showJsonViewer = false">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">📄 Mission JSON</h2>
+          <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showJsonViewer = false">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div class="flex-1 overflow-auto p-4">
+          <pre class="text-xs font-mono text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-all"><code>{{ prettyJson }}</code></pre>
+        </div>
+        <div class="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+          <button class="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" @click="copyJson">📋 复制</button>
+          <button class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" @click="downloadJson">⬇️ 下载</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -332,6 +359,11 @@ const userStore = useUserStore()
 // 调试模式
 const debugMode = ref(localStorage.getItem('mermaid-debug') === 'true')
 const presets = ALL_PRESETS
+const showJsonViewer = ref(false)
+const prettyJson = computed(() => {
+  if (!missionStore.currentMission) return '{}'
+  return JSON.stringify(missionStore.currentMission, null, 2)
+})
 
 const canvasRef = ref(null)
 const selectedNodeId = ref(null)
@@ -566,5 +598,31 @@ function loadPreset(presetFn) {
   }
   // 跳转到新任务
   router.push('/mission/' + mission.id)
+}
+
+// ── 调试模式：JSON 查看/复制/下载 ──
+function copyJson() {
+  const text = prettyJson.value
+  navigator.clipboard?.writeText(text).then(() => {
+    alert('JSON 已复制到剪贴板')
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea')
+    ta.value = text
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    alert('JSON 已复制到剪贴板')
+  })
+}
+function downloadJson() {
+  const blob = new Blob([prettyJson.value], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `mission-${missionStore.currentMission?.id || 'export'}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 </script>
