@@ -6,6 +6,7 @@ import LoginView from '@/views/LoginView.vue'
 import AdminView from '@/views/AdminView.vue'
 import FavoritesView from '@/views/FavoritesView.vue'
 import CategoryManagerView from '@/views/CategoryManagerView.vue'
+import SettingsView from '@/views/SettingsView.vue'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
@@ -14,6 +15,7 @@ const routes = [
   { path: '/login', name: 'login', component: LoginView, meta: { guest: true } },
   { path: '/admin', name: 'admin', component: AdminView, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/admin/categories', name: 'categories', component: CategoryManagerView, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
 ]
 
 const router = createRouter({

@@ -80,10 +80,7 @@
 
         <!-- 底部 -->
         <div class="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-          <label class="text-xs text-gray-400 flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" v-model="debugMode" class="w-3 h-3" />
-            调试模式
-          </label>
+          <span class="text-xs text-gray-400">⚙️ 调试开关在「设置」页</span>
           <div class="flex gap-2">
             <button v-if="!showEditor" type="button" class="px-3 py-1.5 text-sm text-blue-500 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 cursor-pointer" @click="openNew">＋ 新建</button>
             <button type="button" class="px-3 py-1.5 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer" @click="close">完成</button>
