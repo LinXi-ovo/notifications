@@ -85,6 +85,9 @@
           <button class="px-2 py-1 text-[11px] bg-purple-500 text-white rounded hover:bg-purple-600 cursor-pointer border-none" @click="handleSeed">
             🌱 一键生成默认资讯
           </button>
+          <button class="px-2 py-1 text-[11px] bg-yellow-500 text-white rounded hover:bg-yellow-600 cursor-pointer border-none" @click="handleMarkTest">
+            🏷 标记旧数据
+          </button>
           <button class="px-2 py-1 text-[11px] bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer border-none" @click="showJson = !showJson">
             📄 {{ showJson ? '隐藏' : '显示' }}全部 JSON
           </button>
@@ -155,6 +158,21 @@ async function handleSeed() {
     alert('生成失败: ' + (e.message || e))
   } finally {
     if (btn) btn.textContent = '🌱 一键生成默认资讯'
+  }
+}
+
+async function handleMarkTest() {
+  if (!confirm('将扫描所有已入库的资讯，为缺少标记的旧数据添加 🧪 前缀和"测试数据"标签，继续？')) return
+  const btn = document.activeElement
+  if (btn) btn.textContent = '⏳ 标记中...'
+  try {
+    const count = await store.markExistingTestItems()
+    await loadList()
+    alert(`✅ 已标记 ${count} 条数据，刷新首页即可看到效果`)
+  } catch (e) {
+    alert('标记失败: ' + (e.message || e))
+  } finally {
+    if (btn) btn.textContent = '🏷 标记旧数据'
   }
 }
 

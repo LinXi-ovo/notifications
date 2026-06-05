@@ -14,18 +14,19 @@
     <Transition name="knowledge-slide">
       <div
         v-if="!collapsed && store.currentItem"
-        class="fixed bottom-6 left-6 z-40 bg-white rounded-xl shadow-xl border border-gray-100 w-80 max-h-[300px] flex flex-col overflow-hidden"
-        :class="{ 'border-yellow-300 ring-2 ring-yellow-200': isPriority2 }"
+        class="fixed bottom-6 left-6 z-40 bg-white rounded-xl shadow-xl border w-80 max-h-[300px] flex flex-col overflow-hidden"
+        :class="cardBorderClass"
       >
+        <!-- 测试横幅 -->
+        <div
+          v-if="isTestItem"
+          class="bg-yellow-400 text-[11px] font-bold text-yellow-900 text-center py-1 tracking-wider"
+        >🧪 测试数据 · 非真实通知</div>
         <!-- 头部 -->
         <div class="flex items-center justify-between px-4 pt-3 pb-1">
           <div class="flex items-center gap-1.5">
             <span class="text-sm">📚</span>
             <span class="text-xs font-semibold text-gray-700">每日资讯</span>
-            <span
-              v-if="isTestItem"
-              class="text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded font-bold animate-pulse"
-            >🧪 测试</span>
             <span
               v-if="store.browsingHistory"
               class="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded"
@@ -189,15 +190,22 @@ const localStorageRaw = ref('')
 /** 当前资讯是否必读级别 */
 const isPriority2 = computed(() => store.currentItem?.priority === 2)
 
+/** 是否为测试数据 */
+const isTestItem = computed(() => {
+  return store.currentItem?.tags?.includes('测试数据')
+})
+
+/** 卡片边框样式 */
+const cardBorderClass = computed(() => {
+  if (isTestItem.value) return 'border-yellow-400 ring-2 ring-yellow-300'
+  if (isPriority2.value) return 'border-yellow-300 ring-2 ring-yellow-200'
+  return 'border-gray-100'
+})
+
 /** 当前是否已收藏 */
 const isFav = computed(() => {
   const id = store.currentItem?.objectId || store.currentItem?.id
   return id ? store.userState.favoriteIds.includes(id) : false
-})
-
-/** 是否为测试数据（标签含"测试数据"则显示测试徽章） */
-const isTestItem = computed(() => {
-  return store.currentItem?.tags?.includes('测试数据')
 })
 
 /** 分类显示名称 */

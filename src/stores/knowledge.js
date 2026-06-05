@@ -322,6 +322,30 @@ export const useKnowledgeStore = defineStore('knowledge', {
       // 重新拉取
       await this.fetchAdminList()
       return results
+    },
+
+    /** 标记已入库的旧测试数据（用于迁移已有的无标签数据） */
+    async markExistingTestItems() {
+      await this.fetchAdminList()
+      let count = 0
+      for (const item of this.items) {
+        const title = item.title || ''
+        const tags = item.tags || []
+        // 跳过已有标记的
+        if (tags.includes('测试数据')) continue
+        // 标题以 🧪 开头 → 只缺标签
+        // 旧数据（无 🧪 前缀）→ 标题和标签都补
+        const newTitle = title.startsWith('🧪') ? title : `🧪 ${title}`
+        const newTags = [...new Set([...tags, '测试数据'])]
+        try {
+          await updateItem(item.objectId, { title: newTitle, tags: newTags })
+          count++
+        } catch (e) {
+          console.warn('标记测试资讯失败:', title, e?.message || e)
+        }
+      }
+      await this.fetchAdminList()
+      return count
     }
   }
 })
