@@ -76,6 +76,20 @@ export const useKnowledgeStore = defineStore('knowledge', {
     /** 某条资讯是否已收藏 */
     isFavorite() {
       return (id) => this.userState.favoriteIds.includes(id)
+    },
+
+    /** 调试信息：当前状态快照 */
+    debugInfo(state) {
+      return {
+        today: state.today,
+        itemsCount: state.items.length,
+        currentItemId: state.currentItem?.objectId || state.currentItem?.id || null,
+        browsingHistory: state.browsingHistory,
+        loading: state.loading,
+        userState: { ...state.userState, viewedIds: [...state.userState.viewedIds], favoriteIds: [...state.userState.favoriteIds] },
+        unreadCount: state.items.filter(item => !state.userState.viewedIds.includes(item.objectId || item.id)).length,
+        allRead: state.items.length > 0 && state.items.every(item => state.userState.viewedIds.includes(item.objectId || item.id))
+      }
     }
   },
 
@@ -265,6 +279,24 @@ export const useKnowledgeStore = defineStore('knowledge', {
     async remove(id) {
       await deleteItem(id)
       this.items = this.items.filter(i => (i.objectId || i.id) !== id)
+    },
+
+    // ── 调试操作 ──
+
+    /** 重置当天状态（清空已读/收藏/关闭） */
+    resetState() {
+      this.userState.viewedIds = []
+      this.userState.dismissed = false
+      this.userState.lastFetchDate = ''
+      this.userState.lastShownIndex = 0
+      this.browsingHistory = false
+      this.saveState()
+    },
+
+    /** 强制刷新并重新推送 */
+    async forcePush() {
+      this.resetState()
+      await this.checkAndPush()
     }
   }
 })

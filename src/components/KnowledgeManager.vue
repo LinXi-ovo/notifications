@@ -68,11 +68,40 @@
         </div>
       </div>
     </template>
+
+    <!-- 调试模式面板（管理后台底部） -->
+    <div v-if="debugMode" class="mt-6 border border-gray-300 rounded-lg overflow-hidden">
+      <div class="flex items-center justify-between px-3 py-2 bg-gray-100 border-b border-gray-300">
+        <span class="text-xs font-mono font-semibold text-gray-600">🧪 资讯调试面板</span>
+      </div>
+      <div class="p-3 bg-gray-50 text-xs space-y-2">
+        <div class="flex gap-2">
+          <button class="px-2 py-1 text-[11px] bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer border-none" @click="handleResetState">
+            🔄 重置当天状态
+          </button>
+          <button class="px-2 py-1 text-[11px] bg-green-500 text-white rounded hover:bg-green-600 cursor-pointer border-none" @click="handleForcePush">
+            📤 测试推送
+          </button>
+          <button class="px-2 py-1 text-[11px] bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer border-none" @click="showJson = !showJson">
+            📄 {{ showJson ? '隐藏' : '显示' }}全部 JSON
+          </button>
+        </div>
+        <div class="text-[11px] text-gray-500 font-mono leading-relaxed">
+          <div>items: {{ items.length }}条</div>
+          <div>viewedIds: [{{ store.userState.viewedIds.join(', ') || '空' }}]</div>
+          <div>favoriteIds: [{{ store.userState.favoriteIds.join(', ') || '空' }}]</div>
+          <div>lastFetchDate: {{ store.userState.lastFetchDate || '(未设置)' }}</div>
+          <div>dismissed: {{ store.userState.dismissed }}</div>
+          <div>today: {{ store.today || '(未设置)' }}</div>
+        </div>
+        <pre v-if="showJson" class="mt-2 text-[10px] text-gray-400 bg-white p-2 rounded border overflow-x-auto max-h-60 whitespace-pre-wrap">{{ jsonPreview }}</pre>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useKnowledgeStore } from '@/stores/knowledge'
 import KnowledgeEditor from './KnowledgeEditor.vue'
 import { CATEGORY_COLORS, KNOWLEDGE_CATEGORIES } from '@/types/knowledge'
@@ -83,9 +112,33 @@ const items = ref([])
 const showForm = ref(false)
 const editingItem = ref(null)
 
+// 调试
+const debugMode = ref(false)
+const showJson = ref(false)
+const jsonPreview = computed(() => {
+  if (items.value.length === 0) return '(空)'
+  return JSON.stringify(items.value, null, 2).slice(0, 5000)
+})
+
 onMounted(async () => {
+  debugMode.value = localStorage.getItem('mermaid-debug') === 'true'
+  window.addEventListener('storage', onStorageChange)
   await loadList()
 })
+
+function onStorageChange() {
+  debugMode.value = localStorage.getItem('mermaid-debug') === 'true'
+}
+
+function handleResetState() {
+  if (!confirm('重置当天所有状态？(已读记录/收藏/关闭)')) return
+  store.resetState()
+}
+
+async function handleForcePush() {
+  await store.forcePush()
+  alert('已重置状态并触发推送，请查看右下角卡片')
+}
 
 async function loadList() {
   await store.fetchAdminList()
