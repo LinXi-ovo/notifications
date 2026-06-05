@@ -11,20 +11,37 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="showAddRole = true">
+        <!-- 模式切换 -->
+        <button
+          class="px-3 py-1.5 text-sm rounded-lg font-medium transition-colors"
+          :class="editMode ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'"
+          @click="editMode = !editMode"
+          :title="editMode ? '切换到执行模式' : '切换到编辑模式（管理任务结构）'"
+        >
+          {{ editMode ? '📝 编辑模式' : '▶️ 执行模式' }}
+        </button>
+
+        <!-- 角色管理（所有模式 — 认领/审核/委派） -->
+        <button class="px-3 py-1.5 text-sm rounded-lg transition-colors" :class="editMode ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'" @click="showAddRole = true">
           👥 角色
         </button>
-        <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="showAddEdge = true">
-          ↔️ 连线
-        </button>
+
+        <!-- 编辑入口 — CRUD 操作（编辑模式专用） -->
+        <template v-if="editMode">
+          <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="showAddEdge = true">
+            ↔️ 连线
+          </button>
+          <button
+            class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            @click="showAddNode = true"
+          >
+            ＋ 添加节点
+          </button>
+        </template>
+
+        <!-- 通用入口 — 非破坏性操作 -->
         <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="exportMission">
           📥 导出
-        </button>
-        <button
-          class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          @click="showAddNode = true"
-        >
-          ＋ 添加节点
         </button>
       </div>
     </div>
@@ -223,12 +240,17 @@
       </div>
     </div>
 
-    <!-- 添加角色对话框 -->
+    <!-- 角色管理对话框（编辑/执行模式共用） -->
     <div v-if="showAddRole" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showAddRole = false">
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
-        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">角色管理</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100">👥 角色管理</h2>
+          <span class="text-xs px-2 py-0.5 rounded font-medium" :class="editMode ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30' : 'bg-green-100 text-green-700 dark:bg-green-900/30'">
+            {{ editMode ? '📝 编辑模式' : '▶️ 执行模式' }}
+          </span>
+        </div>
 
-        <!-- 现有角色列表 -->
+        <!-- 现有角色列表（认领/查看） -->
         <div class="mb-4 space-y-2">
           <div v-for="r in mission.roles" :key="r.id" class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <div class="flex items-center gap-2">
@@ -238,13 +260,18 @@
             </div>
             <div class="flex items-center gap-2">
               <span class="text-xs text-gray-400 tabular-nums">{{ assignmentCount(r.id) }}人</span>
-              <button class="text-xs text-red-400 hover:text-red-600" @click="removeRole(r.id)">删除</button>
+              <button v-if="editMode" class="text-xs text-red-400 hover:text-red-600" @click="removeRole(r.id)">删除</button>
             </div>
           </div>
           <div v-if="!mission.roles.length" class="text-sm text-gray-400 text-center py-4">暂无角色</div>
+
+          <!-- 认领按钮（执行模式） -->
+          <div v-if="!editMode && mission.roles.length" class="px-2">
+            <p class="text-xs text-gray-400 mb-2">点击节点详情中的"认领此角色"来认领对应角色</p>
+          </div>
         </div>
 
-        <!-- 待审批列表 -->
+        <!-- 待审批列表（所有模式） -->
         <div v-if="pendingClaims.length" class="mb-4">
           <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">⏳ 待审批 ({{ pendingClaims.length }})</h3>
           <div v-for="(claim, idx) in pendingClaims" :key="idx" class="flex items-center justify-between px-3 py-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg mb-1">
@@ -260,7 +287,7 @@
           </div>
         </div>
 
-        <!-- 委派管理（针对 delegated 类型角色） -->
+        <!-- 委派管理（所有模式） -->
         <div v-if="delegatableRoles.length" class="mb-4">
           <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">🔑 委派管理</h3>
           <div v-for="r in delegatableRoles" :key="r.id" class="flex items-center justify-between px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg mb-1">
@@ -275,24 +302,26 @@
           </div>
         </div>
 
-        <hr class="border-gray-200 dark:border-gray-600 mb-4" />
-
-        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">添加角色</h3>
-        <div class="grid grid-cols-2 gap-2 mb-3">
-          <input v-model="newRole.name" type="text" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="角色名称（如：班长）" />
-          <input v-model="newRole.emoji" type="text" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="👨‍🎓" />
-          <input v-model="newRole.color" type="text" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="#F59E0B" />
-          <select v-model="newRole.claimType" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
-            <option value="free">自由认领</option>
-            <option value="approval">审核认领</option>
-            <option value="password">口令认领</option>
-            <option value="delegated">管理员委派</option>
-          </select>
-          <input v-if="newRole.claimType === 'password'" v-model="newRole.password" type="text" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="认领口令" />
-        </div>
-        <div class="flex justify-end">
-          <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50" :disabled="!newRole.name.trim()" @click="addRole">添加角色</button>
-        </div>
+        <!-- 编辑模式：添加角色 CRUD -->
+        <template v-if="editMode">
+          <hr class="border-gray-200 dark:border-gray-600 mb-4" />
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">添加角色</h3>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <input v-model="newRole.name" type="text" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="角色名称（如：班长）" />
+            <input v-model="newRole.emoji" type="text" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="👨‍🎓" />
+            <input v-model="newRole.color" type="text" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="#F59E0B" />
+            <select v-model="newRole.claimType" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+              <option value="free">自由认领</option>
+              <option value="approval">审核认领</option>
+              <option value="password">口令认领</option>
+              <option value="delegated">管理员委派</option>
+            </select>
+            <input v-if="newRole.claimType === 'password'" v-model="newRole.password" type="text" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="认领口令" />
+          </div>
+          <div class="flex justify-end">
+            <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50" :disabled="!newRole.name.trim()" @click="addRole">添加角色</button>
+          </div>
+        </template>
 
         <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
           <button class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" @click="showAddRole = false">关闭</button>
@@ -371,33 +400,54 @@
           </div>
         </div>
 
-        <!-- 操作按钮（权限感知） -->
+        <!-- 节点权限提示 -->
+        <div class="flex items-center gap-2 text-xs">
+          <span v-if="editMode" class="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 font-medium">📝 编辑模式</span>
+          <span v-else-if="nodeLockMap[selectedNode.id]" class="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-500 font-medium">🔒 执行模式 · 锁定</span>
+          <span v-else class="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600 font-medium">▶️ 执行模式 · 可操作</span>
+        </div>
+
+        <!-- 操作按钮 -->
         <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-          <!-- 状态转换按钮 -->
-          <button
-            v-for="t in permissionedTransitions"
-            :key="t.to"
-            class="px-3 py-1.5 text-sm rounded-lg transition-colors font-medium"
-            :class="transitionButtonClass(t.to)"
-            @click="changeStatus(t.to)"
-          >
-            {{ t.label }}
-          </button>
-          <!-- 无可用操作提示 -->
-          <span v-if="!permissionedTransitions.length && nodeLockMap[selectedNode.id]" class="text-xs text-gray-400 italic">
-            当前角色无权操作此节点
-          </span>
-          <!-- 标记我已填写（count/all 模式下额外按钮） -->
-          <button
-            v-if="selectedNode.status === 'in-progress' && selectedNode.completionRule !== 'single' && hasClaimedRole(selectedNode.assignedRole)"
-            class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg transition-colors font-medium"
-            @click="markNodeComplete"
-          >
-            ✅ 标记我已填写
-          </button>
-          <button class="px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" @click="deleteSelectedNode">
-            删除节点
-          </button>
+          <!-- 编辑模式 → 全部状态转换可用 -->
+          <template v-if="editMode">
+            <button
+              v-for="t in allTransitionsForNode"
+              :key="t.to"
+              class="px-3 py-1.5 text-sm rounded-lg transition-colors font-medium"
+              :class="transitionButtonClass(t.to)"
+              @click="changeStatus(t.to)"
+            >
+              {{ t.label }}
+            </button>
+            <button class="px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" @click="deleteSelectedNode">
+              🗑️ 删除节点
+            </button>
+          </template>
+
+          <!-- 执行模式 → 按角色权限显示 -->
+          <template v-else>
+            <button
+              v-for="t in permissionedTransitions"
+              :key="t.to"
+              class="px-3 py-1.5 text-sm rounded-lg transition-colors font-medium"
+              :class="transitionButtonClass(t.to)"
+              @click="changeStatus(t.to)"
+            >
+              {{ t.label }}
+            </button>
+            <span v-if="!permissionedTransitions.length && nodeLockMap[selectedNode.id]" class="text-xs text-gray-400 italic">
+              当前角色无权操作此节点
+            </span>
+            <!-- 标记我已填写（count/all 模式下额外按钮） -->
+            <button
+              v-if="selectedNode.status === 'in-progress' && selectedNode.completionRule !== 'single' && hasClaimedRole(selectedNode.assignedRole)"
+              class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg transition-colors font-medium"
+              @click="markNodeComplete"
+            >
+              ✅ 标记我已填写
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -531,6 +581,9 @@ const canvasRef = ref(null)
 const selectedNodeId = ref(null)
 const selectedEdgeId = ref(null)
 
+// 编辑模式（默认执行模式）
+const editMode = ref(false)
+
 // 添加节点
 const showAddNode = ref(false)
 const newNodeTitle = ref('')
@@ -567,6 +620,7 @@ watch(() => route.params.id, (id) => {
 })
 
 function addNode() {
+  if (!editMode.value) { alert('❌ 请切换到编辑模式'); return }
   if (!newNodeTitle.value.trim() || !newNodeRole.value) return
   missionStore.addNode(newNodeTitle.value.trim(), newNodeRole.value, {
     completionRule: newNodeCompletionRule.value,
@@ -577,6 +631,7 @@ function addNode() {
 }
 
 function addEdge() {
+  if (!editMode.value) { alert('❌ 请切换到编辑模式'); return }
   if (!newEdgeSource.value || !newEdgeTarget.value) return
   missionStore.addEdge(newEdgeSource.value, newEdgeTarget.value, newEdgeLabel.value)
   newEdgeSource.value = ''
@@ -599,6 +654,10 @@ function exportMission() {
 
 function deleteSelectedNode() {
   if (!selectedNodeId.value) return
+  if (!editMode.value) {
+    alert('❌ 执行模式下不能删除节点，请切换到编辑模式')
+    return
+  }
   if (confirm('确定删除此节点？')) {
     missionStore.removeNode(selectedNodeId.value)
     selectedNodeId.value = null
@@ -671,7 +730,17 @@ const userRoleNames = computed(() => {
   })
 })
 
-/** 权限感知的状态转换（从 store 获取） */
+/** 全部可能的状态转换（编辑模式用 — 不检查角色权限） */
+const allTransitionsForNode = computed(() => {
+  if (!selectedNode.value) return []
+  const transitions = missionStore._getAllPossibleTransitions(selectedNode.value.status)
+  return transitions.map(t => ({
+    ...t,
+    label: t.label || (t.to === 'completed' ? '✅ 标记完成' : t.to === 'in-progress' ? '▶️ 开始执行' : `➡️ ${t.to}`)
+  }))
+})
+
+/** 权限感知的状态转换（执行模式用 — 从 store 获取） */
 const permissionedTransitions = computed(() => {
   if (!selectedNode.value || !userStore.username) return []
   const transitions = missionStore.getAllowedTransitions(userStore.username, selectedNode.value.id)
@@ -690,7 +759,12 @@ function transitionButtonClass(to) {
 
 function changeStatus(to) {
   if (!selectedNode.value || !userStore.username) return
-  // 先用 permissionedTransitions 过滤，但再检查一次
+  if (editMode.value) {
+    // 编辑模式：允许所有状态转换
+    missionStore.changeNodeStatus(selectedNode.value.id, to)
+    return
+  }
+  // 执行模式：必须通过权限检查
   const allowed = missionStore.checkStatusTransition(userStore.username, selectedNode.value.id, to)
   if (!allowed.allowed) {
     alert('❌ ' + allowed.reason)
@@ -699,8 +773,9 @@ function changeStatus(to) {
   missionStore.changeNodeStatus(selectedNode.value.id, to)
 }
 
-// ── 角色管理 ──
+// ── 角色管理（仅编辑模式） ──
 function addRole() {
+  if (!editMode.value) { alert('❌ 请切换到编辑模式'); return }
   if (!newRole.value.name.trim()) return
   missionStore.addRole(
     newRole.value.name.trim(),
@@ -712,6 +787,7 @@ function addRole() {
 }
 
 function removeRole(roleId) {
+  if (!editMode.value) { alert('❌ 请切换到编辑模式'); return }
   if (confirm('确定删除此角色？')) {
     missionStore.removeRole(roleId)
   }
@@ -772,9 +848,17 @@ function claimCurrentRole() {
 
 function markNodeComplete() {
   if (!selectedNode.value || !userStore.username) return
+  // 必须己认领角色才能标记
+  if (!hasClaimedRole(selectedNode.value.assignedRole)) {
+    alert('❌ 请先认领角色')
+    return
+  }
+  if (editMode.value) {
+    alert('❌ 编辑模式下不能标记完成，请切换到执行模式')
+    return
+  }
   const userName = userStore.username
   missionStore.markComplete(selectedNode.value.id, userStore.username, userName)
-  alert('已标记完成！')
 }
 
 // ── 权限诊断辅助 ──
