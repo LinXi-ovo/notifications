@@ -1,0 +1,211 @@
+<template>
+  <div>
+    <!-- 折叠态：? 按钮 -->
+    <button
+      v-if="collapsed"
+      class="fixed bottom-6 right-6 z-40 w-8 h-8 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center text-sm font-bold cursor-pointer border-none hover:bg-blue-600 transition-colors"
+      title="查看每日资讯"
+      @click="expand"
+    >
+      ?
+    </button>
+
+    <!-- 展开态：浮动卡片 -->
+    <Transition name="knowledge-slide">
+      <div
+        v-if="!collapsed && store.currentItem"
+        class="fixed bottom-6 right-6 z-40 bg-white rounded-xl shadow-xl border border-gray-100 w-80 max-h-[300px] flex flex-col overflow-hidden"
+        :class="{ 'border-yellow-300 ring-2 ring-yellow-200': isPriority2 }"
+      >
+        <!-- 头部 -->
+        <div class="flex items-center justify-between px-4 pt-3 pb-1">
+          <div class="flex items-center gap-1.5">
+            <span class="text-sm">📚</span>
+            <span class="text-xs font-semibold text-gray-700">每日资讯</span>
+            <span
+              v-if="store.browsingHistory"
+              class="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded"
+            >回看</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button
+              v-if="!isPriority2"
+              class="text-gray-300 hover:text-gray-500 bg-transparent border-none cursor-pointer text-sm leading-none p-0.5 transition-colors"
+              title="关闭（今天不再显示）"
+              @click="handleDismiss"
+            >✕</button>
+            <span v-else class="text-[10px] text-yellow-500 bg-yellow-50 px-1.5 py-0.5 rounded">必读</span>
+          </div>
+        </div>
+
+        <!-- 内容区 -->
+        <div class="flex-1 px-4 py-1 overflow-y-auto text-sm text-gray-700 leading-relaxed [&_a]:text-blue-500 [&_a]:underline" v-html="store.currentItem.content">
+        </div>
+
+        <!-- 底部信息 -->
+        <div class="px-4 pb-1 text-[10px] text-gray-400 flex items-center gap-2">
+          <span>📎 {{ store.currentItem.source || '精选' }}</span>
+          <span v-if="store.currentItem.category" class="text-gray-300">·</span>
+          <span v-if="store.currentItem.category">{{ categoryLabel }}</span>
+        </div>
+
+        <!-- 操作栏 -->
+        <div class="flex items-center justify-between px-4 py-2 border-t border-gray-50">
+          <div class="flex gap-2">
+            <button
+              class="text-xs px-2 py-1 rounded transition-colors cursor-pointer border-none"
+              :class="isFav ? 'bg-red-50 text-red-500' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'"
+              @click="handleToggleFav"
+            >
+              {{ isFav ? '❤️' : '🤍' }} 收藏
+            </button>
+          </div>
+          <div class="flex gap-1">
+            <button
+              class="text-xs px-2 py-1 rounded bg-gray-50 text-gray-500 hover:bg-gray-100 cursor-pointer border-none disabled:opacity-30 disabled:cursor-not-allowed"
+              :disabled="!store.hasPrevious"
+              @click="store.showPrevious()"
+            >← 上条</button>
+            <button
+              v-if="!store.browsingHistory"
+              class="text-xs px-2 py-1 rounded bg-gray-50 text-gray-500 hover:bg-gray-100 cursor-pointer border-none disabled:opacity-30 disabled:cursor-not-allowed"
+              :disabled="!store.hasNext"
+              @click="handleNext"
+            >下条 →</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 全部已读提示 -->
+    <Transition name="knowledge-fade">
+      <div
+        v-if="showAllRead"
+        class="fixed bottom-6 right-6 z-40 bg-white rounded-xl shadow-lg border px-5 py-4 text-center text-sm text-gray-500"
+      >
+        🎉 今日资讯已全部阅读
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useKnowledgeStore } from '@/stores/knowledge'
+import { CATEGORY_COLORS, KNOWLEDGE_CATEGORIES } from '@/types/knowledge'
+
+const store = useKnowledgeStore()
+
+/** 卡片折叠态 */
+const collapsed = ref(true)
+/** 显示"全部已读"提示 */
+const showAllRead = ref(false)
+/** 自动标记已读的定时器 */
+let viewTimer = null
+
+/** 当前资讯是否必读级别 */
+const isPriority2 = computed(() => store.currentItem?.priority === 2)
+
+/** 当前是否已收藏 */
+const isFav = computed(() => {
+  const id = store.currentItem?.objectId || store.currentItem?.id
+  return id ? store.userState.favoriteIds.includes(id) : false
+})
+
+/** 分类显示名称 */
+const categoryLabel = computed(() => {
+  const cat = KNOWLEDGE_CATEGORIES.find(c => c.value === store.currentItem?.category)
+  return cat ? cat.label.replace(/^.\s*/, '') : store.currentItem?.category || ''
+})
+
+/** 展开卡片 */
+function expand() {
+  collapsed.value = false
+  store.restoreCard()
+}
+
+/** 处理关闭 */
+function handleDismiss() {
+  store.dismissToday()
+  collapsed.value = true
+}
+
+/** 处理下一项 */
+function handleNext() {
+  // 标记当前为已读后 store 会自动推进到下一条
+  const currentId = store.currentItem?.objectId || store.currentItem?.id
+  if (currentId && !store.browsingHistory) {
+    store.markViewed(currentId)
+  }
+}
+
+/** 切换收藏 */
+function handleToggleFav() {
+  const id = store.currentItem?.objectId || store.currentItem?.id
+  if (id) store.toggleFavorite(id)
+}
+
+/** 启动 3 秒已读计时器 */
+function startViewTimer() {
+  clearTimeout(viewTimer)
+  viewTimer = setTimeout(() => {
+    const id = store.currentItem?.objectId || store.currentItem?.id
+    if (id && !store.browsingHistory) {
+      store.markViewed(id)
+    }
+    // 检查是否全部读了
+    if (store.allRead) {
+      showAllRead.value = true
+      collapsed.value = true
+      setTimeout(() => { showAllRead.value = false }, 3000)
+    }
+  }, 3000)
+}
+
+/** 当 currentItem 变化时，重置计时器 */
+watch(() => store.currentItem, (newItem) => {
+  if (newItem && !store.browsingHistory && !collapsed.value) {
+    startViewTimer()
+  }
+})
+
+/** 暴露给 HomeView 调用的方法 */
+function trigger() {
+  collapsed.value = false
+  store.checkAndPush()
+}
+
+defineExpose({ trigger, expand })
+
+onUnmounted(() => {
+  clearTimeout(viewTimer)
+})
+</script>
+
+<style scoped>
+/* 滑入/滑出动画 */
+.knowledge-slide-enter-active {
+  transition: all 0.3s ease-out;
+}
+.knowledge-slide-leave-active {
+  transition: all 0.25s ease-in;
+}
+.knowledge-slide-enter-from {
+  opacity: 0;
+  transform: translateY(24px) scale(0.95);
+}
+.knowledge-slide-leave-to {
+  opacity: 0;
+  transform: translateY(24px) scale(0.95);
+}
+
+/* 淡入淡出 */
+.knowledge-fade-enter-active,
+.knowledge-fade-leave-active {
+  transition: opacity 0.5s;
+}
+.knowledge-fade-enter-from,
+.knowledge-fade-leave-to {
+  opacity: 0;
+}
+</style>

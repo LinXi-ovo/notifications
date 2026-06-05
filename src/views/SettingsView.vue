@@ -18,6 +18,31 @@
 
         <hr class="border-gray-200" />
 
+        <!-- 每日资讯开关 -->
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-800 m-0">📚 显示每日资讯</p>
+            <p class="text-xs text-gray-400 mt-0.5 m-0">在首页右下角展示每日资讯卡片</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" v-model="showKnowledge" class="sr-only peer" />
+            <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+          </label>
+        </div>
+
+        <div class="flex items-center justify-between pl-6">
+          <div>
+            <p class="text-sm font-medium text-gray-800 m-0">📱 移动端显示资讯</p>
+            <p class="text-xs text-gray-400 mt-0.5 m-0">在首页通知列表顶部嵌入资讯卡片</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" v-model="showKnowledgeMobile" class="sr-only peer" />
+            <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+          </label>
+        </div>
+
+        <hr class="border-gray-200" />
+
         <!-- 调试模式 -->
         <div class="flex items-center justify-between" :class="{ 'opacity-50': !isAdmin }">
           <div>
@@ -75,5 +100,15 @@ watch(debugMode, (v) => {
 const showTest = ref(localStorage.getItem('show-test-notifications') === 'true')
 watch(showTest, (v) => {
   localStorage.setItem('show-test-notifications', v ? 'true' : 'false')
+})
+
+const showKnowledge = ref(localStorage.getItem('knowledge:enabled') !== 'false')
+watch(showKnowledge, (v) => {
+  localStorage.setItem('knowledge:enabled', v ? 'true' : 'false')
+})
+
+const showKnowledgeMobile = ref(localStorage.getItem('knowledge:showOnMobile') === 'true')
+watch(showKnowledgeMobile, (v) => {
+  localStorage.setItem('knowledge:showOnMobile', v ? 'true' : 'false')
 })
 </script>

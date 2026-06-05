@@ -34,6 +34,13 @@
           >
             🗑️ 回收站（{{ trashCount }}）
           </button>
+          <button
+            class="px-4 py-2 text-sm font-medium rounded-t cursor-pointer border-none transition-colors"
+            :class="activeTab === 'knowledge' ? 'bg-white text-blue-600 border border-b-white border-gray-200 -mb-px' : 'text-gray-500 hover:text-gray-700'"
+            @click="activeTab = 'knowledge'"
+          >
+            📚 资讯管理
+          </button>
         </div>
 
         <!-- ════ 通知管理标签 ════ -->
@@ -167,6 +174,11 @@
           <p v-if="trashItems.length > 0" class="text-xs text-gray-400 text-center pt-4">超过 30 天的通知会自动永久删除</p>
         </div>
 
+        <!-- ════ 资讯管理 ════ -->
+        <div v-if="activeTab === 'knowledge'">
+          <KnowledgeManager />
+        </div>
+
       </template>
 
       <!-- AI 生成 -->
@@ -190,6 +202,7 @@ import { getCategories } from '@/api/category'
 import { getAllUsers, setUserRole } from '@/api/user'
 import NotificationForm from '@/components/NotificationForm.vue'
 import AiGenerator from '@/components/AiGenerator.vue'
+import KnowledgeManager from '@/components/KnowledgeManager.vue'
 
 const router = useRouter()
 const userStore = useUserStore()

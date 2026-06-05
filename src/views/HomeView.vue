@@ -9,6 +9,9 @@
     />
 
     <main class="max-w-4xl mx-auto px-4 py-4">
+      <!-- 每日资讯（移动端） -->
+      <KnowledgeInline v-if="showKnowledgeMobile" />
+
       <!-- 我的任务概览 -->
       <div v-if="userStore.isLoggedIn && userTasks.length" class="mb-6">
         <div class="flex items-center justify-between mb-3">
@@ -106,6 +109,9 @@
     >
       ＋
     </router-link>
+
+    <!-- 每日资讯（桌面端浮动卡片） -->
+    <KnowledgeCard ref="knowledgeCardRef" />
   </div>
 </template>
 
@@ -114,26 +120,34 @@ import { ref, computed, onMounted } from 'vue'
 import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
 import { useFavoriteStore } from '@/stores/favorite'
+import { useKnowledgeStore } from '@/stores/knowledge'
 import { getCategories } from '@/api/category'
 import { getUserMissions } from '@/api/mission'
 import { DEFAULT_CATEGORIES } from '@/utils/constants'
 import CategoryNav from '@/components/CategoryNav.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import NotificationCard from '@/components/NotificationCard.vue'
+import KnowledgeCard from '@/components/KnowledgeCard.vue'
+import KnowledgeInline from '@/components/KnowledgeInline.vue'
 
 const store = useNotificationStore()
 const userStore = useUserStore()
 const favStore = useFavoriteStore()
+const knowledgeStore = useKnowledgeStore()
 
 const categories = ref([])
 const currentType = ref(null)
 const searchQuery = ref('')
 const searchTimeout = ref(null)
 const userTasks = ref([])
+const showKnowledgeMobile = ref(false)
+const knowledgeCardRef = ref(null)
 
 const totalPages = computed(() => Math.ceil(store.total / store.pageSize) || 1)
 
 onMounted(async () => {
+  showKnowledgeMobile.value = localStorage.getItem('knowledge:showOnMobile') === 'true'
+
   try {
     categories.value = await getCategories()
     // 开启显示测试通知时，补入 test 分类（可能不在 Bmob 表中）
@@ -150,6 +164,19 @@ onMounted(async () => {
   if (userStore.isLoggedIn) {
     favStore.refresh()
     loadUserTasks()
+  }
+
+  // 每日资讯推送检测
+  if (localStorage.getItem('knowledge:enabled') !== 'false') {
+    await knowledgeStore.checkAndPush()
+    if (knowledgeStore.currentItem) {
+      // 延迟展开卡片（等待页面渲染完成）
+      setTimeout(() => {
+        if (knowledgeCardRef.value) {
+          knowledgeCardRef.value.expand?.()
+        }
+      }, 500)
+    }
   }
 })
 
