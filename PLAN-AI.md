@@ -45,6 +45,14 @@ P0 ──────── P1 ──────── P2 ───────
   - `src/components/mission/GraphControls.vue` — 缩放控制按钮
   - `src/components/mission/ProgressBar.vue` — 可复用进度条
 
+### M2b: Bmob 云端持久化（v4.0 新增）
+- 文件: `src/api/mission.js`
+- Bmob 数据表: `Mission`（含 layoutData JSON 大字段）、`MissionAssignment`（认领归一化）
+- 同步策略: Bmob + localStorage 双写，防抖 800ms 同步到云
+- 迁移脚本: localStorage → Bmob 一键迁移，首次访问 `/missions` 时触发
+- 离线兜底: Bmob 不可用时自动读取 localStorage 缓存
+- 设计文档: `plan/任务系统/INTEGRATION-WITH-NOTIFICATION.md`
+
 ### M3: 路由与页面
 - 修改 `src/router/index.js` — 添加 `/missions`、`/mission/:id` 路由
 - 创建:
@@ -56,6 +64,12 @@ P0 ──────── P1 ──────── P2 ───────
   - `exportMission(id)` → 下载 JSON
   - `importMission(json)` → 冲突检测 + 导入
   - 导入冲突策略: 默认跳过，用户可选覆盖/重命名
+
+### M4b: Bmob 云端持久化（v4.0）
+- 新增数据表: Mission / MissionAssignment（Bmob）
+- 文件: `src/api/mission.js`
+- 策略: Bmob + localStorage 双写、防抖同步、离线兜底
+- 迁移: 一键迁移 localStorage → Bmob
 
 ---
 
@@ -148,8 +162,11 @@ P0 ──────── P1 ──────── P2 ───────
 ### 类型定义
 - `src/types/mission.js`
 
+### API
+- `src/api/mission.js` — Bmob 数据层（Mission + MissionAssignment CRUD，v4.0 新增）
+
 ### Stores
-- `src/stores/mission.js` — 核心 CRUD + 角色认领 + 权限判定
+- `src/stores/mission.js` — 核心 CRUD + 角色认领 + 权限判定 + Bmob 双写同步
 - `src/stores/mission-comment.js` — 评论 (P3)
 - `src/stores/mission-reminder.js` — 提醒 (P4)
 - `src/stores/mission-stats.js` — 统计 (P3)
@@ -198,9 +215,19 @@ P0 ──────── P1 ──────── P2 ───────
 ## 存储策略
 
 ```
-localStorage:
+Bmob（主存储 — v4.0）:
+  Mission 表             → title / description / createdBy / status / layoutData / ...
+  MissionAssignment 表   → missionId / userId / roleId / status / assignedAt / ...
+
+localStorage（离线缓存 — 双写）:
   missions:index        → Mission 概要索引 [{ id, title, status, updatedAt }]
   mission:{id}          → 完整 Mission JSON（含 nodes/edges/roles）
+  missions:idmap        → mission-xxx ↔ Bmob objectId 映射
+
+同步策略:
+  写入: localStorage 即时 → Bmob 防抖 800ms
+  读取: Bmob 优先 → localStorage 兜底（离线模式）
+  迁移: 首次访问 `/missions` 时自动执行 localStorage → Bmob
 
 导入导出:
   单文件 JSON: 下载 mission-{id}.json
@@ -213,6 +240,9 @@ localStorage:
 |---|---|---|
 | 复用 WgEditor | TaskNode.content 富文本编辑 | P2 |
 | 复用 UserStore | 角色认领身份来源 | P0 |
+| 复用 Bmob SDK | Mission/MissionAssignment 表走 Bmob 存储 | P0 v4.0 |
+| 共享 Bmob 用户系统 | 任务认领使用 Bmob._User | P0 |
 | `[[notif:id]]` | 通知引用跳转 | P2 |
 | 独立路由 `/missions/*` | 不干扰现有通知路由 | P0 |
-| 独立数据通道 | JSON 文件存储，不走 Bmob | P0 |
+
+详细设计见 `plan/任务系统/INTEGRATION-WITH-NOTIFICATION.md`。
