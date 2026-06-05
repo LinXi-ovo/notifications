@@ -13,12 +13,13 @@
     </div>
 
     <!-- 渲染区域 -->
-    <div ref="previewRef" class="p-4 min-h-[60px] flex items-center justify-center overflow-x-auto">
+    <div class="p-4 min-h-[60px] flex items-center justify-center overflow-x-auto">
       <div v-if="renderError" class="text-xs text-red-500 text-center w-full">
         <p class="mb-1">⚠️ 渲染失败</p>
         <pre class="text-left p-2 bg-red-50 rounded text-xs whitespace-pre-wrap">{{ renderError }}</pre>
       </div>
       <div v-else-if="rendering" class="text-xs text-gray-400">⏳ 渲染中...</div>
+      <div ref="svgContainer" class="w-full flex items-center justify-center"></div>
     </div>
   </div>
 </template>
@@ -32,7 +33,7 @@ const updateAttributes = nodeProps?.updateAttributes
 const deleteNode = nodeProps?.deleteNode
 const node = nodeProps?.node
 
-const previewRef = ref(null)
+const svgContainer = ref(null)
 const rendering = ref(false)
 const renderError = ref('')
 const code = ref(node?.attrs?.code || '')
@@ -43,7 +44,7 @@ function cleanCode(raw) {
 
 async function renderDiagram() {
   const c = cleanCode(code.value)
-  if (!previewRef.value || !c) return
+  if (!svgContainer.value || !c) return
   rendering.value = true
   renderError.value = ''
 
@@ -52,17 +53,16 @@ async function renderDiagram() {
     const mermaidApi = mermaid.default || mermaid
     mermaidApi.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' })
 
-    previewRef.value.innerHTML = ''
+    svgContainer.value.innerHTML = ''
     const id = `mv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const { svg } = await mermaidApi.renderAsync(id, c)
 
-    const wrapper = document.createElement('div')
-    wrapper.innerHTML = svg
-    const svgEl = wrapper.querySelector('svg')
+    svgContainer.value.innerHTML = svg
+    const svgEl = svgContainer.value.querySelector('svg')
     if (svgEl) { svgEl.style.maxWidth = '100%'; svgEl.style.height = 'auto' }
-    previewRef.value.appendChild(wrapper)
   } catch (e) {
     renderError.value = e.message || String(e)
+    svgContainer.value.innerHTML = ''
   } finally {
     rendering.value = false
   }
@@ -73,5 +73,5 @@ function remove() {
 }
 
 onMounted(() => renderDiagram())
-onBeforeUnmount(() => { previewRef.value = null })
+onBeforeUnmount(() => { svgContainer.value = null })
 </script>
