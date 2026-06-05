@@ -120,7 +120,7 @@ export async function createMission(mission) {
     customFields: mission.customFields || [],
     reminders: mission.reminders || []
   }))
-  q.set('pendingSync', false)
+  q.set('pendingSync', 'false')
 
   if (mission.createdBy) {
     // createdBy 必须是 Bmob Pointer（指向 _User 表）
@@ -175,7 +175,7 @@ export async function saveMission(missionId, data) {
   if (data.version !== undefined) q.set('version', data.version)
   if (data.layoutData !== undefined) q.set('layoutData', data.layoutData)
   if (data.deletedAt !== undefined) q.set('deletedAt', data.deletedAt)
-  if (data.pendingSync !== undefined) q.set('pendingSync', data.pendingSync)
+  if (data.pendingSync !== undefined) q.set('pendingSync', String(data.pendingSync))
 
   const result = await q.save()
   return normalizeMission(result)
