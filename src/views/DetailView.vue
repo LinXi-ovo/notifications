@@ -163,7 +163,12 @@ watch([contentRef, notification], async () => {
           const svgEl = el.querySelector('svg')
           if (svgEl) { svgEl.style.maxWidth = '100%'; svgEl.style.height = 'auto' }
         } catch (e) {
-          el.innerHTML = `<pre class="text-xs text-red-500 p-2 bg-red-50 rounded">⚠️ 流程图渲染失败</pre>`
+          const snippet = code.slice(0, 120)
+          el.innerHTML = `<div class="text-xs text-red-500 p-3 bg-red-50 rounded border border-red-200">
+            <p class="font-bold mb-1">⚠️ 流程图渲染失败</p>
+            <p class="mb-1">${e.message || ''}</p>
+            <pre class="text-gray-600 whitespace-pre-wrap mt-1 bg-white p-2 rounded border">${snippet.replace(/</g, '&lt;')}</pre>
+          </div>`
         }
       })
     }).catch(() => {})
