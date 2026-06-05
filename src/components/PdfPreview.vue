@@ -4,7 +4,8 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
     @click.self="close"
   >
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
+    <!-- h-full + max-h-[90vh]: 先撑满再上限，确保 flex 子元素有明确高度基线 -->
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 h-full max-h-[90vh] flex flex-col">
       <!-- 顶部 -->
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
         <span class="text-sm text-gray-600 truncate">📄 {{ filename }}</span>
