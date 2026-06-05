@@ -451,10 +451,13 @@
               >
                 {{ t.label }}
               </button>
-              <span v-if="!permissionedTransitions.length" class="text-xs text-gray-400 italic">
-                当前角色无可用操作
+
+              <!-- 无可用操作 → 显示具体原因 -->
+              <span v-if="!permissionedTransitions.length" class="text-xs italic" :class="noOpReasonClass">
+                {{ noOpReason }}
               </span>
-              <!-- 标记我已填写（count/all 模式下额外按钮） -->
+
+              <!-- 标记我已填写（count/all 模式下额外按钮，仅进行中） -->
               <button
                 v-if="selectedNode.status === 'in-progress' && selectedNode.completionRule !== 'single' && hasClaimedRole(selectedNode.assignedRole)"
                 class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg transition-colors font-medium"
@@ -462,6 +465,9 @@
               >
                 ✅ 标记我已填写
               </button>
+              <span v-else-if="selectedNode.status === 'in-progress' && selectedNode.completionRule !== 'single' && !hasClaimedRole(selectedNode.assignedRole)" class="text-xs text-gray-400 italic">
+                请先认领角色，再点击「标记我已填写」
+              </span>
             </template>
           </template>
         </div>
@@ -772,6 +778,47 @@ const permissionedTransitions = computed(() => {
     label: t.label || (t.to === 'in-progress' ? '▶️ 开始执行' : `➡️ ${t.to}`)
   }))
 })
+
+/** 无可用操作时的具体原因 */
+const noOpReason = computed(() => {
+  if (!selectedNode.value) return ''
+  const node = selectedNode.value
+
+  // 1. 已完成的节点
+  if (node.status === 'completed') return '✅ 该节点已完成，无需操作'
+  if (node.status === 'cancelled') return '🗑️ 该节点已取消'
+
+  // 2. count/all 模式且 status=in-progress → 应该显示「标记我已填写」而不是转换按钮
+  if (node.completionRule !== 'single' && node.status === 'in-progress') {
+    return hasClaimedRole(node.assignedRole)
+      ? '📊 多人任务：请点击上方「标记我已填写」'
+      : '📊 请先认领角色，再点击「标记我已填写」'
+  }
+
+  // 3. 节点被前置阻塞
+  const preds = predecessors.value
+  if (preds.length > 0 && !preds.every(n => n.status === 'completed')) {
+    const incomplete = preds.filter(n => n.status !== 'completed').map(n => n.title).join('、')
+    return `⏳ 前置节点「${incomplete}」未完成，暂不可操作`
+  }
+
+  // 4. 角色对当前状态无转换权限
+  const userRoleNamesStr = userRoleNames.value.length ? userRoleNames.value.join(', ') : '未认领'
+  return `🔒 你的角色 (${userRoleNamesStr}) 在当前状态「${statusLabel(node.status)}」下无可用操作`
+})
+
+const noOpReasonClass = computed(() => {
+  if (!selectedNode.value) return 'text-gray-400'
+  const s = selectedNode.value.status
+  if (s === 'completed' || s === 'cancelled') return 'text-gray-400'
+  return 'text-gray-400'
+})
+
+/** 获取状态中文名 */
+function statusLabel(s) {
+  const map = { 'todo': '未开始', 'in-progress': '进行中', 'completed': '已完成', 'blocked': '阻塞', 'cancelled': '已取消' }
+  return map[s] || s
+}
 
 function transitionButtonClass(to) {
   if (to === 'completed') return 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
