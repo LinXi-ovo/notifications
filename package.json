@@ -7,9 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "postinstall": "node dev_tools/patch-pdfjs.cjs"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-autostart": "^2.5.1",
+    "@tauri-apps/plugin-global-shortcut": "^2.3.2",
+    "@tauri-apps/plugin-notification": "^2.3.3",
     "@wangeditor/editor": "^5.1.23",
     "@wangeditor/editor-for-vue": "^5.1.12",
     "cos-js-sdk-v5": "^1.10.1",
@@ -24,6 +31,7 @@
   "devDependencies": {
     "@playwright/mcp": "^0.0.75",
     "@tailwindcss/vite": "^4.1.6",
+    "@tauri-apps/cli": "^2.11.2",
     "@vitejs/plugin-vue": "^5.2.4",
     "tailwindcss": "^4.1.6",
     "vite": "^8.0.12",
