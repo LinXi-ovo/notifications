@@ -41,12 +41,12 @@
     </div>
   </div>
 
-  <!-- Mermaid 编辑对话框 -->
-  <MermaidEditor
-    :visible="mermaidEditorVisible"
-    :code="mermaidEditingCode"
-    @close="mermaidEditorVisible = false"
-    @save="onMermaidSave"
+  <!-- Mermaid 管理器 -->
+  <MermaidManager
+    :visible="mermaidManagerVisible"
+    :map="mermaidMap"
+    @close="mermaidManagerVisible = false"
+    @update:map="mermaidMap = $event"
   />
 </template>
 
@@ -61,7 +61,7 @@ import './WgEditor/mermaid-plugin.js'
 
 // ── 数据分离工具 ──
 import { parseMermaid, mergeMermaid } from '@/utils/mermaid-token'
-import MermaidEditor from '@/components/MermaidEditor.vue'
+import MermaidManager from '@/components/MermaidManager.vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -75,9 +75,7 @@ const sourceContent = ref('')
 
 // Mermaid 数据层
 const mermaidMap = ref({})
-const mermaidEditorVisible = ref(false)
-const mermaidEditingCode = ref('')
-let pendingMermaidEditor = null // 编辑器实例（插入用）
+const mermaidManagerVisible = ref(false)
 
 // 初始内容：parse 后传给编辑器
 const parsed = parseMermaid(props.modelValue || '')
@@ -178,7 +176,7 @@ function handleCustomPaste(editor, event, callback) {
     }
   }
 
-  // 检查 Mermaid 代码
+  // 检查 Mermaid 代码：自动存入 Map 并插入 Token
   const text = event.clipboardData?.getData('text/plain')
   if (text && isMermaidCode(text)) {
     event.preventDefault()
@@ -186,10 +184,7 @@ function handleCustomPaste(editor, event, callback) {
     const code = text.trim()
     const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
     mermaidMap.value = { ...mermaidMap.value, [id]: code }
-    const firstLine = (code.split('\n')[0] || '').trim() || 'Mermaid'
-    editor.dangerouslyInsertHtml(
-      `<p>📊 [Mermaid] ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
-    )
+    editor.dangerouslyInsertHtml(`[[!${id}]]`)
     return
   }
 
@@ -272,25 +267,9 @@ function onSourceInput() {
   emit('update:modelValue', sourceContent.value)
 }
 
-// ── MermaidEditor 对话框 ──
-function onMermaidSave(code) {
-  const editor = pendingMermaidEditor || editorRef.value
-  mermaidEditorVisible.value = false
-  if (!editor || !code) return
-
-  // 生成 ID 并存入数据层
-  const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
-  mermaidMap.value = { ...mermaidMap.value, [id]: code }
-  const firstLine = (code.split('\n')[0] || '').trim() || 'Mermaid'
-  editor.dangerouslyInsertHtml(`<p>📊 [Mermaid] ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`)
-  pendingMermaidEditor = null
-}
-
-// 监听 📊 按钮触发的全局事件
-function onMermaidInsert(e) {
-  pendingMermaidEditor = e.detail?.editor || editorRef.value
-  mermaidEditingCode.value = ''
-  mermaidEditorVisible.value = true
+// ── Mermaid 管理器 ──
+function onMermaidInsert() {
+  mermaidManagerVisible.value = true
 }
 
 onMounted(() => {
