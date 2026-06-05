@@ -37,7 +37,7 @@
 - [x] **音频嵌入** → 自定义工具栏按钮 🔊 → 文件选择 → COS 上传 → 插 `<audio>`
 - [ ] **视频嵌入** → wangEditor 内建 `insertVideo`，但需要适配 COS 上传
 - [x] **文件附件（PDF等）** → 自定义工具栏按钮 📎 → COS 上传 → 插链接
-- [x] **Mermaid 流程图** → 自定义元素（parseHtml/render/elemToHtml）+ 自定义菜单
+- [x] **Mermaid 流程图** → 字符串替换方案：编辑器内占位符 ↔ 保存时转回 data-mermaid
 - [x] **粘贴自动识别 Mermaid** → `customPaste` 事件检测 + 自动插入
 - [x] **图片粘贴** → 自动上传 COS
 

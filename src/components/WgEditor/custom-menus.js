@@ -23,7 +23,7 @@ class MermaidMenu {
     const escaped = trimmed.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const firstLine = (trimmed.split('\n')[0] || '').trim() || 'Mermaid'
     editor.dangerouslyInsertHtml(
-      `<p data-mermaid-code="${escaped}" style="color:#667085;background:#f8f9fa;border:1px dashed #d0d5dd;border-radius:6px;padding:8px 12px;font-size:13px;font-family:monospace;margin:8px 0;">📊 ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
+      `<div data-mermaid="${escaped}">📊 ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`
     )
   }
 }
