@@ -37,8 +37,13 @@ const rendering = ref(false)
 const renderError = ref('')
 const code = ref(node?.attrs?.code || '')
 
+function cleanCode(raw) {
+  return raw.replace(/^```(?:mermaid)?\s*/gm, '').replace(/```\s*$/gm, '').trim()
+}
+
 async function renderDiagram() {
-  if (!previewRef.value || !code.value.trim()) return
+  const c = cleanCode(code.value)
+  if (!previewRef.value || !c) return
   rendering.value = true
   renderError.value = ''
 
@@ -49,7 +54,7 @@ async function renderDiagram() {
 
     previewRef.value.innerHTML = ''
     const id = `mv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-    const { svg } = await mermaidApi.renderAsync(id, code.value)
+    const { svg } = await mermaidApi.renderAsync(id, c)
 
     const wrapper = document.createElement('div')
     wrapper.innerHTML = svg

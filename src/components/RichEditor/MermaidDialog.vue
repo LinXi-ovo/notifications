@@ -74,8 +74,14 @@ const error = ref('')
 
 let debounceTimer = null
 
+// 剥离 ```mermaid 和 ``` 代码块标记，用户从 AI 复制可直接粘贴
+function cleanCode(raw) {
+  return raw.replace(/^```(?:mermaid)?\s*/gm, '').replace(/```\s*$/gm, '').trim()
+}
+
 async function renderPreview() {
-  if (!previewRef.value || !code.value.trim()) return
+  const c = cleanCode(code.value)
+  if (!previewRef.value || !c) return
   rendering.value = true
   error.value = ''
 
@@ -86,7 +92,7 @@ async function renderPreview() {
 
     previewRef.value.innerHTML = ''
     const id = `md-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-    const { svg } = await mermaidApi.renderAsync(id, code.value)
+    const { svg } = await mermaidApi.renderAsync(id, c)
 
     const wrapper = document.createElement('div')
     wrapper.innerHTML = svg
@@ -119,7 +125,7 @@ watch(() => props.visible, (v) => {
 })
 
 function insert() {
-  emit('insert', code.value.trim())
+  emit('insert', cleanCode(code.value))
 }
 
 function close() {

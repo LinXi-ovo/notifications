@@ -152,7 +152,8 @@ watch([contentRef, notification], async () => {
       const mermaid = mod.default || mod
       mermaid.initialize({ startOnLoad: false, theme: 'default' })
       mermaids.forEach(async (el) => {
-        const code = el.getAttribute('data-mermaid') || ''
+        const raw = el.getAttribute('data-mermaid') || ''
+        const code = raw.replace(/^```(?:mermaid)?\s*/gm, '').replace(/```\s*$/gm, '').trim()
         if (!code) return
         try {
           const id = `dm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
