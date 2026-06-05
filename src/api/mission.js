@@ -123,13 +123,20 @@ export async function createMission(mission) {
   q.set('pendingSync', false)
 
   if (mission.createdBy) {
-    // createdBy 必须是 Bmob Pointer（_User 表的 objectId）
-    // 如果是 object 且有 objectId → 构造 Pointer
-    // 如果是字符串（用户名）→ 跳过，Bmob Pointer 不接受字符串
+    // createdBy 必须是 Bmob Pointer（指向 _User 表）
     if (typeof mission.createdBy === 'object' && mission.createdBy.objectId) {
       q.set('createdBy', Bmob.Pointer('_User', mission.createdBy.objectId))
+    } else {
+      // 字符串用户名 → 从 Bmob 当前用户获取 objectId 构造 Pointer
+      try {
+        const currentUser = Bmob.User.current()
+        if (currentUser && currentUser.objectId) {
+          q.set('createdBy', Bmob.Pointer('_User', currentUser.objectId))
+        }
+      } catch (e) {
+        console.warn('无法获取当前用户 objectId 构造 Pointer:', e)
+      }
     }
-    // 其他情况（包括字符串用户名）不设置 createdBy，避免 400
   }
 
   const result = await q.save()
