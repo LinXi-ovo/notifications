@@ -1,57 +1,42 @@
 /**
  * wangEditor Mermaid 自定义元素
  *
- * 让 wangEditor 识别、保留并渲染 `<div data-mermaid="...">`。
- * 在编辑器启动前通过 Boot.registerModule() 注册。
+ * 只注册 parseHtml 和 elemToHtml，让 wangEditor 能识别和保留
+ * `<div data-mermaid>`，但编辑器内用默认的 fallback 渲染
+ * （显示为不可编辑的占位块）。
+ * SVG 渲染只发生在详情页和管理后台预览。
  */
 import { Boot } from '@wangeditor/editor'
-import { h } from 'snabbdom'
 
 // ── HTML → Slate 元素 ──
 function parseMermaidHtml(domElem) {
   const code = domElem.getAttribute('data-mermaid') || ''
-  return { type: 'mermaid', code, children: [{ text: '' }] } // void 元素必须有 children
-}
-
-// ── 编辑器内渲染 ──
-function renderMermaid(elem, children, editor) {
-  const code = elem.code || ''
-  // 显示代码预览（截取前两行）
-  const preview = code.split('\n').slice(0, 2).join('  ')
-
-  return h('div', {
-    props: {
-      class: 'mermaid-placeholder',
-      contentEditable: 'false',
-    },
-    attrs: {
-      'data-mermaid': code,
-    },
-  }, [
-    h('div', { props: { class: 'mermaid-placeholder-header' } }, [
-      h('span', '📊 Mermaid'),
-      h('span', { props: { class: 'mermaid-placeholder-edit' } }, '双击编辑'),
-     ]),
-    h('pre', { props: { class: 'mermaid-placeholder-code' } }, preview),
-  ])
+  return {
+    type: 'mermaid',
+    code,
+    children: [{ text: '' }], // void 元素必须有 children
+  }
 }
 
 // ── Slate 元素 → HTML ──
-function mermaidToHtml(elem, editor) {
+function mermaidToHtml(elem) {
   const code = elem.code || ''
-  const escaped = code.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const escaped = code
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
   return `<div data-mermaid="${escaped}"></div>`
 }
 
 // ── 注册 ──
-const mermaidModule = {
-  renderElems: [{ type: 'mermaid', renderElem: renderMermaid }],
-  elemsToHtml: [{ type: 'mermaid', elemToHtml: mermaidToHtml }],
-  parseElemsHtml: [{ selector: 'div[data-mermaid]', parseElemHtml: parseMermaidHtml }],
-}
-
+// 注意：不注册 renderElems，wangEditor 会用默认 fallback 渲染
+// 编辑器内显示为不可编辑的空占位块，不影响其他内容
 try {
-  Boot.registerModule(mermaidModule)
+  Boot.registerModule({
+    elemsToHtml: [{ type: 'mermaid', elemToHtml: mermaidToHtml }],
+    parseElemsHtml: [{ selector: 'div[data-mermaid]', parseElemHtml: parseMermaidHtml }],
+  })
 } catch (e) {
-  // HMR 时可能已注册
+  console.warn('[Mermaid] 注册失败:', e.message)
 }
