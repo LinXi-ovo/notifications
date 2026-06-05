@@ -29,7 +29,7 @@
     <section>
       <h3 class="text-base font-semibold text-gray-700 mb-3">📜 更新历史</h3>
       <div class="space-y-3">
-        <div v-for="(module, i) byModule" :key="i" class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+        <div v-for="(module, i) in byModule" :key="i" class="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
           <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
             <span class="text-base" v-html="moduleIcon(module.key)"></span>
             <span class="text-sm font-semibold text-gray-700">{{ module.label }}</span>

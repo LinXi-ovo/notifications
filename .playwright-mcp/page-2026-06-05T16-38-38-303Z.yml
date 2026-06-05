@@ -1,0 +1,180 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "📢 通知聚合" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: 📢
+        - heading "通知聚合" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - link "⭐ 收藏" [ref=e10] [cursor=pointer]:
+          - /url: "#/favorites"
+        - link "📋 任务" [ref=e11] [cursor=pointer]:
+          - /url: "#/missions"
+        - link "✏️ 管理" [ref=e12] [cursor=pointer]:
+          - /url: "#/admin"
+        - link "🔬 实验室" [ref=e13] [cursor=pointer]:
+          - /url: /lab/pdf-preview.html
+        - link "⚙️ 设置" [ref=e14] [cursor=pointer]:
+          - /url: "#/settings"
+        - link "ℹ️ 关于" [ref=e15] [cursor=pointer]:
+          - /url: "#/about"
+        - generic [ref=e16]: "|"
+        - generic [ref=e17]: test_user1
+        - button "退出" [ref=e18] [cursor=pointer]
+  - generic [ref=e19]:
+    - heading "ℹ️ 关于" [level=2] [ref=e20]
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]: 📢
+        - generic [ref=e25]:
+          - heading "通知聚合器" [level=3] [ref=e26]
+          - paragraph [ref=e27]: 大学微信通知聚合系统
+      - paragraph [ref=e29]: 将分散在微信群中的通知聚合到网页中，支持分类浏览、富文本编辑（含内嵌媒体）、小范围分享、DAG 任务追踪。
+      - generic [ref=e30]:
+        - generic [ref=e31]: 前端框架：Vue 3 + Vite + Tailwind CSS v4
+        - generic [ref=e32]: 后端：Bmob 后端云 (bmob.cn)
+        - generic [ref=e33]: 富文本编辑器：wangEditor V5
+        - generic [ref=e34]: 流程图：Mermaid
+        - generic [ref=e35]: 部署：Cloudflare Pages
+    - generic [ref=e36]:
+      - heading "📜 更新历史" [level=3] [ref=e37]
+      - generic [ref=e38]:
+        - generic [ref=e39]:
+          - generic [ref=e40]:
+            - generic [ref=e41]: 📢
+            - generic [ref=e42]: 每日资讯
+          - list [ref=e43]:
+            - listitem [ref=e44]:
+              - generic [ref=e45]: ✨
+              - generic [ref=e46]: 全功能实现（P0~P2），含调试模式、一键生成默认资讯
+              - generic [ref=e47]: v1.0.0-beta
+            - listitem [ref=e48]:
+              - generic [ref=e49]: ✨
+              - generic [ref=e50]: Bmob Boolean 查询兼容：服务端不支持改为客户端过滤
+              - generic [ref=e51]: v1.0.0-beta
+            - listitem [ref=e52]:
+              - generic [ref=e53]: ✨
+              - generic [ref=e54]: 测试资讯自动标注 🧪 测试标签，防误导
+              - generic [ref=e55]: v1.0.0-beta
+            - listitem [ref=e56]:
+              - generic [ref=e57]: 🐛
+              - generic [ref=e58]: 补全 isTestItem computed 属性，测试徽章正常显示
+              - generic [ref=e59]: v1.0.0-beta
+        - generic [ref=e60]:
+          - generic [ref=e61]:
+            - generic [ref=e62]: 📋
+            - generic [ref=e63]: 任务系统（DAG）
+          - list [ref=e64]:
+            - listitem [ref=e65]:
+              - generic [ref=e66]: ✨
+              - generic [ref=e67]: 任务系统 P0~P4 全功能实现
+              - generic [ref=e68]: v0.9.0
+            - listitem [ref=e69]:
+              - generic [ref=e70]: ✨
+              - generic [ref=e71]: DAG 任务图：SVG 渲染、缩放平移、节点卡片、状态转换
+              - generic [ref=e72]: v0.9.0
+            - listitem [ref=e73]:
+              - generic [ref=e74]: ✨
+              - generic [ref=e75]: 角色权限系统：三步判定法（管理员免检 → 节点白名单 → 角色映射）
+              - generic [ref=e76]: v0.9.0
+            - listitem [ref=e77]:
+              - generic [ref=e78]: ✨
+              - generic [ref=e79]: 编辑模式 / 执行模式双模式
+              - generic [ref=e80]: v0.9.0
+            - listitem [ref=e81]:
+              - generic [ref=e82]: ✨
+              - generic [ref=e83]: Bmob 云端持久化 + 本地优先双写同步
+              - generic [ref=e84]: v0.9.0
+            - listitem [ref=e85]:
+              - generic [ref=e86]: ✨
+              - generic [ref=e87]: 任务统计视图 + 自定义字段 + 评论讨论
+              - generic [ref=e88]: v0.9.0
+            - listitem [ref=e89]:
+              - generic [ref=e90]: ✨
+              - generic [ref=e91]: 委派认领 + 密码认领 + 权限隔离
+              - generic [ref=e92]: v0.9.0
+            - listitem [ref=e93]:
+              - generic [ref=e94]: 🐛
+              - generic [ref=e95]: MissionAssignment 表查询优化：避免 $and 语法，处理表不存在异常
+              - generic [ref=e96]: v1.0.0-beta
+            - listitem [ref=e97]:
+              - generic [ref=e98]: 🐛
+              - generic [ref=e99]: 表名对齐 Bmob 已有表（MissionAssignmen）
+              - generic [ref=e100]: v1.0.0-beta
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - generic [ref=e103]: 🏠
+            - generic [ref=e104]: 首页 & 通知
+          - list [ref=e105]:
+            - listitem [ref=e106]:
+              - generic [ref=e107]: ✨
+              - generic [ref=e108]: 首页通知列表：分类导航、搜索、优先级标识
+              - generic [ref=e109]: v0.8.0
+            - listitem [ref=e110]:
+              - generic [ref=e111]: ✨
+              - generic [ref=e112]: 通知详情页：富文本渲染、Mermaid Token/Map 分离、PDF 预览、图片灯箱
+              - generic [ref=e113]: v0.8.0
+            - listitem [ref=e114]:
+              - generic [ref=e115]: ✨
+              - generic [ref=e116]: 首页任务概览模块
+              - generic [ref=e117]: v1.0.0-beta
+            - listitem [ref=e118]:
+              - generic [ref=e119]: 🐛
+              - generic [ref=e120]: Recycle Bin 回收站软删除机制
+              - generic [ref=e121]: v0.8.0
+        - generic [ref=e122]:
+          - generic [ref=e123]:
+            - generic [ref=e124]: ✏️
+            - generic [ref=e125]: 管理后台
+          - list [ref=e126]:
+            - listitem [ref=e127]:
+              - generic [ref=e128]: ✨
+              - generic [ref=e129]: 通知创建/编辑（wangEditor + Mermaid 管理）
+              - generic [ref=e130]: v0.8.0
+            - listitem [ref=e131]:
+              - generic [ref=e132]: ✨
+              - generic [ref=e133]: DeepSeek AI 生成通知（AiGenerator）
+              - generic [ref=e134]: v0.8.0
+            - listitem [ref=e135]:
+              - generic [ref=e136]: ✨
+              - generic [ref=e137]: 文件注册表 + 腾讯云 COS 直传
+              - generic [ref=e138]: v0.8.0
+            - listitem [ref=e139]:
+              - generic [ref=e140]: ✨
+              - generic [ref=e141]: 分类管理（CategoryManager）
+              - generic [ref=e142]: v0.8.0
+        - generic [ref=e143]:
+          - generic [ref=e144]:
+            - generic [ref=e145]: ⚙️
+            - generic [ref=e146]: 系统基础
+          - list [ref=e147]:
+            - listitem [ref=e148]:
+              - generic [ref=e149]: ✨
+              - generic [ref=e150]: 用户认证系统（登录/注册/角色）
+              - generic [ref=e151]: v0.8.0
+            - listitem [ref=e152]:
+              - generic [ref=e153]: ✨
+              - generic [ref=e154]: 用户收藏功能
+              - generic [ref=e155]: v0.8.0
+            - listitem [ref=e156]:
+              - generic [ref=e157]: ✨
+              - generic [ref=e158]: 设置页：测试通知开关、调试模式
+              - generic [ref=e159]: v0.8.0
+            - listitem [ref=e160]:
+              - generic [ref=e161]: 🚀
+              - generic [ref=e162]: 项目初始化：Vite + Vue 3 + Tailwind CSS 工程搭建
+              - generic [ref=e163]: v0.1.0
+            - listitem [ref=e164]:
+              - generic [ref=e165]: 🚀
+              - generic [ref=e166]: Bmob 后端云集成
+              - generic [ref=e167]: v0.1.0
+            - listitem [ref=e168]:
+              - generic [ref=e169]: 🚀
+              - generic [ref=e170]: 基础路由与认证守卫
+              - generic [ref=e171]: v0.1.0
+            - listitem [ref=e172]:
+              - generic [ref=e173]: 📝
+              - generic [ref=e174]: 扩展 CLAUDE.md：架构详解、Store 数据流模式、路由表
+              - generic [ref=e175]: v0.9.0
+      - group [ref=e176]:
+        - generic "📦 按版本归档" [ref=e177] [cursor=pointer]

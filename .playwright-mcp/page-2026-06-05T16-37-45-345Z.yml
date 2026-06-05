@@ -1,0 +1,42 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "📢 通知聚合" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: 📢
+        - heading "通知聚合" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - link "⭐ 收藏" [ref=e10] [cursor=pointer]:
+          - /url: "#/favorites"
+        - link "📋 任务" [ref=e11] [cursor=pointer]:
+          - /url: "#/missions"
+        - link "✏️ 管理" [ref=e12] [cursor=pointer]:
+          - /url: "#/admin"
+        - link "🔬 实验室" [ref=e13] [cursor=pointer]:
+          - /url: /lab/pdf-preview.html
+        - link "⚙️ 设置" [ref=e14] [cursor=pointer]:
+          - /url: "#/settings"
+        - link "ℹ️ 关于" [ref=e15] [cursor=pointer]:
+          - /url: "#/about"
+        - generic [ref=e16]: "|"
+        - generic [ref=e17]: test_user1
+        - button "退出" [ref=e18] [cursor=pointer]
+  - generic [ref=e277]:
+    - heading "ℹ️ 关于" [level=2] [ref=e278]
+    - generic [ref=e280]:
+      - generic [ref=e281]:
+        - generic [ref=e282]: 📢
+        - generic [ref=e283]:
+          - heading "通知聚合器" [level=3] [ref=e284]
+          - paragraph [ref=e285]: 大学微信通知聚合系统
+      - paragraph [ref=e287]: 将分散在微信群中的通知聚合到网页中，支持分类浏览、富文本编辑（含内嵌媒体）、小范围分享、DAG 任务追踪。
+      - generic [ref=e288]:
+        - generic [ref=e289]: 前端框架：Vue 3 + Vite + Tailwind CSS v4
+        - generic [ref=e290]: 后端：Bmob 后端云 (bmob.cn)
+        - generic [ref=e291]: 富文本编辑器：wangEditor V5
+        - generic [ref=e292]: 流程图：Mermaid
+        - generic [ref=e293]: 部署：Cloudflare Pages
+    - generic [ref=e294]:
+      - heading "📜 更新历史" [level=3] [ref=e295]
+      - group [ref=e403]:
+        - generic "📦 按版本归档" [ref=e404] [cursor=pointer]

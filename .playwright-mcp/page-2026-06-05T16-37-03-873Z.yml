@@ -1,0 +1,151 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - link "📢 通知聚合" [ref=e6] [cursor=pointer]:
+          - /url: "#/"
+          - generic [ref=e7]: 📢
+          - heading "通知聚合" [level=1] [ref=e8]
+        - generic [ref=e9]:
+          - link "⭐ 收藏" [ref=e10] [cursor=pointer]:
+            - /url: "#/favorites"
+          - link "📋 任务" [ref=e11] [cursor=pointer]:
+            - /url: "#/missions"
+          - link "✏️ 管理" [ref=e12] [cursor=pointer]:
+            - /url: "#/admin"
+          - link "🔬 实验室" [ref=e13] [cursor=pointer]:
+            - /url: /lab/pdf-preview.html
+          - link "⚙️ 设置" [ref=e14] [cursor=pointer]:
+            - /url: "#/settings"
+          - link "ℹ️ 关于" [ref=e15] [cursor=pointer]:
+            - /url: "#/about"
+          - generic [ref=e16]: "|"
+          - generic [ref=e17]: test_user1
+          - button "退出" [ref=e18] [cursor=pointer]
+    - generic [ref=e277]:
+      - heading "ℹ️ 关于" [level=2] [ref=e278]
+      - generic [ref=e280]:
+        - generic [ref=e281]:
+          - generic [ref=e282]: 📢
+          - generic [ref=e283]:
+            - heading "通知聚合器" [level=3] [ref=e284]
+            - paragraph [ref=e285]: 大学微信通知聚合系统
+        - paragraph [ref=e287]: 将分散在微信群中的通知聚合到网页中，支持分类浏览、富文本编辑（含内嵌媒体）、小范围分享、DAG 任务追踪。
+        - generic [ref=e288]:
+          - generic [ref=e289]: 前端框架：Vue 3 + Vite + Tailwind CSS v4
+          - generic [ref=e290]: 后端：Bmob 后端云 (bmob.cn)
+          - generic [ref=e291]: 富文本编辑器：wangEditor V5
+          - generic [ref=e292]: 流程图：Mermaid
+          - generic [ref=e293]: 部署：Cloudflare Pages
+      - generic [ref=e294]:
+        - heading "📜 更新历史" [level=3] [ref=e295]
+        - generic [ref=e296]:
+          - generic [ref=e297]:
+            - generic [ref=e298]:
+              - generic [ref=e299]: v1.0.0-beta
+              - generic [ref=e300]: 2026-06
+            - list [ref=e301]:
+              - listitem [ref=e302]:
+                - generic [ref=e303]: ✨
+                - generic [ref=e304]: 每日资讯：全功能实现（P0~P2），含调试模式、一键生成默认资讯
+              - listitem [ref=e305]:
+                - generic [ref=e306]: 🐛
+                - generic [ref=e307]: Bmob Boolean 查询兼容：服务端不支持改为客户端过滤
+              - listitem [ref=e308]:
+                - generic [ref=e309]: 🐛
+                - generic [ref=e310]: MissionAssignment 表查询优化：避免 $and 语法，处理表不存在异常
+              - listitem [ref=e311]:
+                - generic [ref=e312]: 🐛
+                - generic [ref=e313]: HomeView 首页任务概览模块
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - generic [ref=e316]: v0.9.0
+              - generic [ref=e317]: 2026-05
+            - list [ref=e318]:
+              - listitem [ref=e319]:
+                - generic [ref=e320]: ✨
+                - generic [ref=e321]: 任务系统 P0~P4 全功能实现
+              - listitem [ref=e322]:
+                - generic [ref=e323]: ✨
+                - generic [ref=e324]: DAG 任务图：SVG 渲染、缩放平移、节点卡片、状态转换
+              - listitem [ref=e325]:
+                - generic [ref=e326]: ✨
+                - generic [ref=e327]: 角色权限系统：三步判定法（管理员免检 → 节点白名单 → 角色映射）
+              - listitem [ref=e328]:
+                - generic [ref=e329]: ✨
+                - generic [ref=e330]: 编辑模式 / 执行模式双模式
+              - listitem [ref=e331]:
+                - generic [ref=e332]: ✨
+                - generic [ref=e333]: Bmob 云端持久化 + 本地优先双写同步
+              - listitem [ref=e334]:
+                - generic [ref=e335]: ✨
+                - generic [ref=e336]: 任务统计视图 + 自定义字段 + 评论讨论
+              - listitem [ref=e337]:
+                - generic [ref=e338]: ✨
+                - generic [ref=e339]: 委派认领 + 密码认领 + 权限隔离
+              - listitem [ref=e340]:
+                - generic [ref=e341]: 📝
+                - generic [ref=e342]: 扩展 CLAUDE.md：架构详解、Store 数据流模式、路由表
+          - generic [ref=e343]:
+            - generic [ref=e344]:
+              - generic [ref=e345]: v0.8.0
+              - generic [ref=e346]: 2026-04
+            - list [ref=e347]:
+              - listitem [ref=e348]:
+                - generic [ref=e349]: ✨
+                - generic [ref=e350]: 首页通知列表：分类导航、搜索、优先级标识
+              - listitem [ref=e351]:
+                - generic [ref=e352]: ✨
+                - generic [ref=e353]: 通知详情页：富文本渲染、Mermaid Token/Map 分离、PDF 预览、图片灯箱
+              - listitem [ref=e354]:
+                - generic [ref=e355]: ✨
+                - generic [ref=e356]: 管理后台：通知创建/编辑（wangEditor + Mermaid 管理）
+              - listitem [ref=e357]:
+                - generic [ref=e358]: ✨
+                - generic [ref=e359]: DeepSeek AI 生成通知（AiGenerator）
+              - listitem [ref=e360]:
+                - generic [ref=e361]: ✨
+                - generic [ref=e362]: 文件注册表 + 腾讯云 COS 直传
+              - listitem [ref=e363]:
+                - generic [ref=e364]: ✨
+                - generic [ref=e365]: 分类管理（CategoryManager）
+              - listitem [ref=e366]:
+                - generic [ref=e367]: ✨
+                - generic [ref=e368]: 用户收藏功能
+              - listitem [ref=e369]:
+                - generic [ref=e370]: ✨
+                - generic [ref=e371]: 用户认证系统（登录/注册/角色）
+              - listitem [ref=e372]:
+                - generic [ref=e373]: ✨
+                - generic [ref=e374]: 设置页：测试通知开关、调试模式
+              - listitem [ref=e375]:
+                - generic [ref=e376]: 🐛
+                - generic [ref=e377]: Recycle Bin 回收站软删除机制
+          - generic [ref=e378]:
+            - generic [ref=e379]:
+              - generic [ref=e380]: v0.1.0
+              - generic [ref=e381]: 2026-03
+            - list [ref=e382]:
+              - listitem [ref=e383]:
+                - generic [ref=e384]: 🚀
+                - generic [ref=e385]: 项目初始化：Vite + Vue 3 + Tailwind CSS 工程搭建
+              - listitem [ref=e386]:
+                - generic [ref=e387]: 🚀
+                - generic [ref=e388]: Bmob 后端云集成
+              - listitem [ref=e389]:
+                - generic [ref=e390]: 🚀
+                - generic [ref=e391]: 基础路由与认证守卫
+  - generic [ref=e394]:
+    - generic [ref=e395]: "[plugin:vite:vue] v-for has invalid expression."
+    - generic [ref=e396]: F:/Cores/project/web_code/notifications/src/views/AboutView.vue:32:14
+    - generic [ref=e397]: 30 | <h3 class="text-base font-semibold text-gray-700 mb-3">📜 更新历史</h3> 31 | <div class="space-y-3"> 32 | <div v-for="(module, i) byModule" :key="i" class="bg-white rounded-lg border border-gray-100 shadow-sm overfl... | ^ 33 | <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100"> 34 | <span class="text-base" v-html="moduleIcon(module.key)"></span>
+    - generic [ref=e398]: at createCompilerError (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:1378:17) at processFor (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:5052:7) at F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:4901:12 at Array.<anonymous> (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:3664:26) at traverseNode (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:3606:38) at traverseChildren (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:3598:5) at traverseNode (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:3641:7) at traverseChildren (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:3598:5) at traverseNode (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:3641:7) at traverseChildren (F:\Cores\project\web_code\notifications\node_modules\@vue\compiler-core\dist\compiler-core.cjs.js:3598:5)
+    - generic [ref=e399]:
+      - text: Click outside, press Esc key, or fix the code to dismiss.
+      - text: You can also disable this overlay by setting
+      - code [ref=e400]: server.hmr.overlay
+      - text: to
+      - code [ref=e401]: "false"
+      - text: in
+      - code [ref=e402]: vite.config.js
+      - text: .
