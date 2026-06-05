@@ -270,26 +270,56 @@ function applyOcr() {
   const text = ocrRaw.value.trim()
   if (!text) return
 
-  // 分离标题和正文：第一行非空行为标题，后续为正文
   const lines = text.split('\n')
   const title = ocrTitle.value
-  // 跳过第一行（标题行），后续组成正文
-  const bodyLines = lines.slice(1).join('\n').trim()
 
-  // 纯文本转简单 HTML（段落用 <p>，占位符保留）
+  // 提取元数据行（来源/发布人/截止日期），从正文中剔除
+  let sourceGroup = ''
+  let sourcePerson = ''
+  let deadline = ''
+  const bodyLines = lines.slice(1).filter(l => {
+    const line = l.trim()
+    if (/^来源[：:]\s*/.test(line)) { sourceGroup = line.replace(/^来源[：:]\s*/, ''); return false }
+    if (/^发布人[：:]\s*/.test(line)) { sourcePerson = line.replace(/^发布人[：:]\s*/, ''); return false }
+    if (/^截止日期[：:]\s*/.test(line)) { deadline = parseDeadline(line.replace(/^截止日期[：:]\s*/, '')); return false }
+    return true
+  }).join('\n').trim()
+
   const contentHtml = textToHtml(bodyLines || text)
 
   emit('apply', {
-    title: title,
+    title,
     content: contentHtml,
+    deadline,
     type: '',
-    sourceGroup: '',
-    sourcePerson: '',
+    sourceGroup,
+    sourcePerson,
     priority: 0,
     tags: [],
     originalLink: ''
   })
   close()
+}
+
+function parseDeadline(str) {
+  // 尝试解析各种中文日期格式
+  // YYYY年MM月DD日 → ISO
+  const match1 = str.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/)
+  if (match1) {
+    const d = new Date(+match1[1], +match1[2] - 1, +match1[3])
+    return d.toISOString().slice(0, 10)
+  }
+  // YYYY-MM-DD
+  const match2 = str.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (match2) return str
+  // MM月DD日 → 推测为今年
+  const match3 = str.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/)
+  if (match3) {
+    const d = new Date(new Date().getFullYear(), +match3[1] - 1, +match3[2])
+    return d.toISOString().slice(0, 10)
+  }
+  // 无法解析则原样保留
+  return str
 }
 
 function textToHtml(text) {

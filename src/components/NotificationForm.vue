@@ -40,6 +40,10 @@
                 <option :value="3">🚨 紧急</option>
               </select>
             </div>
+            <div>
+              <label class="block text-sm text-gray-600 mb-1">截止日期</label>
+              <input type="date" v-model="form.deadline" class="w-full px-3 py-2 rounded border border-gray-300 text-sm" />
+            </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
@@ -102,6 +106,7 @@ const form = reactive({
   content: '',
   type: '',
   priority: 0,
+  deadline: '',
   sourceGroup: '',
   sourcePerson: '',
   originalLink: '',
@@ -121,6 +126,7 @@ onMounted(async () => {
       content: props.notification.content || '',
       type: props.notification.type || '',
       priority: props.notification.priority ?? 0,
+      deadline: props.notification.deadline || '',
       sourceGroup: props.notification.sourceGroup || '',
       sourcePerson: props.notification.sourcePerson || '',
       originalLink: props.notification.originalLink || '',
