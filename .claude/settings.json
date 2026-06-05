@@ -1,0 +1,30 @@
+{
+  "mcpServers": {
+    "write-file": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "F:\\Cores\\project\\web_code\\notifications\\mcp-servers\\write-file",
+        "run",
+        "server.py"
+      ]
+    },
+    "playwright": {
+      "command": "node",
+      "args": [
+        "node_modules/@playwright/mcp/cli.js",
+        "--headless"
+      ]
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(powershell.exe *)", 
+      "Edit"                   
+    ],
+    "deny": [
+      "Bash(rm -rf *)",        
+      "Read(.env)"             
+    ]
+  }
+}

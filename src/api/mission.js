@@ -277,9 +277,19 @@ export async function syncAssignments(bmobObjectId, localAssignments) {
 export async function getUserMissions(userId) {
   const q = Bmob.Query(TABLE_ASSIGNMENT)
   q.equalTo('userId', '==', userId)
-  q.equalTo('status', '==', 'approved')
-  const assignments = await q.find()
+  // 不追加 equalTo 避免 SDK 生成 $and 语法（Bmob 对 $and 支持有限）
+  let assignments = []
+  try {
+    assignments = await q.find()
+  } catch (e) {
+    console.warn('查询 MissionAssignment 失败:', JSON.stringify(e))
+    return []
+  }
   if (!assignments || !assignments.length) return []
+
+  // 客户端过滤 approved 状态
+  assignments = assignments.filter(a => a.status === 'approved')
+  if (!assignments.length) return []
 
   // 去重提取任务 ID
   const missionIds = [...new Set(

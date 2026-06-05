@@ -1,0 +1,110 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "📢 通知聚合" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: 📢
+        - heading "通知聚合" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - link "⭐ 收藏" [ref=e24] [cursor=pointer]:
+          - /url: "#/favorites"
+        - link "📋 任务" [ref=e25] [cursor=pointer]:
+          - /url: "#/missions"
+        - link "✏️ 管理" [ref=e26] [cursor=pointer]:
+          - /url: "#/admin"
+        - link "🔬 实验室" [ref=e27] [cursor=pointer]:
+          - /url: /lab/pdf-preview.html
+        - link "⚙️ 设置" [ref=e28] [cursor=pointer]:
+          - /url: "#/settings"
+        - generic [ref=e29]: "|"
+        - generic [ref=e30]: test_user1
+        - button "退出" [ref=e31] [cursor=pointer]
+  - generic [ref=e32]:
+    - generic [ref=e34]:
+      - button "全部 (5)" [ref=e35] [cursor=pointer]
+      - button "📊 综测" [ref=e36] [cursor=pointer]
+      - button "🎓 保研" [ref=e37] [cursor=pointer]
+      - button "🎉 活动" [ref=e38] [cursor=pointer]
+      - button "📚 课程" [ref=e39] [cursor=pointer]
+      - button "📝 作业" [ref=e40] [cursor=pointer]
+      - button "📌 其他" [ref=e41] [cursor=pointer]
+    - main [ref=e42]:
+      - generic [ref=e44]:
+        - textbox "搜索通知..." [ref=e45]
+        - generic [ref=e46]: 🔍
+      - generic [ref=e47]:
+        - generic [ref=e49] [cursor=pointer]:
+          - generic [ref=e51]: 重要
+          - generic [ref=e52]:
+            - generic [ref=e53]: 📊
+            - heading "关于2025-2026学年综测学生干部加分材料收集与评优工作通知" [level=3] [ref=e54]
+            - button "☆" [ref=e55]
+          - generic [ref=e56]:
+            - generic [ref=e57]: 班长 郑惠馨
+            - generic [ref=e58]: ·
+            - generic [ref=e59]: 25计科班级群
+            - generic [ref=e60]: ·
+            - generic [ref=e61]: 2026-06-05
+        - generic [ref=e63] [cursor=pointer]:
+          - generic [ref=e65]: 重要
+          - generic [ref=e66]:
+            - generic [ref=e67]: 📝
+            - heading "关于Python实验作业提交的通知" [level=3] [ref=e68]
+            - button "☆" [ref=e69]
+          - generic [ref=e70]:
+            - generic [ref=e71]: 学委 王雅芝（Calif）
+            - generic [ref=e72]: ·
+            - generic [ref=e73]: 25计科3班群
+            - generic [ref=e74]: ·
+            - generic [ref=e75]: 2026-06-05
+          - generic [ref=e77]: "#期末作业"
+        - generic [ref=e79] [cursor=pointer]:
+          - generic [ref=e81]: 置顶
+          - generic [ref=e82]:
+            - generic [ref=e83]: 📌
+            - heading "📊 Mermaid 流程图渲染测试（三种图表）" [level=3] [ref=e84]
+            - button "☆" [ref=e85]
+          - generic [ref=e86]:
+            - generic [ref=e87]: Claude (测试)
+            - generic [ref=e88]: ·
+            - generic [ref=e89]: dev_tools
+            - generic [ref=e90]: ·
+            - generic [ref=e91]: 2026-06-05
+          - generic [ref=e92]:
+            - generic [ref=e93]: "#测试"
+            - generic [ref=e94]: "#Mermaid"
+            - generic [ref=e95]: "#流程图"
+            - generic [ref=e96]: "#时序图"
+            - generic [ref=e97]: "#甘特图"
+        - generic [ref=e99] [cursor=pointer]:
+          - generic [ref=e100]:
+            - generic [ref=e101]: 🎉
+            - heading "关于2026级新生学长及迎新使者选拔招募的通知" [level=3] [ref=e102]
+            - button "☆" [ref=e103]
+          - generic [ref=e104]:
+            - generic [ref=e105]: 澄橙
+            - generic [ref=e106]: ·
+            - generic [ref=e107]: 群聊
+            - generic [ref=e108]: ·
+            - generic [ref=e109]: 2026-06-05
+    - link "＋" [ref=e110] [cursor=pointer]:
+      - /url: "#/admin?create=true"
+    - generic [ref=e111]:
+      - generic [ref=e112]:
+        - generic [ref=e113]:
+          - generic [ref=e114]: 📚
+          - generic [ref=e115]: 每日资讯
+        - button "✕" [ref=e117] [cursor=pointer]
+      - generic [ref=e118]:
+        - paragraph [ref=e119]:
+          - strong [ref=e120]: 学而不思则罔，思而不学则殆。
+        - paragraph [ref=e121]: —— 学习而不思考就会迷惘，思考而不学习就会陷入困境。
+      - generic [ref=e122]:
+        - generic [ref=e123]: 📎 精选
+        - generic [ref=e124]: ·
+        - generic [ref=e125]: � 名言
+      - generic [ref=e126]:
+        - button "🤍 收藏" [ref=e128] [cursor=pointer]
+        - generic [ref=e129]:
+          - button "← 上条" [disabled] [ref=e130]
+          - button "下条 →" [ref=e131] [cursor=pointer]

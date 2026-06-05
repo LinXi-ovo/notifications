@@ -226,7 +226,7 @@ async function loadUserTasks() {
       }
     })
   } catch (e) {
-    console.warn('加载用户任务失败:', e.message)
+    console.warn('加载用户任务失败:', e.error || e.message || JSON.stringify(e))
   }
 }
 </script>
