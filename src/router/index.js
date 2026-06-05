@@ -7,6 +7,7 @@ import AdminView from '@/views/AdminView.vue'
 import FavoritesView from '@/views/FavoritesView.vue'
 import CategoryManagerView from '@/views/CategoryManagerView.vue'
 import SettingsView from '@/views/SettingsView.vue'
+import LabMockNotification from '@/views/LabMockNotification.vue'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
@@ -16,6 +17,7 @@ const routes = [
   { path: '/admin', name: 'admin', component: AdminView, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/admin/categories', name: 'categories', component: CategoryManagerView, meta: { requiresAuth: true, requiresAdmin: true } },
   { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
+  { path: '/lab/mock-notification', name: 'lab-mock-notification', component: LabMockNotification, meta: { requiresAuth: true } },
 ]
 
 const router = createRouter({

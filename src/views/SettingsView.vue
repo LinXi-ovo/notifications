@@ -37,11 +37,15 @@
             <p class="text-sm font-medium text-gray-800 m-0">🔬 实验室</p>
             <p class="text-xs text-gray-400 mt-0.5 mb-3">功能试验和效果演示</p>
             <div class="flex flex-wrap gap-2">
+              <router-link
+                to="/lab/mock-notification"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg border border-purple-200 no-underline hover:bg-purple-100 cursor-pointer"
+              >📄 模拟通知 · PDF 预览测试</router-link>
               <a
                 href="/lab/pdf-preview.html"
                 target="_blank"
                 class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg border border-purple-200 no-underline hover:bg-purple-100 cursor-pointer"
-              >📄 PDF.js 内联预览演示</a>
+              >🔧 PDF.js 独立演示</a>
             </div>
           </div>
         </template>
