@@ -223,7 +223,16 @@ const needsAdminInit = computed(() => {
 })
 
 onMounted(() => {
-  store.fetchList({ pageSize: 100 })
+  store.fetchList({ pageSize: 100 }).then(() => {
+    // 处理 ?edit=xxx 参数，自动打开编辑表单
+    const editId = router.currentRoute.value.query.edit
+    if (editId) {
+      const item = store.list.find(i => i.id === editId)
+      if (item) {
+        openEdit(item)
+      }
+    }
+  })
   loadUsers()
   loadCategories()
   cleanExpiredTrash()
