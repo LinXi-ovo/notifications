@@ -1,8 +1,9 @@
 <template>
   <div class="flex items-center flex-wrap gap-0.5 px-2 py-1.5 border-b border-gray-200 bg-gray-50">
-    <!-- 文字格式 -->
+    <!-- 文字格式（@mousedown.prevent 防止按钮抢编辑器焦点导致闪退） -->
     <button v-for="btn in textButtons" :key="btn.action"
       :class="toolBtnClass(btn.active?.() || false)"
+      @mousedown.prevent
       @click="btn.action()"
       :title="btn.title"
       v-html="btn.icon"
@@ -13,6 +14,7 @@
     <!-- 媒体插入 -->
     <button v-for="btn in mediaButtons" :key="btn.action"
       :class="toolBtnClass(false)"
+      @mousedown.prevent
       @click="btn.handler"
       :title="btn.title"
       v-html="btn.icon"
@@ -23,6 +25,7 @@
     <!-- HTML 源码 -->
     <button
       :class="toolBtnClass(showSource)"
+      @mousedown.prevent
       @click="$emit('toggle-source')"
       title="HTML 源码"
     >
