@@ -14,6 +14,15 @@
         <span v-else class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
           💾 本地
         </span>
+        <!-- 管理员：发布到云端 -->
+        <button
+          v-if="!missionStore.migrated && userStore.isAdmin"
+          class="text-xs px-3 py-1 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors font-medium"
+          :disabled="migrating"
+          @click="publishToCloud"
+        >
+          {{ migrating ? '⏳ 发布中…' : '☁️ 发布任务到云端' }}
+        </button>
       </div>
       <button
         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
@@ -334,5 +343,15 @@ function statusLabel(status) {
 function formatDate(d) {
   if (!d) return ''
   return new Date(d).toLocaleDateString('zh-CN')
+}
+
+/** 管理员：发布所有本地任务到云端 */
+async function publishToCloud() {
+  if (!confirm('将所有本地任务发布到云端，让其他用户也能看到？')) return
+  migrating.value = true
+  await missionStore.migrateLocalToBmob()
+  migrating.value = false
+  // 刷新列表以显示云端状态
+  await missionStore.fetchIndex()
 }
 </script>

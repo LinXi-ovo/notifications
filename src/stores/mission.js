@@ -1121,6 +1121,20 @@ export const useMissionStore = defineStore('mission', {
           layoutData
         })
       } catch (e) {
+        // 自动兜底：Bmob 中不存在 → 尝试创建
+        if (e.message && e.message.includes('在 Bmob 中不存在')) {
+          try {
+            const result = await createMissionBmob(this.currentMission)
+            if (result && result._bmobObjectId) {
+              this.currentMission._bmobObjectId = result._bmobObjectId
+              console.log('✅ 任务已自动创建到 Bmob:', this.currentMission.id)
+              return
+            }
+          } catch (createErr) {
+            this.bmobLoadError = '同步到云端失败（创建失败）: ' + createErr.message
+            return
+          }
+        }
         this.bmobLoadError = '同步到云端失败: ' + e.message
         console.warn('Bmob 保存失败:', e.message)
       } finally {
