@@ -42,6 +42,14 @@
     <div v-if="node.subMissionId" class="absolute -bottom-1.5 -right-1.5 text-xs bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center shadow" title="包含子任务">
       🔽
     </div>
+
+    <!-- 底部信息：评论数 + 子图摘要 -->
+    <div v-if="node.comments?.length || node.subMissionSummary" class="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+      <span v-if="node.comments?.length" title="评论数">💬 {{ node.comments.length }}</span>
+      <span v-if="node.subMissionSummary" class="text-blue-400" title="子任务进度">
+        📊 {{ node.subMissionSummary.done }}/{{ node.subMissionSummary.total }}
+      </span>
+    </div>
   </div>
 </template>
 

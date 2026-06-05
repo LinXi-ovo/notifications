@@ -40,6 +40,9 @@
           >
             ＋ 添加节点
           </button>
+          <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="showCustomFields = true">
+            📋 字段
+          </button>
         </template>
 
         <!-- 通用入口 — 非破坏性操作 -->
@@ -474,8 +477,20 @@
             </template>
           </template>
         </div>
-      </div>
+
+        <!-- 自定义字段（所有模式） -->
+        <CustomFieldForm
+          v-if="selectedNode && mission.customFields?.length"
+          :node="selectedNode"
+          :fields="mission.customFields"
+          @update="onCustomFieldUpdate"
+        />
+
+        <!-- 评论（所有模式） -->
+        <CommentThread v-if="selectedNode" :node-id="selectedNode.id" />
+      </div><!-- end detail panel content -->
     </div>
+  </div>
 
     <!-- JSON 查看器（调试模式） -->
     <div v-if="showJsonViewer" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showJsonViewer = false">
@@ -564,6 +579,15 @@
         </div>
       </div>
     </div>
+
+    <!-- 自定义字段编辑器（编辑模式） -->
+    <CustomFieldEditor
+      v-if="showCustomFields"
+      :fields="mission.customFields || []"
+      :roles="mission.roles"
+      @close="showCustomFields = false"
+      @save="onSaveCustomFields"
+    />
   </div>
 </template>
 
@@ -577,6 +601,9 @@ import GraphCanvas from '@/components/mission/GraphCanvas.vue'
 import GraphControls from '@/components/mission/GraphControls.vue'
 import ProgressBar from '@/components/mission/ProgressBar.vue'
 import StatusBadge from '@/components/mission/StatusBadge.vue'
+import CustomFieldForm from '@/components/mission/CustomFieldForm.vue'
+import CustomFieldEditor from '@/components/mission/CustomFieldEditor.vue'
+import CommentThread from '@/components/mission/CommentThread.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -624,6 +651,7 @@ const newEdgeLabel = ref('')
 
 // 角色管理
 const showAddRole = ref(false)
+const showCustomFields = ref(false)
 const newRole = ref({ name: '', emoji: '👤', color: '#6B7280', claimType: 'free', password: '' })
 const delegateUserId = ref('')
 
@@ -943,6 +971,18 @@ function markNodeComplete() {
   }
   const userName = userStore.username
   missionStore.markComplete(selectedNode.value.id, userStore.username, userName)
+}
+
+/** 自定义字段值变更 */
+function onCustomFieldUpdate(newValues) {
+  if (!selectedNode.value) return
+  missionStore.updateNode(selectedNode.value.id, { customValues: newValues })
+}
+
+/** 保存自定义字段 Schema */
+function onSaveCustomFields(fields) {
+  missionStore.updateMission({ customFields: fields })
+  showCustomFields.value = false
 }
 
 // ── 权限诊断辅助 ──
