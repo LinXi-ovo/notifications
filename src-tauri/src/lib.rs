@@ -35,14 +35,16 @@ pub fn run() {
             // 构建系统托盘
             tray::build_tray(app.handle())?;
 
-            // 注册全局快捷键 Ctrl+Shift+N → 唤出窗口
+            // 注册全局快捷键 Ctrl+Shift+空格 → 唤出窗口
             use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers};
-            app.global_shortcut().register(
+            if let Err(e) = app.global_shortcut().register(
                 tauri_plugin_global_shortcut::Shortcut::new(
                     Some(Modifiers::CONTROL | Modifiers::SHIFT),
-                    Code::KeyN,
+                    Code::Space,
                 ),
-            )?;
+            ) {
+                log::warn!("全局快捷键注册失败（可能已被其他程序占用）: {}", e);
+            }
 
 
             Ok(())
