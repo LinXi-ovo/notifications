@@ -92,7 +92,7 @@ const MERMAID_KEYWORDS = [
 // ── 同步外部 v-model ──
 watch(() => props.modelValue, (val) => {
   const incoming = val || ''
-  const currentRaw = mergeMermaid(valueHtml.value, { ...mermaidMap.value })
+  const currentRaw = mergeMermaid(valueHtml.value, { ...mermaidMap.value }).html
   if (incoming !== currentRaw) {
     const p = parseMermaid(incoming)
     valueHtml.value = p.html
@@ -148,8 +148,10 @@ function handleCreated(editor) {
 
 function handleChange(editor) {
   valueHtml.value = editor.getHtml()
-  // 保存时合并 Mermaid 数据
-  emit('update:modelValue', mergeMermaid(valueHtml.value, { ...mermaidMap.value }))
+  // 保存时合并 Mermaid 数据，同时清洗 Map
+  const merged = mergeMermaid(valueHtml.value, { ...mermaidMap.value })
+  mermaidMap.value = merged.map
+  emit('update:modelValue', merged.html)
 }
 
 function handleFocus() {
