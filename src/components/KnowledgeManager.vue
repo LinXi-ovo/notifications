@@ -82,6 +82,9 @@
           <button class="px-2 py-1 text-[11px] bg-green-500 text-white rounded hover:bg-green-600 cursor-pointer border-none" @click="handleForcePush">
             📤 测试推送
           </button>
+          <button class="px-2 py-1 text-[11px] bg-purple-500 text-white rounded hover:bg-purple-600 cursor-pointer border-none" @click="handleSeed">
+            🌱 一键生成默认资讯
+          </button>
           <button class="px-2 py-1 text-[11px] bg-gray-500 text-white rounded hover:bg-gray-600 cursor-pointer border-none" @click="showJson = !showJson">
             📄 {{ showJson ? '隐藏' : '显示' }}全部 JSON
           </button>
@@ -138,6 +141,21 @@ function handleResetState() {
 async function handleForcePush() {
   await store.forcePush()
   alert('已重置状态并触发推送，请查看右下角卡片')
+}
+
+async function handleSeed() {
+  if (!confirm('将生成 6 条默认示例资讯（图书馆/四六级/选课/学习技巧/冷知识/名言），继续？')) return
+  const btn = document.activeElement
+  if (btn) btn.textContent = '⏳ 生成中...'
+  try {
+    const results = await store.seedDefaultItems()
+    await loadList()
+    alert(`✅ 已生成 ${results.length} 条默认资讯，刷新首页即可查看`)
+  } catch (e) {
+    alert('生成失败: ' + (e.message || e))
+  } finally {
+    if (btn) btn.textContent = '🌱 一键生成默认资讯'
+  }
 }
 
 async function loadList() {

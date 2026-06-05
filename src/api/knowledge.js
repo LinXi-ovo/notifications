@@ -11,8 +11,6 @@ const TABLE = 'KnowledgeItems'
 export async function getActiveItems({ limit = 50 } = {}) {
   try {
     const q = Bmob.Query(TABLE)
-    q.equalTo('isActive', true)
-    q.order('-priority')
     q.order('-createdAt')
     q.limit(limit)
     const results = await q.find()
