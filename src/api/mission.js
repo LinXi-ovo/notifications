@@ -125,13 +125,13 @@ export async function createMission(mission) {
   if (mission.createdBy) {
     // createdBy 必须是 Bmob Pointer（指向 _User 表）
     if (typeof mission.createdBy === 'object' && mission.createdBy.objectId) {
-      q.set('createdBy', Bmob.Pointer('_User', mission.createdBy.objectId))
+      q.set('createdBy', { __type: 'Pointer', className: '_User', objectId: mission.createdBy.objectId })
     } else {
       // 字符串用户名 → 从 Bmob 当前用户获取 objectId 构造 Pointer
       try {
         const currentUser = Bmob.User.current()
         if (currentUser && currentUser.objectId) {
-          q.set('createdBy', Bmob.Pointer('_User', currentUser.objectId))
+          q.set('createdBy', { __type: 'Pointer', className: '_User', objectId: currentUser.objectId })
         }
       } catch (e) {
         console.warn('无法获取当前用户 objectId 构造 Pointer:', e)
