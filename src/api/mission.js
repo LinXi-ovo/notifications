@@ -282,7 +282,12 @@ export async function getUserMissions(userId) {
   try {
     assignments = await q.find()
   } catch (e) {
-    console.warn('查询 MissionAssignment 失败:', JSON.stringify(e))
+    // Bmob 返回 code 101 表示表不存在，静默忽略
+    if (e.code === 101) {
+      console.warn('MissionAssignment 表不存在，跳过任务加载')
+    } else {
+      console.warn('查询 MissionAssignment 失败:', e.error || JSON.stringify(e))
+    }
     return []
   }
   if (!assignments || !assignments.length) return []
