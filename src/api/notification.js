@@ -2,14 +2,16 @@ import Bmob from './bmob'
 
 const TABLE = 'Notifications'
 
-/** 获取通知列表（默认排除回收站的） */
-export async function getNotifications({ type, search, page = 1, pageSize = 20 } = {}) {
+/** 获取通知列表（默认排除回收站的，默认不显示测试通知） */
+export async function getNotifications({ type, search, page = 1, pageSize = 20, showTest } = {}) {
   const q = Bmob.Query(TABLE)
 
   // 排除已删除
   q.equalTo('deleted', '!=', true)
 
   if (type) q.equalTo('type', '==', type)
+  // 默认过滤测试通知，除非明确要求显示
+  if (!showTest) q.equalTo('type', '!=', 'test')
   if (search) {
     q.equalTo('title', '==', { $regex: search })
   }

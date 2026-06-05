@@ -20,7 +20,9 @@ export const DEFAULT_CATEGORIES = [
   { name: '活动', value: 'activity', icon: '🎉', color: 'orange', sortOrder: 3 },
   { name: '课程', value: 'course', icon: '📚', color: 'green', sortOrder: 4 },
   { name: '作业', value: 'homework', icon: '📝', color: 'red', sortOrder: 5 },
-  { name: '其他', value: 'other', icon: '📌', color: 'gray', sortOrder: 99 }
+  { name: '其他', value: 'other', icon: '📌', color: 'gray', sortOrder: 99 },
+  { name: '测试', value: 'test', icon: '🧪', color: 'yellow', sortOrder: 0 }
+]
 ]
 
 /** 分页每页数量 */

@@ -14,7 +14,7 @@ export const useNotificationStore = defineStore('notification', {
   }),
 
   actions: {
-    async fetchList({ type, search, page } = {}) {
+    async fetchList({ type, search, page, showTest } = {}) {
       this.loading = true
       try {
         if (type !== undefined) this.currentType = type
@@ -25,7 +25,8 @@ export const useNotificationStore = defineStore('notification', {
           type: this.currentType,
           search: this.searchQuery || undefined,
           page: this.currentPage,
-          pageSize: this.pageSize
+          pageSize: this.pageSize,
+          showTest: showTest || localStorage.getItem('show-test-notifications') === 'true',
         })
 
         this.list = result.data

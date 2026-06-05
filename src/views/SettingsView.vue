@@ -4,6 +4,20 @@
       <h2 class="text-xl font-bold text-gray-800 mb-4 m-0">⚙️ 设置</h2>
 
       <div class="bg-white rounded-lg shadow-sm border p-6 space-y-4">
+        <!-- 显示测试通知 -->
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-800 m-0">🧪 显示测试通知</p>
+            <p class="text-xs text-gray-400 mt-0.5 m-0">在首页显示类型为「测试」的通知</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" v-model="showTest" class="sr-only peer" />
+            <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-yellow-500"></div>
+          </label>
+        </div>
+
+        <hr class="border-gray-200" />
+
         <!-- 调试模式 -->
         <div class="flex items-center justify-between" :class="{ 'opacity-50': !isAdmin }">
           <div>
@@ -36,5 +50,10 @@ watch(debugMode, (v) => {
     return
   }
   localStorage.setItem('mermaid-debug', v ? 'true' : 'false')
+})
+
+const showTest = ref(localStorage.getItem('show-test-notifications') === 'true')
+watch(showTest, (v) => {
+  localStorage.setItem('show-test-notifications', v ? 'true' : 'false')
 })
 </script>
