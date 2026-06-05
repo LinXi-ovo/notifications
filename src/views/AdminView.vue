@@ -181,7 +181,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
@@ -425,6 +425,40 @@ function escapeHtml(str) {
   div.textContent = str
   return div.innerHTML
 }
+
+// ── Mermaid 渲染 ──
+watch(previewItem, async (item) => {
+  if (!item) return
+  await nextTick()
+  await nextTick() // v-html 可能跨两个 tick
+  const container = document.querySelector('.fixed.inset-0.z-50')
+  if (!container) return
+  const mermaids = container.querySelectorAll('[data-mermaid]')
+  if (!mermaids?.length) return
+  try {
+    const mod = await import('mermaid')
+    const mermaid = mod.default || mod
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' })
+    mermaids.forEach(async (el) => {
+      if (el.classList.contains('mermaid-rendered')) return
+      const raw = el.getAttribute('data-mermaid') || ''
+      const code = raw.replace(/^```(?:mermaid)?\s*/gm, '').replace(/```\s*$/gm, '').trim()
+      if (!code) return
+      try {
+        const id = `ap-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+        const { svg } = await mermaid.render(id, code)
+        el.innerHTML = svg
+        el.classList.add('mermaid-rendered')
+        const svgEl = el.querySelector('svg')
+        if (svgEl) { svgEl.style.maxWidth = '100%'; svgEl.style.height = 'auto' }
+      } catch (e) {
+        el.innerHTML = `<pre class="text-xs text-red-500 p-2 bg-red-50 rounded">⚠️ 流程图渲染失败: ${e.message}</pre>`
+      }
+    })
+  } catch (e) {
+    console.error('Mermaid 加载失败:', e)
+  }
+})
 
 function formatDate(dateStr) {
   if (!dateStr) return ''

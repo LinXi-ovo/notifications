@@ -150,7 +150,7 @@ watch([contentRef, notification], async () => {
   if (mermaids?.length) {
     import('mermaid').then(mod => {
       const mermaid = mod.default || mod
-      mermaid.initialize({ startOnLoad: false, theme: 'default' })
+      mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' })
       mermaids.forEach(async (el) => {
         const raw = el.getAttribute('data-mermaid') || ''
         const code = raw.replace(/^```(?:mermaid)?\s*/gm, '').replace(/```\s*$/gm, '').trim()
