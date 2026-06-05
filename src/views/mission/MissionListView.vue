@@ -177,8 +177,9 @@ const aiSuccess = ref('')
 const exampleJson = `{
   "title": "综测信息收集",
   "description": "学生填写 → 班长汇总 → 辅导员审核",
+  "tags": ["综测", "学期任务"],
   "roles": [
-    { "name": "普通成员", "color": "#3B82F6", "emoji": "🟢", "claimPolicy": "free" },
+    { "name": "普通成员", "color": "#3B82F6", "emoji": "🟢", "claimPolicy": "free", "maxAssignees": 30 },
     { "name": "班长", "color": "#F59E0B", "emoji": "👨‍🎓", "claimPolicy": "free" },
     { "name": "辅导员", "color": "#EF4444", "emoji": "🔴", "claimPolicy": "delegated" }
   ],

@@ -36,12 +36,28 @@ export function parseAiMission(jsonStr) {
   // ── 构建 Roles ──
   const roleMap = {}  // name → Role 对象
   const roles = data.roles.map((r, i) => {
+    // claimPolicy 支持两种格式：
+    //   字符串: "free" | "approval" | "password" | "delegated"
+    //   对象:   { type: "password", password: "abc123" }
+    let claimPolicy
+    if (typeof r.claimPolicy === 'object' && r.claimPolicy !== null) {
+      claimPolicy = { ...r.claimPolicy }
+    } else {
+      claimPolicy = { type: r.claimPolicy || 'free' }
+    }
+
     const role = createRole(
       r.name || `角色${i + 1}`,
       r.color || defaultColor(i),
       r.emoji || defaultEmoji(i),
-      { type: r.claimPolicy || 'free' }
+      claimPolicy
     )
+
+    // 支持 maxAssignees（可选，默认 999）
+    if (typeof r.maxAssignees === 'number') {
+      role.maxAssignees = r.maxAssignees
+    }
+
     roleMap[role.name] = role
     return role
   })
