@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="close">
+    <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @mousedown.self="onBackdropClick">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 flex flex-col" style="height: 75vh;">
         <!-- 头部 -->
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 shrink-0">
@@ -128,6 +128,13 @@ watch(() => props.visible, (v) => {
 
 function insert() {
   emit('insert', cleanCode(code.value))
+}
+
+function onBackdropClick() {
+  // 如果用户正在选中文字（拖选超出对话框），松手时不关闭
+  const sel = window.getSelection()
+  if (sel && sel.toString().length > 0) return
+  close()
 }
 
 function close() {
