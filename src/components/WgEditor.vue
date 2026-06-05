@@ -40,10 +40,18 @@
       </button>
     </div>
   </div>
+
+  <!-- Mermaid 编辑对话框 -->
+  <MermaidEditor
+    :visible="mermaidEditorVisible"
+    :code="mermaidEditingCode"
+    @close="mermaidEditorVisible = false"
+    @save="onMermaidSave"
+  />
 </template>
 
 <script setup>
-import { ref, shallowRef, watch, onBeforeUnmount, nextTick } from 'vue'
+import { ref, shallowRef, watch, onBeforeUnmount, onMounted, nextTick } from 'vue'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import '@wangeditor/editor/dist/css/style.css'
 
@@ -51,16 +59,30 @@ import '@wangeditor/editor/dist/css/style.css'
 import './WgEditor/custom-menus.js'
 import './WgEditor/mermaid-plugin.js'
 
+// ── 数据分离工具 ──
+import { parseMermaid, mergeMermaid } from '@/utils/mermaid-token'
+import MermaidEditor from '@/components/MermaidEditor.vue'
+
 const props = defineProps({
   modelValue: { type: String, default: '' },
 })
 const emit = defineEmits(['update:modelValue'])
 
 const editorRef = shallowRef(null)
-const valueHtml = ref(props.modelValue || '')
 const focused = ref(false)
 const showSource = ref(false)
 const sourceContent = ref('')
+
+// Mermaid 数据层
+const mermaidMap = ref({})
+const mermaidEditorVisible = ref(false)
+const mermaidEditingCode = ref('')
+let pendingMermaidEditor = null // 编辑器实例（插入用）
+
+// 初始内容：parse 后传给编辑器
+const parsed = parseMermaid(props.modelValue || '')
+const valueHtml = ref(parsed.html)
+mermaidMap.value = parsed.map
 
 // ── Mermaid 粘贴检测关键词 ──
 const MERMAID_KEYWORDS = [
@@ -72,8 +94,11 @@ const MERMAID_KEYWORDS = [
 // ── 同步外部 v-model ──
 watch(() => props.modelValue, (val) => {
   const incoming = val || ''
-  if (incoming !== valueHtml.value) {
-    valueHtml.value = incoming
+  const currentRaw = mergeMermaid(valueHtml.value, { ...mermaidMap.value })
+  if (incoming !== currentRaw) {
+    const p = parseMermaid(incoming)
+    valueHtml.value = p.html
+    mermaidMap.value = p.map
   }
 })
 
@@ -125,7 +150,8 @@ function handleCreated(editor) {
 
 function handleChange(editor) {
   valueHtml.value = editor.getHtml()
-  emit('update:modelValue', valueHtml.value)
+  // 保存时合并 Mermaid 数据
+  emit('update:modelValue', mergeMermaid(valueHtml.value, { ...mermaidMap.value }))
 }
 
 function handleFocus() {
@@ -158,10 +184,11 @@ function handleCustomPaste(editor, event, callback) {
     event.preventDefault()
     callback(false)
     const code = text.trim()
-    const escaped = escapeAttr(code)
+    const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
+    mermaidMap.value = { ...mermaidMap.value, [id]: code }
     const firstLine = (code.split('\n')[0] || '').trim() || 'Mermaid'
     editor.dangerouslyInsertHtml(
-      `<div data-mermaid="${escaped}">📊 ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`
+      `<p>📊 [Mermaid] ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
     )
     return
   }
@@ -245,8 +272,34 @@ function onSourceInput() {
   emit('update:modelValue', sourceContent.value)
 }
 
+// ── MermaidEditor 对话框 ──
+function onMermaidSave(code) {
+  const editor = pendingMermaidEditor || editorRef.value
+  mermaidEditorVisible.value = false
+  if (!editor || !code) return
+
+  // 生成 ID 并存入数据层
+  const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
+  mermaidMap.value = { ...mermaidMap.value, [id]: code }
+  const firstLine = (code.split('\n')[0] || '').trim() || 'Mermaid'
+  editor.dangerouslyInsertHtml(`<p>📊 [Mermaid] ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`)
+  pendingMermaidEditor = null
+}
+
+// 监听 📊 按钮触发的全局事件
+function onMermaidInsert(e) {
+  pendingMermaidEditor = e.detail?.editor || editorRef.value
+  mermaidEditingCode.value = ''
+  mermaidEditorVisible.value = true
+}
+
+onMounted(() => {
+  window.addEventListener('wg-mermaid-insert', onMermaidInsert)
+})
+
 // ── 销毁 ──
 onBeforeUnmount(() => {
+  window.removeEventListener('wg-mermaid-insert', onMermaidInsert)
   if (editorRef.value) {
     editorRef.value.destroy()
     editorRef.value = null

@@ -17,14 +17,9 @@ class MermaidMenu {
   isActive() { return false }
   isDisabled() { return false }
   exec(editor) {
-    const code = window.prompt('粘贴 Mermaid 代码：\ngraph TD / sequenceDiagram / gantt 等', 'graph TD\n  A[开始] --> B[结束]')
-    if (!code || !code.trim()) return
-    const trimmed = code.trim()
-    const escaped = trimmed.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    const firstLine = (trimmed.split('\n')[0] || '').trim() || 'Mermaid'
-    editor.dangerouslyInsertHtml(
-      `<div data-mermaid="${escaped}">📊 ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`
-    )
+    // 触发全局事件，由 WgEditor.vue 打开 MermaidEditor 对话框
+    // 编辑器实例通过 detail 传递，供插入回调使用
+    window.dispatchEvent(new CustomEvent('wg-mermaid-insert', { detail: { editor } }))
   }
 }
 
