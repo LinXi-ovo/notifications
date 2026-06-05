@@ -49,6 +49,12 @@
         <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="exportMission">
           📥 导出
         </button>
+        <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="$router.push(`/mission/${$route.params.id}/stats`)">
+          📊 统计
+        </button>
+        <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="showReminder = true">
+          ⏰ 提醒
+        </button>
       </div>
     </div>
 
@@ -588,6 +594,12 @@
       @close="showCustomFields = false"
       @save="onSaveCustomFields"
     />
+
+    <!-- 提醒对话框 -->
+    <ReminderDialog
+      v-if="showReminder"
+      @close="showReminder = false"
+    />
   </div>
 </template>
 
@@ -604,6 +616,7 @@ import StatusBadge from '@/components/mission/StatusBadge.vue'
 import CustomFieldForm from '@/components/mission/CustomFieldForm.vue'
 import CustomFieldEditor from '@/components/mission/CustomFieldEditor.vue'
 import CommentThread from '@/components/mission/CommentThread.vue'
+import ReminderDialog from '@/components/mission/ReminderDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -652,6 +665,7 @@ const newEdgeLabel = ref('')
 // 角色管理
 const showAddRole = ref(false)
 const showCustomFields = ref(false)
+const showReminder = ref(false)
 const newRole = ref({ name: '', emoji: '👤', color: '#6B7280', claimType: 'free', password: '' })
 const delegateUserId = ref('')
 

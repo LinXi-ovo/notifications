@@ -10,11 +10,13 @@ import SettingsView from '@/views/SettingsView.vue'
 import LabMockNotification from '@/views/LabMockNotification.vue'
 import MissionListView from '@/views/mission/MissionListView.vue'
 import MissionGraphView from '@/views/mission/MissionGraphView.vue'
+import MissionStatsView from '@/views/mission/MissionStatsView.vue'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
   { path: '/missions', name: 'missions', component: MissionListView, meta: { requiresAuth: true } },
   { path: '/mission/:id', name: 'mission-graph', component: MissionGraphView, meta: { requiresAuth: true } },
+  { path: '/mission/:id/stats', name: 'mission-stats', component: MissionStatsView, meta: { requiresAuth: true } },
   { path: '/detail/:id', name: 'detail', component: DetailView, meta: { requiresAuth: true } },
   { path: '/favorites', name: 'favorites', component: FavoritesView, meta: { requiresAuth: true } },
   { path: '/login', name: 'login', component: LoginView, meta: { guest: true } },
