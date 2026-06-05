@@ -26,6 +26,17 @@ export function extractId(text) {
   return m ? m[1] : null
 }
 
+/** 从 HTML 中提取所有被使用的 Token ID */
+export function extractUsedIds(html) {
+  const ids = new Set()
+  const re = /\[\[!(mermaid_[a-z0-9]{8})\]\]/g
+  let m
+  while ((m = re.exec(html)) !== null) {
+    ids.add(m[1])
+  }
+  return ids
+}
+
 /** 解码 HTML 实体 */
 function decodeEntities(str) {
   return str
@@ -68,20 +79,16 @@ export function parseMermaid(html) {
  *
  * 扫描 [[!id]]（兼容 <p>[[!id]]</p> 包裹）
  * 替换为 <div data-mermaid="CODE">
- * 同时返回清洗后的 map（移除已删除 Token 的条目）
- *
- * 返回值: { html: string, map: Record<string, { code: string, title?: string }> }
+ * 不清洗 Map（由用户手动触发 cleanup）
  */
 export function mergeMermaid(html, map) {
   if (!map || Object.keys(map).length === 0) return { html, map }
 
-  const usedIds = new Set()
   const replacer = (match, id) => {
     const entry = map[id]
     if (!entry) return match
     const code = typeof entry === 'object' ? entry.code : entry
     if (!code) return match
-    usedIds.add(id)
     const escaped = code
       .replace(/&/g, '&amp;')
       .replace(/"/g, '&quot;')
@@ -94,11 +101,5 @@ export function mergeMermaid(html, map) {
     .replace(/<p[^>]*>\[\[!(mermaid_[a-z0-9]{8})\]\]<\/p>/g, replacer)
     .replace(/\[\[!(mermaid_[a-z0-9]{8})\]\]/g, replacer)
 
-  // 清洗 Map：只保留 Token 仍在编辑器中使用的条目
-  const cleanMap = {}
-  for (const id of usedIds) {
-    cleanMap[id] = map[id]
-  }
-
-  return { html: newHtml, map: cleanMap }
+  return { html: newHtml, map }
 }

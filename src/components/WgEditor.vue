@@ -45,6 +45,7 @@
   <MermaidManager
     :visible="mermaidManagerVisible"
     :map="mermaidMap"
+    :currentHtml="valueHtml"
     @close="mermaidManagerVisible = false"
     @update:map="mermaidMap = $event"
   />
@@ -148,9 +149,8 @@ function handleCreated(editor) {
 
 function handleChange(editor) {
   valueHtml.value = editor.getHtml()
-  // 保存时合并 Mermaid 数据，同时清洗 Map
+  // 保存时合并 Mermaid 数据
   const merged = mergeMermaid(valueHtml.value, { ...mermaidMap.value })
-  mermaidMap.value = merged.map
   emit('update:modelValue', merged.html)
 }
 

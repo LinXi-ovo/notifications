@@ -80,7 +80,11 @@
 
         <!-- 底部 -->
         <div class="flex items-center justify-between px-6 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-          <span class="text-xs text-gray-400">⚙️ 调试开关在「设置」页</span>
+          <span class="text-xs text-gray-400 flex items-center gap-2">
+            <button v-if="!showEditor" type="button" class="text-gray-400 hover:text-red-500 bg-transparent border-none cursor-pointer text-xs underline" @click="cleanUnused">
+              🗑️ 清除未使用的
+            </button>
+          </span>
           <div class="flex gap-2">
             <button v-if="!showEditor" type="button" class="px-3 py-1.5 text-sm text-blue-500 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 cursor-pointer" @click="openNew">＋ 新建</button>
             <button type="button" class="px-3 py-1.5 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer" @click="close">完成</button>
@@ -93,11 +97,12 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { getTitle } from '@/utils/mermaid-token'
+import { getTitle, extractUsedIds } from '@/utils/mermaid-token'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
   map: { type: Object, default: () => ({}) },
+  currentHtml: { type: String, default: '' },
 })
 const emit = defineEmits(['close', 'update:map'])
 
@@ -222,6 +227,25 @@ function removeEntry(i) {
   const newMap = { ...props.map }
   delete newMap[id]
   emit('update:map', newMap)
+}
+
+function cleanUnused() {
+  const used = extractUsedIds(props.currentHtml || '')
+  const newMap = {}
+  let count = 0
+  for (const id of Object.keys(props.map)) {
+    if (used.has(id)) {
+      newMap[id] = props.map[id]
+    } else {
+      count++
+    }
+  }
+  if (count > 0) {
+    emit('update:map', newMap)
+    showToast('🗑️ 已清除 ' + count + ' 个未使用的条目')
+  } else {
+    showToast('✅ 没有未使用的条目')
+  }
 }
 
 function onBackdrop() {
