@@ -1,325 +1,129 @@
-# 任务系统 — 概念设计 · 第三版（集成版）
+# 任务系统 — 概念设计 · v2（实现版）
 
-> 覆盖全部六大功能模块：CRUD/导入导出 + 自定义字段 + 嵌套跳转 + 权限状态 + 评论备注 + 催促提醒，以及它们之间的集成关系。
+> 基于 v1 设计 + 实际实现过程中的修正与新增。覆盖已实现的功能和设计变化。
 
-### 设计决策（已确认）
+### 设计决策（已确认 + v2 新增）
 
-| 问题 | 决策 |
-|---|---|
-| 子图嵌套深度 | **3 层** |
-| 评论格式 | **Markdown**（性价比最优：比纯文本丰富，比富文本轻量，Git diff 友好） |
-| 自定义字段类型 | **10 种**（text/textarea/number/date/select/multi-select/user/boolean/url/file） |
-| 通知方式 | 应用内通知（event bus）→ 后续 Bmob 推送 |
-| 导入冲突 | 默认跳过，用户可选覆盖 |
-| 提醒触发 | 事件驱动（状态变化触发）→ 后续加定时扫描 |
-| 完成统计粒度 | 按角色聚合（同一角色有多个认领人时）或按节点聚合 |
+| 问题 | v1 决策 | v2 变化 |
+|---|---|---|
+| 子图嵌套深度 | **3 层** | 未实现（P3） |
+| 评论格式 | Markdown | 未实现 |
+| 自定义字段类型 | 10 种 | 未实现 |
+| 通知方式 | 应用内通知 | 未实现 |
+| 完成统计粒度 | 按角色聚合 | 已有基础计数，统计面板未实现 |
+| **CRUD 安全** | 未区分 | **v2 新增：编辑模式/执行模式** — 编辑模式可增删节点/角色/边，执行模式只能按角色权限操作 |
+| **管理员测试** | 无 | **v2 新增：adminBypass 开关** — 默认关闭，admin 也受权限约束；打开后可绕过。持久化到 localStorage |
+| **权限映射** | 需手动配置 `mission.permissions` | **v2 新增：角色名称自动映射** — 按名称匹配 DEFAULT_PERMISSIONS（需审批角色→executor、审核员→reviewer……） |
+| **权限叠加** | 单角色权限 | **v2 新增：用户所有已认领角色的转换叠加** — 同时有执行人(todo→进行中)和审核员(进行中→完成)则两者都可用 |
+| **count/all 模式** | 显示「标记完成」 | **v2 修改：隐藏手动「标记完成」，只有「标记我已填写」，满人自动完成** |
+| **「审核通过」标签** | reviewer 有「审核通过」转换 | **v2 修改：统一为「标记完成」** — 底层都是 changeNodeStatus('completed')，标签诚实化 |
+| **approver 转换** | 有 completed→completed 空转换 | **v2 修改：移除空转换，approver 零转换** |
+| **无操作提示** | 无 | **v2 新增：显示具体原因** — 节点已完成/前置未完成/角色在当前状态无匹配转换 |
+| **调试预设** | 无 | **v2 新增：10 个一键加载预设**（6 任务流 + 4 权限模型）+ 权限诊断对话框 |
+| **达标概念** | 无 | **v2 新增：count/all 模式有人提交但未满员 → 📊 达标标记，提示下游可开始** |
+| **blocked 状态** | 自动依赖阻塞 | **v2 修正：当前为手动标记** — 用户手动标阻塞/解除，自动 DAG 依赖引擎未实现 |
 
 ---
 
 ## 一、系统总览
 
-### 1.1 六大功能模块及其关系
+### 1.1 核心架构变化（v2）
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                      CRUD · 导入导出 (数据层)                        │
-│  管理 Mission/Node/Edge 的增删改查，负责 JSON/ZIP 导入导出          │
-│  是所有其他模块的数据基础。                                          │
-└──────────────┬──────────────────────────────────────────┬────────────┘
-               │ 提供数据结构                               │ 整体打包
-               ▼                                           ▼
-┌──────────────────────────┐              ┌──────────────────────────┐
-│  自定义字段 (扩展层)      │              │  嵌套 · 跳转 (组织层)    │
-│  Mission 定 Schema       │◄────────────►│  SubMission 子 DAG      │
-│  Node 存 Value           │  字段可引用   │  JumpLink 跨引用        │
-│  字段值参与状态判定       │   其他节点    │  面包屑导航              │
-│  字段可见性受角色控制     │              │  独立导入/导出子图       │
-└──────────┬───────────────┘              └──────────┬───────────────┘
-           │                                        │
-           │ 字段条件触发状态变化                    │ 子图状态聚合到父节点
-           ▼                                        ▼
-┌──────────────────────────┐              ┌──────────────────────────┐
-│  角色权限 · 状态改变      │              │  评论备注 (协作层)       │
-│  核心驱动力              │◄────────────►│  Markdown 评论           │
-│  Role → claim → 权限     │  状态变化→    │  @提及 → 通知           │
-│  状态转换受权限控制      │  生成评论?    │  引用 JumpLink          │
-│  completed → 统计完成人数│              │  评论附件                │
-│  依赖图自动阻塞/解锁      │              │  回复线程                │
-└──────────┬───────────────┘              └──────────┬───────────────┘
-           │                                        │
-           │ 状态空闲超时 → 提醒         @提及 → 提醒
-           ▼                                        ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      催促提醒 (通知层)                               │
-│  自动规则: 截止前提醒 / 空闲超时 / 状态变化通知                     │
-│  手动催促: 进度落后时一键提醒目标角色                               │
-│  渠道: 应用内通知 → 后续 Bmob 推送                                  │
-└─────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                       入口模式选择                                  │
+│  ┌─────────────────┐  ┌─────────────────┐                         │
+│  │  📝 编辑模式     │  │  ▶️ 执行模式     │                         │
+│  │  CRUD 全开       │  │  角色权限约束     │                         │
+│  │  状态转换无限制   │  │  状态转换按权限   │                         │
+│  │  管理员/创建者    │  │  所有用户        │                         │
+│  └────────┬────────┘  └────────┬────────┘                         │
+│           │                    │                                   │
+│           ▼                    ▼                                   │
+│  ┌────────────────────────────────────────────────────────┐       │
+│  │              Permission 三步判定法                       │       │
+│  │  Step 1: adminBypass? → 是则放行                        │       │
+│  │  Step 2: allowedOperators/allowedUsers 白名单           │       │
+│  │  Step 3: 角色名 → 自动匹配 DEFAULT_PERMISSIONS          │       │
+│  │          命中则用预设权限，未命中 fallback 到 observer   │       │
+│  └────────────────────────────────────────────────────────┘       │
+└────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1.2 特性依赖关系表
+### 1.2 v2 新增概念
 
-| 功能 A | 功能 B | 关系 |
-|---|---|---|
-| **自定义字段** | **状态变化** | 自定义字段的值可以作为状态转换的条件（如：只有字段"综测分数≥60"才允许 completed） |
-| **自定义字段** | **权限** | 自定义字段可以有 `visibleToRoles`，只对特定角色可见/可编辑 |
-| **自定义字段** | **评论** | 评论内容中可以用 `{{cf:fieldId}}` 引用节点的自定义字段值 |
-| **嵌套** | **导入导出** | 子图可随父图整体导出，也可独立导出为独立 Mission |
-| **嵌套** | **状态统计** | 父节点状态可聚合子图的完成度（子图 3/5 完成 → 父节点进度 60%） |
-| **权限** | **状态改变** | 角色级 `transitions` 列表控制允许的转换；节点级 `allowedOperators` 白名单控制谁能操作 |
-| **权限** | **评论** | 评论操作受 `canComment` 权限控制 |
-| **状态改变** | **催促提醒** | 状态长时间未变化触发 idle 提醒；状态变化触发下游通知 |
-| **评论** | **催促提醒** | `@username` 在评论中触发生成提醒（mention 类型） |
-| **完成统计** | **视图** | 节点卡片显示 ✅ 8/30 已完成；Mission 头部显示整体进度条 |
-| **JumpLink** | **CRUD** | JumpLink 在创建/更新时自动校验 targetId 是否存在 |
-| **CRUD** | **导入导出** | 导出 = READ 全部数据 → 序列化；导入 = 反序列化 → 批量 CREATE |
+| 概念 | 说明 |
+|---|---|
+| **编辑模式/执行模式** | 编辑模式可增删任务结构元素，执行模式只允许按角色权限操作节点 |
+| **adminBypass** | 管理员权限绕过开关，默认关闭，调试用 |
+| **角色名 → 权限映射** | `需审批角色` → executor, `口令角色` → executor, `审核员` → reviewer 等 |
+| **权限叠加** | 用户认领多个角色时，所有角色的 transitions 合并可用 |
+| **达标** | count/all 模式下有人提交但未满员，显示 📊 达标标记，下游可开始 |
+| **noOpReason** | 无可用操作时的具体原因提示，替代笼统信息 |
 
-### 1.3 领域全景
+### 1.3 领域全景（v2 更新）
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                        Mission (任务/项目)                            │
+│  顶部:  [📝 编辑模式] / [▶️ 执行模式] 切换  [👑 绕过] 开关          │
+│                                                                      │
 │  ┌──────────┐    ┌──────────┐    ┌──────────┐                       │
 │  │ TaskNode │◄───│ TaskNode │◄───│ TaskNode │   ← DAG (哈斯图)      │
 │  │  (角色A)  │    │  (角色B)  │    │  (角色C)  │   偏序依赖关系      │
 │  └─────┬────┘    └─────┬────┘    └─────┬────┘                       │
 │        │               │               │                            │
-│        ▼               ▼   ┌──────────────┐                        │
-│  ┌──────────┐     ┌──────────┐ │  Sub-Mission  │  ← 嵌套(3层)      │
-│  │ TaskNode │     │ TaskNode │──┤  (子 DAG)    │                    │
-│  │  (角色A)  │     │  (角色B)  │ │  ┌──┐ ┌──┐   │                    │
-│  │  ✅ 8/30  │     │  ⏳ 5/10  │ │  │..│ │..│   │  ← 子图独立统计   │
-│  └──────────┘     └──────────┘ │  └──┘ └──┘   │                    │
-│                                └──────────────┘                    │
-│                                                                      │
-│  自定义字段: [综测分数][学院][备注]                                   │
-│  评论: ── 张三: 已提交 @李四 ── 李四: 收到                          │
-│  催促: ⏰ 班长材料提交截止 06/15                                      │
+│        ▼               ▼               ▼                            │
+│  ┌──────────┐    ┌──────────┐    ┌──────────┐                       │
+│  │ 🟢可操作  │    │  🔒锁定   │    │  📊达标   │                       │
+│  │ 已认领    │    │  未认领   │    │  3/30填完  │                       │
+│  └──────────┘    └──────────┘    └──────────┘                       │
 │                                                                      │
 │  角色: 🟢普通成员(12人) ✅9/12  🟡班长(5人) ✅3/5  🔴负责人(1人)     │
 │  权限: 成员→填写  班长→汇总提交  负责人→审核                          │
 │                                                                      │
 │  整体进度: ████████░░░░ 65% (13/20 节点已完成)                       │
+│                                                                      │
+│  🧪 调试工具栏: 📋 流程 [预设...] | 🔐 权限 [预设...] | 🔍 权限诊断  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1.4 概念一览
+### 1.4 概念一览（v2 新增）
 
 | 概念 | 核心功能 | 关联功能 |
 |---|---|---|
-| **Mission** | 项目容器，CRUD + 导入导出 | 所有功能的数据根 |
-| **TaskNode** | 工作单元，含内容/字段/状态 | 权限控制 + 完成统计 + 评论 + 提醒 |
-| **Edge** | 偏序依赖（哈斯图） | 自动阻塞检测 + 传递推导 |
-| **Role + ClaimPolicy** | 角色定义 + 认领策略（free/approval/password/delegated） | 权限系统的基础 |
-| **Assignment** | 角色认领记录（含审批状态） | 统计人数的来源（多少个认领人） |
-| **TaskStatus** | 节点状态（todo/in-progress/completed/blocked/cancelled） | 状态转换受权限控制 + 触发提醒 |
-| **CompletionRecord** | 完成记录（谁 + 何时） | 多人角色统计完成人数 |
-| **CustomField** | 字段 Schema（Mission 级定义） | 可见性受角色控制 + 值参与状态判定 |
-| **CustomValue** | 字段值（Node 级） | 评论中引用 + 导入导出包含 |
-| **SubMission** | 嵌套子 DAG（最多 3 层） | 状态聚合到父节点 + 独立导出 |
-| **JumpLink** | 跨引用（mission/node/notification） | 内容中的链接 + 评论中引用 |
-| **Comment** | Markdown 评论 + @提及 | 触发提醒 + 附件 + 回复 |
-| **Reminder** | 催促规则（deadline/idle/status-check/mention） | 多触发方式 + 应用内通知 |
-| **Permission** | 角色级 transitions + 节点级 allowedOperators | 状态控制 + 字段可见性 |
+| **编辑模式** | CRUD 全开（增删节点/边/角色） | 管理员/创建者专属 |
+| **执行模式** | 按角色权限操作 | 所有用户 |
+| **adminBypass** | 管理员绕过权限检查的开关 | 调试工具栏 |
+| **角色名 → 权限映射** | 自动匹配 DEFAULT_PERMISSIONS | 免手动配置 permissions |
+| **权限叠加** | 多角色转换合并 | 用户同时认领执行人+审核员时两者都可用 |
+| **达标** | count/all 模式部分完成标记 | 提示下游可开始 |
+| **noOpReason** | 无操作提示具体原因 | 节点已完成/前置阻塞/角色无权限 |
 
 ---
 
-## 二、完整数据模型（第三版集成版）
+## 二、完整数据模型（v2 更新）
 
 ### 2.1 Mission（任务/项目）
 
-```json
-{
-  "id": "mission-001",
-  "title": "2026 年秋季评奖评优",
-  "description": "综测计算 → 材料审核 → 名单公示全流程",
-
-  "createdBy": "zhangsan",
-  "createdAt": "2026-06-05T10:00:00.000Z",
-  "updatedAt": "2026-06-05T10:00:00.000Z",
-  "status": "active",
-
-  "roles": [ /* Role[] — §2.4 */ ],
-  "nodes": [ /* TaskNode[] — §2.2 */ ],
-  "edges": [ /* Edge[] — §2.3 */ ],
-  "assignments": [ /* Assignment[] — §2.5 */ ],
-
-  "customFields": [ /* CustomField[] — §2.7 */ ],
-  "reminders": [ /* Reminder[] — §2.11 */ ],
-  "permissions": [ /* Permission — §2.12 */ ],
-
-  "jumpLinks": [ /* JumpLink[] — 跨 Mission 引用放在 Mission 级 */ ],
-  "tags": ["综测", "秋季"],
-  "version": "3.0",
-  "exportMeta": {
-    "exportedAt": null,
-    "includesSubMissions": true,
-    "includesComments": true
-  }
-}
-```
+→ 同 v1，无数据模型变化。所有 v2 功能在 Store 层实现，不修改 JSON schema。
 
 ### 2.2 TaskNode（任务节点）
 
-```json
-{
-  "id": "node-fill-form",
-  "title": "填写个人信息表",
-  "description": "每位同学填写个人基本信息",
-  "content": "请按模板填写姓名、学号、联系方式...",
-  "contentType": "markdown",
-
-  "assignedRole": "member",
-  "status": "in-progress",
-  "priority": 1,
-  "deadline": "2026-06-15",
-
-  "allowedOperators": ["member", "class-monitor"],
-  "allowedUsers": [],
-
-  "completionRule": "count",
-  "completionTarget": 30,
-  "completions": [
-    { "userId": "zhangsan", "completedAt": "2026-06-10T14:00:00.000Z" },
-    { "userId": "lisi",     "completedAt": "2026-06-11T09:30:00.000Z" }
-  ],
-
-  "position": { "x": 200, "y": 100 },
-  "tags": ["个人信息"],
-
-  "attachments": [
-    { "name": "模板.xlsx", "url": "https://...", "mime": "..." }
-  ],
-
-  "customValues": {
-    "cf-score": "95.5",
-    "cf-department": "计算机学院"
-  },
-
-  "comments": [ /* Comment[] — §2.10 */ ],
-
-  "subMissionId": null,
-  "subMissionSummary": null,
-
-  "jumpLinks": [
-    { "type": "notification", "targetId": "notif-abc123", "label": "原始通知" }
-  ]
-}
-```
-
-**关键字段说明**：
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `assignedRole` | string | 负责该节点的角色 ID |
-| `allowedOperators` | string[] | 可操作此节点的角色白名单（空 = 所有已认领该角色的人） |
-| `allowedUsers` | string[] | 可操作此节点的个人白名单（进一步精确到人） |
-| `completionRule` | `"single"`\|`"count"`\|`"all"` | 完成模式：single=一人完成即完成；count=累计 N 人完成；all=所有认领人完成 |
-| `completionTarget` | number | 当 completionRule=count 时的目标人数 |
-| `completions` | CompletionRecord[] | 完成记录列表（谁、何时完成的） |
-| `subMissionId` | string\|null | 关联的子图 ID |
-| `subMissionSummary` | `{ done: number, total: number }`\|null | 子图完成度的缓存摘要 |
-
-**完成模式对比**：
-
-| 模式 | 说明 | 场景 |
-|---|---|---|
-| `single` | 任意一人操作状态即变 | 班长交表（仅一个班长，或只需一人操作） |
-| `count` | 累计 N 人完成才变状态 | 30 人填写信息表，12/30 → 节点显示完成人数 |
-| `all` | 所有认领人都完成才变状态 | 全体成员确认，缺一不可 |
-
-### 2.3 Edge（依赖边）
-
-```json
-{
-  "id": "edge-001",
-  "source": "node-001",
-  "target": "node-002",
-  "label": "需材料齐备后才能开始审核"
-}
-```
-
-约束：所有 Edge 构成 **有向无环图（DAG）**，不允许循环依赖。
+→ 同 v1。注意：`blocked` 当前为手动标记，非自动 DAG 推导。
 
 ### 2.4 Role（角色）
 
-```json
-{
-  "id": "class-monitor",
-  "name": "班长",
-  "description": "负责收集和提交全班材料",
-  "color": "#F59E0B",
-  "emoji": "👨‍🎓",
-  "maxAssignees": 5,
-  "claimPolicy": {
-    "type": "approval",
-    "approverRole": "leader",
-    "password": null
-  }
-}
+→ 同 v1。注意：`claimPolicy` **仅控制谁能认领角色**，不决定认领后的权限。认领后的权限由角色名称自动映射决定。
+
+**关键原则（v2 确认）：**
+```
+claimPolicy (free/approval/password/delegated) → 控制认领门槛
+DEFAULT_PERMISSIONS 映射                   → 控制认领后能做什么
+两者正交，互不影响
 ```
 
-| 字段 | 说明 |
-|---|---|
-| `maxAssignees` | 该角色允许多人认领（如多个审核员并行工作） |
-| `claimPolicy.type` | `"free"` — 任何人自由认领 / `"approval"` — 需管理员/负责人审核 / `"password"` — 输入正确口令即可认领 / `"delegated"` — 只能由管理员/负责人委派，不能自荐 |
-| `claimPolicy.approverRole` | 当 type 为 `approval` 时，指定哪个角色负责审批（如 `"leader"` 或 `"admin"`） |
-| `claimPolicy.password` | 当 type 为 `password` 时，预设的口令（BCrypt 哈希存储） |
-
-**认领策略速查**：
-
-| 类型 | 用户操作 | 后台行为 | 适用场景 |
-|---|---|---|---|
-| `free` | 点击认领 → 立即生效 | 直接写入 Assignment | 普通成员、执行人 |
-| `approval` | 点击认领 → 等待审核 | 生成待审批记录，通知 approverRole | 班长、审核员等敏感角色 |
-| `password` | 输入口令 → 匹配即生效 | 比对 password 哈希 | 线下已约定好的角色分发 |
-| `delegated` | 不可自荐，只能被委派 | 仅管理员/leader 可操作 | 特殊岗位（如监察员） |
-
-### 2.5 Assignment（角色认领）
-
-```json
-{
-  "roleId": "class-monitor",
-  "userId": "zhangsan",
-  "assignedAt": "2026-06-05T10:30:00.000Z",
-  "status": "approved",
-  "approvedBy": "admin",
-  "approvedAt": "2026-06-05T11:00:00.000Z"
-}
-```
-
-| 字段 | 说明 |
-|---|---|
-| `status` | `"pending"` — 待审核 / `"approved"` — 已通过 / `"rejected"` — 已拒绝 |
-| `approvedBy` | 审批人的 userId（仅 approval 类型） |
-| `approvedAt` | 审批时间 |
-
-认领策略速查：
-
-| 类型 | 用户操作 | 后台行为 |
-|---|---|---|
-| `free` | 点击认领 → 立即生效 | 直接写入 Assignment(status=approved) |
-| `approval` | 点击认领 → 等待审核 | status=pending，通知 approverRole |
-| `password` | 输入口令 → 匹配即生效 | status=approved |
-| `delegated` | 不可自荐，只能被委派 | 管理员直接创建 |
-
-**认领人数即统计基数**：`assignment.length` 就是该角色的认领总人数。对于 completionRule=count 的节点，`completions.length / max(assignment.length, completionTarget)` 即为完成比例。
-
-### 2.6 CompletionRecord（完成记录 — v3 新增）
-
-当节点不是 single 模式时，每次完成产生一条记录：
-
-```json
-{
-  "userId": "zhangsan",
-  "userName": "张三",
-  "completedAt": "2026-06-10T14:00:00.000Z",
-  "comment": "已按要求填写",
-  "customValues": {
-    "cf-score": "95.5"
-  }
-}
-```
+例：`需审批角色` → claimPolicy=approval（认领需审批），但映射为 executor（认领后可执行全部操作）。
 
 ### 2.7 TaskStatus（状态枚举）
 
@@ -336,895 +140,460 @@
 └──────────┘    └────────────┘
 ```
 
-第二版通过 **Permission** 控制谁可以触发哪种状态转换。第三版增加 `completionRule` 机制，支持多人完成统计。
+**v2 确认**：`blocked` 为**手动标记**，用户自行判断并点击标记/解除。自动 DAG 依赖阻塞未实现。
 
-### 2.8 CustomField（自定义字段）
-
-定义在 Mission 级别的字段模板。第三版新增字段级角色可见性控制。
-
-```json
-{
-  "id": "cf-score",
-  "label": "综测分数",
-  "type": "number",
-  "required": true,
-  "defaultValue": null,
-  "appliesToRole": null,
-  "visibleToRoles": ["approver", "reviewer"],
-  "editableByRoles": ["executor"],
-  "order": 1,
-  "options": null
-}
-```
-
-**字段类型**：
-
-| 类型 | type | value 类型 |
+**完成模式补充（v2）：**
+| 模式 | 说明 | 按钮行为 |
 |---|---|---|
-| 单行文本 | `text` | string |
-| 多行文本 | `textarea` | string |
-| 数字 | `number` | number |
-| 日期 | `date` | string (ISO) |
-| 单选 | `select` | string |
-| 多选 | `multi-select` | string[] |
-| 用户 | `user` | string (userId) |
-| 布尔 | `boolean` | boolean |
-| 链接 | `url` | string |
-| 文件 | `file` | string (URL) |
-
-**可见性控制**（v3 新增）：
-
-| 字段 | 说明 | 默认 |
-|---|---|---|
-| `visibleToRoles` | 哪些角色可见此字段（空 = 所有人可见） | `[]` |
-| `editableByRoles` | 哪些角色可编辑此字段 | `[]` |
-
-一个字段值有三层权限：
-```
-不可见 → 该字段不在 UI 中出现
-只读   → 可见但不可编辑
-可编辑 → 可见且可修改
-``` |
-
-### 2.9 SubMission（嵌套 DAG + 状态聚合）
-
-一个 TaskNode 可以展开为一个完整的子 DAG。第三版增加状态聚合到父节点的能力。
-
-```json
-{
-  "id": "sub-001",
-  "title": "综测数据录入与校验",
-  "parentNodeId": "node-004",
-  "parentMissionId": "mission-001",
-  "inheritRoles": true,
-  "nodes": [ /* TaskNode[] — 子 DAG 的节点 */ ],
-  "edges": [ /* Edge[] — 子 DAG 的边 */ ],
-  "roles": [ /* Role[] — 不继承时可重新定义 */ ]
-}
-```
-
-**状态聚合**：
-
-| 聚合规则 | 含义 | 父节点显示 |
-|---|---|---|
-| `auto` | 子图完成比例 = 父节点进度 | 🔽 60% |
-| `all` | 子图全部完成 → 父节点 completed | 🔽 ✅ 5/5 |
-| `manual` | 父节点状态独立于子图 | 🔽 |
-
-**渲染行为**：
-- 父节点卡片右下角显示 `🔽 60%`（或 ✅ 完成标记）
-- 点击 🔽 展开为子图（最多 3 层），面包屑导航
-- 子图有独立的缩放/平移状态
-- 子图可随父 Mission 整体导出，也可独立导出
-
-### 2.10 JumpLink（跳转链接）
-
-```json
-{
-  "type": "node" | "mission" | "notification",
-  "targetId": "node-007",
-  "targetMissionId": "mission-002",
-  "label": "跳转到审核节点"
-}
-```
-
-在节点内容中以 `[[node:node-007]]` 或 `[[mission:mission-002]]` 或 `[[notif:abc123]]` 形式嵌入，渲染为可点击链接。
-
-JumpLink 也支持在自定义字段值中使用（如 `url` 类型字段指向另一个节点）。
-
-### 2.11 Comment（评论 + @提及 + 提醒联动）
-
-第三版强化评论与提醒的联动。
-
-```json
-{
-  "id": "cmt-001",
-  "nodeId": "node-004",
-  "author": "zhangsan",
-  "content": "已经完成第一轮计算，@lisi 请复核",
-  "mentions": ["lisi"],
-  "createdAt": "2026-06-10T14:30:00.000Z",
-  "updatedAt": "2026-06-10T14:30:00.000Z",
-  "parentId": null,
-  "attachments": []
-}
-```
-
-特性：
-- Markdown 格式内容
-- `@username` 语法 → 自动解析到 `mentions[]` 字段 → 生成 Reminder
-- 评论中可引用自定义字段：`当前分数: {{cf:score}}`
-- 评论中可包含 JumpLink：`见 [[node:node-007]]`
-- 支持回复（通过 `parentId`）
-- 附件上传
-- 评论操作受 `Permission.canComment` 控制
-
-### 2.12 Reminder（催促提醒 + @提及通知）
-
-第三版增加 `mention` 类型（来自评论 @ 提及）。
-
-```json
-{
-  "id": "rem-001",
-  "missionId": "mission-001",
-  "type": "deadline" | "idle" | "status-check" | "mention",
-  "trigger": {
-    "condition": "beforeDeadline",
-    "offset": -86400000,
-    "targetStatus": "in-progress",
-    "idleDays": 3,
-    "sourceNodeId": null,
-    "sourceCommentId": null
-  },
-  "action": {
-    "method": "in-app" | "email",
-    "message": "节点 {{node.title}} 即将截止，请及时处理",
-    "targetRole": "executor",
-    "targetUser": null
-  },
-  "enabled": true
-}
-```
-
-| 触发类型 | 说明 | 联动 |
-|---|---|---|
-| `deadline` | 节点截止日期前/后 N 小时触发 | 检查 `node.deadline` |
-| `idle` | 节点停留在同一状态超过 N 天 | 检查 `node.status` 变更时间 |
-| `status-check` | 某前置状态变化时通知下游 | Edge 关系 |
-| `mention` | 评论中 @ 某个用户 | Comment.mentions → 自动生成 |
-
-**手动催促**：用户在详情面板点击"催促"按钮 → 选择模板 → 发送给目标角色的所有已认领人。
+| `single` | 一人操作即完成 | 显示「标记完成」 |
+| `count` | 累计 N 人完成才变状态 | **隐藏「标记完成」**，只显示「标记我已填写」，满人自动完成 |
+| `all` | 所有认领人都完成才变状态 | **隐藏「标记完成」**，只显示「标记我已填写」，满人自动完成 |
 
 ### 2.13 Permission（状态转换 + 节点操作 + 字段可见性）
 
-第三版增加字段级可见性控制。
-
-```json
-// 角色级权限
-{
-  "roleId": "executor",
-  "transitions": [
-    { "from": "todo", "to": "in-progress", "label": "开始执行" },
-    { "from": "in-progress", "to": "completed", "label": "标记完成" },
-    { "from": "blocked", "to": "in-progress", "label": "解除阻塞" }
-  ],
-  "canComment": true,
-  "canEditContent": false,
-
-  "canViewFields": ["*"],       // 可见的字段 ID 列表（"*"=全部）
-  "canEditFields": ["*"]       // 可编辑的字段 ID 列表
-}
-
-// 节点级覆盖（allowedOperators 直接在 TaskNode 上定义）
-```
-
-**权限判定三步法**：
+#### v2 更新：三步判定法（实现版）
 
 ```
-canOperate(user, node, mission):
-  ├─ step 1: 管理员免检
-  │    if user.isAdmin → return FULL
+checkNodeOperation(userId, nodeId):
+  ├─ Step 1: 管理员免检（受 adminBypass 开关控制）
+  │    if userId === 'admin' && adminBypass → return FULL
   │
-  ├─ step 2: 节点级白名单
-  │    if node.allowedOperators.length > 0
-  │      AND user.role not in node.allowedOperators → return BLOCKED
-  │    if node.allowedUsers.length > 0
-  │      AND user.id not in node.allowedUsers → return BLOCKED
+  ├─ Step 2: 节点级白名单
+  │    if node.allowedOperators 有值且用户角色不在其中 → BLOCKED
+  │    if node.allowedUsers 有值且用户不在其中 → BLOCKED
   │
-  └─ step 3: 角色级权限
-       perm = mission.permissions[user.claimedRole]
-       if !perm → return READONLY
+  └─ Step 3: 检查用户至少有一个角色匹配节点
+       matchingRoles = allowedOperators 有值 ? allowedOperators : [assignedRole]
+       if 用户已认领角色不在 matchingRoles 中 → BLOCKED
+       else → ALLOW
 
-       // 状态转换
-       if action == status_change:
-         if perm.transitions.has(t.from==node.status) → ALLOW
-         else → DENY
+getAllowedTransitions(userId, nodeId):
+  1. 先检查 canOperate
+  2. 能操作后，取用户所有已认领角色的 transitions（权限叠加）
+  3. count/all 模式过滤掉 to==='completed'（隐藏手动标记完成）
 
-       // 字段可见性
-       if action == read_field(fieldId):
-         if perm.canViewFields.includes(fieldId) → ALLOW
-         if perm.canViewFields.includes("*") → ALLOW
-         else → HIDDEN
-
-       // 评论
-       if action == comment:
-         return perm.canComment
+checkFieldPermission(userId, fieldId):
+  → 'hidden' | 'readonly' | 'editable'
 ```
 
-**默认权限速查**：
+#### DEFAULT_PERMISSIONS（v2 更新版）
 
-| 角色 | 状态转换 | 评论 | 编辑内容 | 字段 |
-|---|---|---|---|---|
-| 执行人 | `todo→进行中→完成` `阻塞→进行中` | ✅ | ✅ | 全部可见可编辑 |
-| 审核员 | `进行中→完成` `完成→已验证` | ✅ | ❌ | 全部可见，部分可编 |
-| 审批人 | `已验证→已批准→已发布` | ✅ | ❌ | 全部可见，只读 |
-| 管理员 | 全部 | ✅ | ✅ | 全部 |
-| 观察员 | 无 | ✅ | ❌ | 全部可见，只读 |
+| 角色 | 状态转换 | 说明 |
+|---|---|---|
+| **executor** | `todo→进行中→完成` `阻塞→进行中` | 完整执行权限 |
+| **reviewer** | `进行中→完成` | 仅审核标记完成，不能开始 |
+| **approver** | 无 | 无转换（当前 5 状态模型下无实际作用） |
+| **admin** | 全部（含回退/恢复） | 受 adminBypass 控制 |
+| **observer** | 无 | 只读 |
 
-### 2.14 导入导出（v3 集成）
+**v2 变更：**
+- reviewer: 移除 完成→已验证（空转换），统一 label 为「标记完成」
+- approver: 移除 完成→批准（空转换），零转换
+- **名称不匹配的角色 fallback 到 observer**（最安全，零转换）
 
-**导出格式**：
-
-```
-单文件 JSON:
-  mission-001.json → 完整包含 roles/nodes/edges/assignments/customFields/comments
-
-多文件 ZIP:
-  mission-001/
-  ├── mission.json       # 主数据
-  ├── sub-mission-001.json  # 子图
-  ├── sub-mission-002.json
-  └── comments.json      # 评论（分离避免主文件过大）
-```
-
-**导出选项**：
-- 格式：JSON | YAML | ZIP
-- 范围：当前视图 | 全部（含子图、评论）
-- 导出文件自动包含 `exportMeta`（版本、时间戳）
-
-**导入流程**：
-```
-选择文件 → 解析
-    │
-    ▼
-冲突检测（ID 重复）
-    │
-    ├→ 无冲突 → 直接导入全部
-    │
-    └→ 有冲突 → 弹窗选择策略:
-         ├─ "跳过"   → 保留现有，跳过冲突项
-         ├─ "覆盖"   → 用导入数据替换现有
-         ├─ "重命名" → 为导入项生成新 ID (原ID_v2)
-         └─ "合并"   → 递归合并字段级（custom 聪明合并）
-    │
-    ▼
-导入确认 → 写入存储 → 刷新视图
-```
-
-**CRUD 接口**（Pinia Store 方法）：
-| 操作 | Mission 级 | Node 级 | Edge 级 | Role 级 |
-|---|---|---|---|---|
-| Create | `createMission()` | `addNode()` | `addEdge()` | `addRole()` |
-| Read | `loadMission()` | `getNodeById()` | — | `getRoles()` |
-| Update | `updateMission()` | `updateNode()` | `updateEdge()` | `updateRole()` |
-| Delete | `deleteMission()` | `removeNode()` | `removeEdge()` | `removeRole()` |
-
-### 2.15 存储策略
+#### 角色名称自动映射表（v2 新增）
 
 ```
-data/missions/
-├── mission-001.json       # 每个 mission 一个 JSON 文件
-├── mission-002.json
-├── sub-mission-001.json   # 嵌套子图（大图独立文件，小图嵌在父文件）
-└── index.json             # Mission 概要索引（id → title + status）
+'普通成员' / '成员' / '执行人' → executor
+'班长' / '组长' / '发起人'     → executor
+'自由成员' / '口令角色'        → executor
+'需审批角色' / '委派角色'      → executor
+'审核员' / '主管' / '财务'     → reviewer
+'需审批角色'                   → executor（认领需审批，认领后正常执行）
+'委派角色'                     → executor（只能被委派，委派后正常执行）
+'审批人' / '辅导员' / '总经理' → approver（零转换）
+'管理员' / '负责人'            → admin
+'观察员'                       → observer（零转换）
+未匹配                           → observer（零转换，安全默认）
 ```
 
-- 纯文本身份，Git 友好
-- 运行时读本地 fetch → Pinia store → localStorage 缓存
-- 可选同步后端：Bmob 文件存储 / WebDAV
+#### 权限叠加示例（v2 新增）
+
+用户同时认领了 执行人 + 审核员：
+
+```
+执行人权限:  todo → in-progress → completed
+审核员权限:                in-progress → completed
+──────────────────────────────────────────────
+叠加结果:   todo → in-progress → completed
+            ↑ 执行人的     ↑ 两者都有
+```
+
+用户在一节点上应用所有已认领角色的转换，不会丢失任一角色的能力。
+
+#### 无操作原因提示（v2 新增）
+
+当 `permissionedTransitions` 为空时，根据具体原因显示：
+
+| 原因 | 提示 |
+|---|---|
+| 节点已完成 | ✅ 该节点已完成，无需操作 |
+| 节点已取消 | 🗑️ 该节点已取消 |
+| count/all + in-progress + 已认领 | 📊 多人任务：请点击「标记我已填写」 |
+| count/all + in-progress + 未认领 | 📊 请先认领角色，再点击「标记我已填写」 |
+| 前置节点未完成 | ⏳ 前置节点「xxx」未完成，暂不可操作 |
+| 角色在当前状态无转换权限 | 🔒 你的角色 (🟢 执行人) 在当前状态「未开始」下无可用操作 |
 
 ---
 
-## 三、视图与组件（第三版集成）
+## 三、视图与组件（v2 更新）
 
-### 3.1 路由结构
-
-| 路径 | 名称 | 组件 | 功能模块 |
-|---|---|---|---|
-| `/missions` | 任务列表 | MissionListView | CRUD |
-| `/mission/:id` | 任务图 | MissionGraphView | 核心视图（DAG + 详情 + 评论 + 统计） |
-| `/mission/:id/node/:nodeId` | 节点详情 | MissionNodeDetailView | CRUD + 自定义字段 + 评论 |
-| `/mission/:id/node/:nodeId/sub` | 子图 | SubMissionView | 嵌套 |
-| `/mission/:id/settings` | 任务设置 | MissionSettingsView | 自定义字段 + 角色 + 提醒规则 |
-| `/mission/:id/assignments` | 认领管理 | AssignmentManageView | 角色审批 + 委派 |
-| `/mission/:id/stats` | 统计面板 | MissionStatsView | 完成统计 |
-| `/missions/import` | 导入 | MissionImportView | 导入 |
-
-### 3.2 主视图布局（MissionGraphView）
+### 3.1 主视图布局（MissionGraphView v2）
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│ ↚ 返回  │  提交班级汇总材料  │  ⚙️设置 📥导出 📤导入  │ 👤 张三(班长)│
+│ ↚ 返回  │  任务标题     │ [📝 编辑模式] / [▶️ 执行模式]  │[👥角色]│
+│          │              │ [↔️连] [＋节点] (编辑模式)  [📥导出] │
 ├──────────────────────────────────────────────────────────────────────┤
-│ 整体进度: ████████░░░░ 65%  ✅ 13/20  │ ⏳ 3进行中  ⏸️ 1阻塞  ⬜ 3未开始│
+│ 整体进度: ████████░░░░ 65%  ✅ 13/20  │ 🟢普通成员 🔵审核员 ...│
+├──────────────────────────────────────────────────────────────────────┤
+│ 🧪 调试工具栏 (仅调试模式)                                          │
+│ 📋 流程 [班级材料] [评优] ... | 🔐 权限 [4种认领] [角色差异] ...  │
+│ 👑 绕过 [⬜⬛] | 🔍 权限诊断 | 📄 JSON                              │
 ├───────────┬──────────────────────────────────────────────────────────┤
 │ 📋 侧栏    │          [可缩放/平移的 DAG 画布]                       │
 │            │                                                         │
 │ 角色统计   │  ┌──────────┐   ┌──────────┐   ┌──────────┐           │
 │ 🟢普通成员  │  │填写信息表│──►│班长汇总  │──►│提交汇总表│           │
-│  12人认领  │  │ ✅ 8/30  │   │ ⏳ 3/5   │   │ ⬜ 0/1   │           │
-│  ✅ 8/12   │  └──────────┘   └──────────┘   └──────────┘           │
-│ 🟡班长     │       │             │               │                   │
-│  5人认领   │       │             ▼               │                   │
-│  ✅ 3/5    │       │         ┌──────────┐       │                   │
-│ 🔴负责人   │       │         │审核确认  │◄──────┘                   │
-│  1人认领   │       │         │ 🔒锁定   │  🔽 子图标记             │
-│  ✅ 1/1    │       │         └────┬─────┘                           │
-│            │       │              │                                  │
-│ 图例       │       │              ▼                                  │
-│ 🟢可操作    │       │         ┌──────────┐                           │
-│ 🔒不可操作  │       │         │归档完成  │                           │
-│ 🔽子图     │       │         │ ⬜未开始  │                           │
-│            │       │         └──────────┘                           │
+│  12人认领  │  │ ✅ 8/30  │   │ 🔒锁定   │   │ ⬜ 0/1   │           │
+│  ✅ 8/12   │  │ 📊 达标  │   │ (仅班长)  │   │           │           │
+│ 🟡班长     │  └──────────┘   └──────────┘   └──────────┘           │
+│  5人认领   │                                                        │
+│  ✅ 3/5    │                                                        │
+│ 🔴负责人   │                                                        │
+│  1人认领   │                                                        │
+│  ✅ 1/1    │                                                        │
+│            │                                                        │
+│ 图例       │                                                        │
+│ 🟢可操作    │                                                        │
+│ 🔒不可操作  │                                                        │
+│ 📊达标     │                                                        │
+│ 🔽子图     │                                                        │
 ├───────────┴──────────────────────────────────────────────────────────┤
 │  [节点详情面板]  ← 点击节点时从底部滑入                              │
 │  ┌──────────────────────────────────────────────────────────────┐   │
 │  │ 填写个人信息表   [🟢可操作]  [进行中🟦]  [普通成员🟩]       │   │
 │  │ ─────────────────────────────────────                       │   │
 │  │ 📝 描述: 每位同学填写个人基本信息                            │   │
-│  │ 📋 自定义字段:                                             │   │
-│  │    姓名: [___]  学号: [___]  学院: [▼ 下拉选择]             │   │
-│  │ ─────────────────────────────────────                       │   │
 │  │ 📊 完成进度: ████████░░░░░░ 8/30 人 ✅                      │   │
+│  │    📊 达标 — 已达最低完成人数，下游节点可开始                │   │
 │  │    张三 ✅  李四 ✅  王五 ⬜  赵六 ⬜ ...                    │   │
 │  │ ─────────────────────────────────────                       │   │
-│  │ 💬 评论 (2):                                               │   │
-│  │   张三: 已填写 @李四 请尽快提交 [回复]                     │   │
-│  │   李四: 收到，今天内完成         [回复]                     │   │
-│  │   [输入 Markdown 评论...] [@] [发送]                        │   │
+│  │ 👤 普通成员 已认领                                            │   │
+│  │   你的角色: 🟢 普通成员                                      │   │
 │  │ ─────────────────────────────────────                       │   │
 │  │ 前置: 无 | 后置: 班长汇总材料                               │   │
-│  │ [✅ 标记完成] [⏰ 催促未完成成员] [🔗 复制跳转链接]         │   │
+│  │ ─────────────────────────────────────                       │   │
+│  │ [✅ 标记我已填写]  ← count/all 模式                          │   │
+│  │ (没有"标记完成"按钮)                                         │   │
+│  │ 📊 多人任务：请点击上方「标记我已填写」                     │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.3 节点卡片样式（按权限和统计）
+### 3.2 节点卡片样式（v2 更新）
 
 ```
 ┌──────────────────────┐   ┌──────────────────────┐
-│ 🟢 填写个人信息表     │   │ 🔒 提交汇总表         │  ← 锁定节点
-│ 普通成员 🟩          │   │ 仅班长 🟡            │
+│ 🟢 填写个人信息表     │   │ 🔒 审核确认           │  ← 锁定节点
+│ 普通成员 🟩          │   │ 仅负责人 🔴           │
 │ [进行中]  ██ 8/30    │   │ [未开始]             │
-│ ── 描述预览...        │   │ ── 只有班长才能操作   │
+│ 📊 达标              │   │ ── 未认领该角色       │
 └──────────────────────┘   └──────────────────────┘
 
 ┌──────────────────────┐   ┌──────────────────────┐
-│ 🔽 综测数据录入       │   │ ✅ 归档完成            │
-│ 审核员 🔵            │   │ 负责人 🔴            │
-│ [已完成]  子图 3/5    │   │ [已完成]             │
-│ 点击展开子图...        │   │                      │
+│ 📊 综测数据录入       │   │ ✅ 归档完成            │
+│ 执行人 🟢            │   │ 负责人 🔴            │
+│ [进行中]  ██ 3/10    │   │ [已完成]             │
+│ 达标 · 下游可开始     │   │                      │
 └──────────────────────┘   └──────────────────────┘
 ```
 
-### 3.4 节点交互行为
+### 3.3 组件清单（v2 更新）
 
-| 操作 | 行为 | 功能模块 |
+| 组件 | 状态 | 说明 |
 |---|---|---|
-| 点击节点 | 底部滑出详情面板（显示字段/评论/统计） | 全部 |
-| 双击节点 | 导航到详情编辑页 | CRUD |
-| 点击 🔽 标记 | 展开/折叠子图 | 嵌套 |
-| 拖拽节点 | 更新 position | CRUD |
-| 滚轮缩放 + 拖拽平移 | 画布操作 | 视图 |
-| 右键节点 | 快捷菜单（状态变更/催促/复制链接） | 权限 + 提醒 + 跳转 |
-| 悬停边 | 显示依赖说明 | Edge |
-| 点击边 | 选中边，显示依赖路径 | Edge |
-| 悬停统计数字 | 显示完成人列表 | 完成统计 |
+| `MissionList.vue` | ✅ 已实现 | 卡片式列表 |
+| `MissionGraphView.vue` | ✅ 已实现 | **核心视图，含编辑/执行模式、详情面板、调试栏** |
+| `GraphCanvas.vue` | ✅ 已实现 | 缩放/平移容器 + nodeLockMap |
+| `NodeCard.vue` | ✅ 已实现 | 含锁定、状态、进度、达标标记 |
+| `GraphControls.vue` | ✅ 已实现 | 缩放按钮 |
+| `StatusBadge.vue` | ✅ 已实现 | 状态徽章 |
+| `ProgressBar.vue` | ✅ 已实现 | 进度条 |
+| `RoleClaimPanel.vue` | ✅ 已实现 | 集成在角色管理对话框内 |
+| `ClaimApprovalList.vue` | ✅ 已实现 | 集成在角色管理对话框内 |
+| `PasswordClaimDialog.vue` | ✅ 已实现 | prompt 弹窗 |
+| `DelegateRoleDialog.vue` | ✅ 已实现 | 集成在角色管理对话框内 |
+| `ImportExport.vue` | ⚠️ 基础 | JSON 导出/导入已实现 |
+| `EdgeLine.vue` | ❌ 未独立 | SVG 边在 GraphCanvas 内联 |
+| `RoleFilter.vue` | ❌ 未实现 | |
+| `DetailPanel.vue` | ❌ 未独立 | 详情面板在 MissionGraphView 内联 |
+| `StatusTransition.vue` | ❌ 未独立 | 状态转换在 MissionGraphView 内联 |
+| `CompletionList.vue` | ❌ 未独立 | 完成列表在详情面板内联 |
+| `CommentThread.vue` | ❌ 未实现 | |
+| `CustomFieldForm.vue` | ❌ 未实现 | |
+| `CustomFieldEditor.vue` | ❌ 未实现 | |
+| `MissionSettings.vue` | ❌ 未实现 | |
+| `ReminderDialog.vue` | ❌ 未实现 | |
+| `BreadcrumbNav.vue` | ❌ 未实现 | |
+| `SubMissionViewer.vue` | ❌ 未实现 | |
+| `SubMissionSummary.vue` | ❌ 未实现 | |
+| `MissionStatsView.vue` | ❌ 未实现 | |
+| `JumpLinkRenderer.vue` | ❌ 未实现 | |
 
-### 3.5 完整组件清单
+### 3.4 节点交互行为（v2 更新）
 
-| 组件 | 功能 | 模块 |
+| 操作 | 编辑模式 | 执行模式 |
 |---|---|---|
-| `MissionList.vue` | 卡片式列表，显示进度条和角色数 | CRUD |
-| `MissionGraph.vue` | 核心 DAG 渲染容器 | 视图 |
-| `NodeCard.vue` | 节点卡片（色带/状态/进度/子图标记） | 全部 |
-| `EdgeLine.vue` | SVG 依赖边 | Edge |
-| `GraphCanvas.vue` | 缩放/平移容器 | 视图 |
-| `GraphControls.vue` | 缩放控制按钮 | 视图 |
-| `ProgressBar.vue` | 可复用的进度条组件 | **v3** 统计 |
-| `RoleFilter.vue` | 角色过滤栏 | 权限 |
-| `DetailPanel.vue` | 节点详情（含字段/评论/统计/操作） | 全部 |
-| `StatusBadge.vue` | 状态徽章 | 状态 |
-| `StatusTransition.vue` | 状态变更（含权限校验 + 完成登记） | 权限 + 统计 |
-| `CompletionList.vue` | 完成人列表（谁已完成/未完成） | **v3** 统计 |
-| `CommentThread.vue` | Markdown 评论 + @提及 + 提醒联动 | 评论 + 提醒 |
-| `CustomFieldForm.vue` | 动态字段渲染器（按 type + 权限） | 自定义字段 |
-| `CustomFieldEditor.vue` | 字段 Schema 编辑器 | 自定义字段 |
-| `MissionSettings.vue` | 设置页（字段/角色/提醒） | 全部 |
-| `ImportExport.vue` | JSON/ZIP 导入导出对话框 | CRUD + 导入导出 |
-| `ReminderDialog.vue` | 催促提醒创建/管理 | 提醒 |
-| `BreadcrumbNav.vue` | 子图层级面包屑 | 嵌套 |
-| `SubMissionViewer.vue` | 子图嵌入查看 | 嵌套 |
-| `SubMissionSummary.vue` | 子图完成度摘要 | **v3** 嵌套 + 统计 |
-| `RoleClaimPanel.vue` | 角色认领面板 | 权限 |
-| `ClaimApprovalList.vue` | 待审批列表 | 权限 |
-| `PasswordClaimDialog.vue` | 口令输入 | 权限 |
-| `DelegateRoleDialog.vue` | 管理员委派 | 权限 |
-| `MissionStatsView.vue` | 统计面板 | **v3** 统计 |
-| `JumpLinkRenderer.vue` | 跳转链接解析渲染 | **v3** 跳转 |
+| 点击节点 | 底部滑出详情面板 | 同左 |
+| 状态转换 | 全部可用 | 按角色权限过滤 |
+| 添加/删除节点 | ✅ 可用 | ❌ 隐藏 |
+| 添加/删除边 | ✅ 可用 | ❌ 隐藏 |
+| 添加/删除角色 | ✅ 可用 | ❌ 隐藏（认领/审批仍可用） |
+| 标记我已填写 | ❌ 拦截 | ✅ count/all 模式 |
+| 删除节点 | ✅ 可用 | ❌ 拦截 + 提示 |
+| 滚轮缩放/拖拽平移 | ✅ | ✅ |
+| 角色认领 | ✅ | ✅ |
 
 ---
 
-## 四、核心交互流程（第二版）
+## 四、核心交互流程（v2 新增）
 
-### 4.1 自定义字段定义流程
-
-```
-进入 Mission 设置
-    │
-    ▼
-"自定义字段" 面板
-    │
-    ▼
-点击"添加字段" → 选择类型 → 填 label → 设是否必填 → 保存
-    │
-    ▼
-字段定义写入 mission.customFields[]
-    │
-    ▼
-节点编辑面板中自动渲染对应的输入控件
-```
-
-### 4.2 评论流程
+### 4.8 编辑模式 vs 执行模式
 
 ```
-点击节点 → 详情面板 → 评论区域
+用户进入 /mission/:id
     │
     ▼
-输入评论内容 (@username 触发提及)
+默认进入 ▶️ 执行模式（顶部标签显示）
     │
-    ▼
-提交 → Comment 写入 → 更新节点时间戳
+    ├→ 点击 "📝 编辑模式" 切换
+    │      │
+    │      ▼
+    │  编辑模式:
+    │  - 显示所有 CRUD 按钮（添加节点/连线/角色）
+    │  - 状态转换无限制
+    │  - 节点详情面板显示"删除节点"按钮
+    │  - 不允许"标记我已填写"
+    │  - 角色管理显示"添加角色"和"删除角色"
     │
-    ▼
-被 @ 的用户收到提醒通知
+    └→ ▶️ 执行模式:
+       - 隐藏所有 CRUD 按钮
+       - 状态转换按角色权限（permissionedTransitions）
+       - 节点详情面板隐藏"删除节点"
+       - count/all 模式显示"标记我已填写"
+       - 角色管理显示认领/审批/委派操作
 ```
 
-### 4.3 催促提醒流程
+### 4.9 权限诊断流程（v2 新增）
 
 ```
-方式 A: 自动规则                方式 B: 手动催促
-─────────────────              ─────────────────
-Reminder 配置定时触发            用户在详情面板点击"催促"
-    │                               │
-    ▼                               ▼
-系统检查条件 (截止/空闲/状态)   弹窗选则催促消息模板
-    │                               │
-    ▼                               ▼
-生成通知 → 发送给目标角色        发送提醒到目标角色
-    │                               │
-    ▼                               ▼
-在应用内通知栏显示 → 可选跳转     同左
-```
-
-### 4.4 子图展开流程
-
-```
-节点卡片右下角有 🔽 标记 → 表示有子图
+点击调试工具栏 "🔍 权限诊断"
     │
     ▼
-点击 🔽
-    │
-    ├→ 已加载 → 在当前画布中展开子图（放大过渡动画）
-    │
-    └→ 未加载 → 异步 fetch subMission JSON → 渲染
-    │
-    ▼
-子图独立缩放/平移
-面包屑更新: 顶层 > 当前节点 > 子节点
-    │
-    ▼
-点击面包屑返回上层
+权限诊断对话框:
+  ├─ 当前用户: admin [👑 管理员] [绕过权限: ✅ 开启]
+  ├─ 已认领角色: 🟢 执行人, 🔵 审核员
+  │
+  └─ 节点权限表:
+       ┌────────┬──────┬────────┬──────┬──────────┬──────┐
+       │ 节点    │ 状态  │ 负责人  │ 可操作? │ 可用转换  │ 原因 │
+       ├────────┼──────┼────────┼──────┼──────────┼──────┤
+       │ 填写表  │ 进行中 │ 普通成员 │ ✅ 是 │ 标记完成  │ 允许 │
+       │ 审核    │ 未开始 │ 审核员  │ ❌ 否 │ —        │ 未认领│
+       └────────┴──────┴────────┴──────┴──────────┴──────┘
 ```
 
-### 4.6 角色认领流程
+### 4.10 调试预设加载
 
 ```
-方式 A: 自由认领 (free)           方式 B: 审核认领 (approval)
-─────────────────────            ─────────────────────
-进入 Mission → 角色列表           进入 Mission → 角色列表
-    │                                 │
-    ▼                                 ▼
-点击"认领"                        点击"认领"
-    │                                 │
-    ▼                                 ▼
-立即生效 → Assignment(status=approved)  创建待审批记录 (status=pending)
-    │                                 │
-    ▼                                 ▼
-节点视图更新 → 可操作节点          通知 approverRole 角色用户
-                                         │
-                                         ▼
-                                  approver 打开审批列表
-                                         │
-                                    ├→ 通过 → status=approved
-                                    │        通知认领人
-                                    │
-                                    └→ 拒绝 → status=rejected
-                                             可填写拒绝理由
-
-方式 C: 口令认领 (password)       方式 D: 委派 (delegated)
-─────────────────────            ─────────────────────
-进入 Mission → 角色列表          管理员/leader 在角色管理面板
-    │                                 │
-    ▼                                 ▼
-点击"输入口令"                    点击"委派" → 选择用户
-    │                                 │
-    ▼                                 ▼
-输入口令 → 校验哈希              直接创建 Assignment(status=approved)
-    │                                 │
-    ├→ 匹配 → 认领成功           被委派用户收到通知
-    └→ 不匹配 → 提示错误
-```
-
-### 4.7 节点操作权限判定（运行时）
-
-```
-用户点击"变更状态"按钮
+调试工具栏 → 📋 流程 / 🔐 权限 → 点击预设
     │
     ▼
-checkCanOperate(user, node, mission)
-    │
-    ├→ 无权限 → 按钮禁用 + 提示"此节点仅限班长操作"
-    │
-    └→ 有权限 → 弹出状态变更对话框
-                    │
-                    ▼
-          选择目标状态 → 提交
-                    │
-                    ▼
-          检查 transition 是否在 role.permissions 中
-                    │
-              ├→ 允许 → 更新 node.status
-              └→ 禁止 → 提示"你的角色不允许此转换"
-```
-
-### 4.5 导入导出流程
-
-```
-导出:
-任务列表页 → 选择 Mission → "导出"
-    │
-    ▼
-选择格式: JSON | YAML
-选择范围: 当前视图 | 全部
-选择是否包含子图和评论
-    │
-    ▼
-浏览器下载 .json 文件 或 .zip（多文件）
-
-导入:
-任务列表页 → "导入"
-    │
-    ▼
-选择文件 (.json / .yaml / .zip)
-    │
-    ▼
-预览 → 冲突检测（ID 重复）
-    │
-    ├→ 无冲突 → 直接导入
-    └→ 有冲突 → 选择: 覆盖 | 跳过 | 重命名
+loadPreset() 覆盖当前任务:
+  ├─ 替换 roles/nodes/edges/assignments/customFields
+  ├─ 自动认领第一个角色给当前用户
+  └─ 刷新页面重新渲染
 ```
 
 ---
 
-## 五、场景示例（六大功能集成实战）
+## 五、场景示例（v2 更新）
 
-这三个场景覆盖全部功能模块，展示它们如何协同工作。
+### 5.1 场景一：班级材料提交 — v2 行为
+
+```
+📝 编辑模式（管理员创建任务）:
+  ① 创建 Mission，添加 3 个角色（普通成员 free / 班长 approval / 负责人 delegated）
+  ② 添加 5 个节点，用边连线，设完成模式
+  ③ 切换到 ▶️ 执行模式
+
+▶️ 执行模式（普通成员操作）:
+  ④ 30 人自由认领"普通成员"
+  ⑤ 每人看到 🟢 "填写信息表" → 点「标记我已填写」
+  ⑥ 节点进度 8/30 → 显示 📊 达标
+  ⑦ 满 30 人 → 自动 completed，通知下游班长
+
+▶️ 执行模式（班长操作）:
+  ⑧ 5 人申请认领"班长" → 负责人审批通过
+  ⑨ 班长看到 "班长汇总" 节点 🟢 可操作
+  ⑩ 汇总完成 → 提交审核
+```
+
+### 5.2 场景二：评奖评优 — v2 权限差异
+
+```
+角色: 执行人(free) → executor → todo→进行中→完成
+      审核员(free) → reviewer → 进行中→完成（不可开始）
+      审批人(delegated) → approver → 零转换
+
+用户同时认领执行人+审核员:
+  → 权限叠加 → todo→进行中→完成
+  → 对 assignedRole=审核员 的节点，虽然只用审核员角色匹配
+    但执行人的 todo→进行中 也能用（权限叠加）
+```
+
+### 5.3 场景三：无操作提示
+
+```
+某节点 assignedRole=审核员，status=todo，用户已认领审核员
+  → reviewer 无 todo→进行中 转换
+  → 详情面板显示:
+    🔒 你的角色 (🔵 审核员) 在当前状态「未开始」下无可用操作
+  → 用户知道原因：审核员不能开始任务，需执行人先开始
+
+前置节点未完成:
+  → ⏳ 前置节点「成员填写」未完成，暂不可操作
+```
 
 ---
 
-### 5.1 场景一：班级材料提交
+## 六、状态管理（v2 更新）
 
-**参与角色**：普通成员（30人）、班长（5个班各1人）、负责人（1人）
+### useMissionStore（v2 新增）
 
-**流程**：
+**状态：**
+- `adminBypass: boolean` — 管理员权限绕过开关，持久化到 localStorage
 
-```
-┌─ 阶段 1: 普通成员填写信息表 ──────────────────────────┐
-│                                                        │
-│  ① 管理员创建 Mission "提交班级汇总材料"，定义：        │
-│     - 角色: member(free) / class-monitor(approval，     │
-│                     需 leader 审批) / leader(delegated) │
-│     - 节点: 填写信息表(completionRule=count, target=30) │
-│     - 自定义字段: "学号"(text) "学院"(select)           │
-│     - 提醒规则: deadline 前 24h 提醒                    │
-│                                                        │
-│  ② 30个普通成员自由认领 member (free → 即时生效)        │
-│     - 每个成员看到 🟢 "填写信息表" 可操作                │
-│     - 填写自定义字段(姓名/学号/学院) → 标记完成          │
-│     - 节点进度: ████░░░░ 8/30                           │
-│                                                        │
-│  ③ 张三在评论中 @李四 催促                              │
-│     - 李四收到提醒通知                                   │
-│     - 节点详情显示完成人列表: 谁已完成/未完成             │
-│                                                        │
-│  ④ 5人想认领班长 (approval → 提交审批)                 │
-│     - 负责人收到待审批通知                               │
-│     - 逐一批复 → 5人班长角色生效                         │
-│                                                        │
-├─ 阶段 2: 班长汇总并提交 ────────────────────────────────┤
-│                                                        │
-│  ⑤ 30人都完成后，"填写信息表" 状态自动变为 completed     │
-│     - 触发提醒: 通知 5 位班长"可以开始汇总"              │
-│                                                        │
-│  ⑥ 班长完成汇总 → "提交汇总表" 节点只对班长开放         │
-│     - allowedOperators: ["class-monitor"]               │
-│     - 普通成员看到 🔒 锁定，无法操作                     │
-│                                                        │
-│  ⑦ 某班长提交后增加评论 "已提交，请审核 @负责人"         │
-│     - 负责人收到 @ 提醒                                  │
-│                                                        │
-├─ 阶段 3: 负责人审核 ────────────────────────────────────┤
-│                                                        │
-│  ⑧ 负责人(已通过 delegated 被委派) → 审核确认           │
-│     - 看到所有自定义字段(只读)                            │
-│     - 评论 "材料完整，通过"                                │
-│     - 变更状态为 completed                                │
-│                                                        │
-│  ⑨ 整个 Mission 完成度: ████████░░ 90%                 │
-│     - 可导出完整 JSON 存档                               │
-│     - 可跳转到原始通知查看详情                            │
-└────────────────────────────────────────────────────────┘
-```
+**权限判定（v2 新增）：**
+- `_getUserRoleIds(userId)` → `string[]` — 获取用户已认领的角色 ID
+- `_getRolePermissions(roleId)` → `Permission | null` — 按角色名自动匹配 DEFAULT_PERMISSIONS
+- `checkNodeOperation(userId, nodeId)` → `{ canOperate, reason, roleIds }` — 三步判定
+- `getAllowedTransitions(userId, nodeId)` → `Transition[]` — 权限叠加 + count/all 过滤
+- `checkStatusTransition(userId, nodeId, toStatus)` → `{ allowed, reason }` — 检查特定转换
+- `getAllowedOperations(userId, nodeId)` → `{ canOperate, canComment, transitions, ... }` — 完整权限
+- `checkFieldPermission(userId, fieldId)` → `'hidden' | 'readonly' | 'editable'`
 
-**涉及模块**：✅ CRUD ✅ 自定义字段 ✅ 嵌套/跳转 ✅ 权限状态 ✅ 评论 ✅ 提醒
-**完成统计数据**：普通成员 30人中 8人完成 = 26.7% / 班长 5人中 0人完成 = 0% / 共计 3/5 节点完成 = 60%
+### 预设系统（v2 新增）
+
+`src/utils/mission-presets.js` 包含 10 个预设，按类别分：
+
+**任务流（6 个）：**
+- 班级材料提交（5 节点·3 角色·count）
+- 评奖评优（5 节点·3 角色·子图标记）
+- 采购审批流（5 节点·4 角色·并行审批）
+- 权限完整版·班级提交（4 节点·完整 permissions）
+- 单人测试（1 节点·single）
+- 多人测试（3 节点·count+single·依赖）
+
+**权限模型（4 个）：**
+- 全部 4 种认领策略（free + approval + password + delegated）
+- 角色权限差异（4 角色不同 transitions）
+- 字段可见性（hidden / readonly / editable）
+- 待审批测试（预置 2 个待审批申请）
 
 ---
 
-### 5.2 场景二：评奖评优全流程
-
-**参与角色**：执行人（2人）、审核员（2人）、审批人（1人）
-
-**特点**：嵌套子图、自定义字段参与状态判定、JumpLink 引用
-
-```
-┌─ 阶段 1: 顶层图 ──────────────────────────────────────┐
-│                                                        │
-│  ① Mission "2026 秋季评奖评优" 含 5 个主节点：          │
-│     n1 发布通知 ─→ n2 材料收集 ─→ n3 综测评审 ─→      │
-│     n4 公示 ─→ n5 名单发布                             │
-│                                                        │
-│  ② n3 "综测评审" 有子图 🔽                             │
-│     ┌─ 子图节点:                                       │
-│     │  n3-1 数据录入 ─→ n3-2 分数校验 ─→ n3-3 排名    │
-│     │  执行人 🟢 可编辑 审核员 🔵 可校验                │
-│     └─ 子图进度聚合: n3 显示 ✅ 3/5                     │
-│                                                        │
-├─ 阶段 2: 自定义字段驱动状态 ────────────────────────────┤
-│                                                        │
-│  ③ 自定义字段:                                         │
-│     cf-score (number) — 综测分数，仅审核员可见/编辑     │
-│     cf-eligibility (boolean) — 是否符合资格，审批人只读 │
-│                                                        │
-│  ④ 状态转换条件:                                       │
-│     只有当 cf-score ≥ 60 且 cf-eligibility=true        │
-│     时，才允许执行人将节点标记为 completed               │
-│                                                        │
-│  ⑤ 某学生分数=55 < 60，状态卡在 in-progress            │
-│     系统自动触发提醒给审核员 "分数不达标，请复核"        │
-│                                                        │
-├─ 阶段 3: JumpLink 引用 ────────────────────────────────┤
-│                                                        │
-│  ⑥ n1 "发布通知" 内容中包含：                           │
-│     "原始通知见 [[notif:notif-xyz123]]"                │
-│     → 渲染为蓝链，点击跳转到通知详情页                   │
-│                                                        │
-│  ⑦ n5 "名单发布" 中引用：                              │
-│     "审批通过名单见 [[node:n4]]"                        │
-│     → 点击跳转到公示节点                                │
-│                                                        │
-├─ 阶段 4: 导出存档 ─────────────────────────────────────┤
-│                                                        │
-│  ⑧ 全部完成后，管理员导出为 ZIP：                       │
-│     mission-002/                                       │
-│     ├── mission.json  (含顶层图 + 字段 + 角色)          │
-│     ├── sub-mission-n3.json  (子图)                    │
-│     └── comments.json  (全部评论/提醒记录)              │
-│                                                        │
-│  ⑨ 导入到新学期 → 冲突检测 → 重命名 ID → 复用模板      │
-└────────────────────────────────────────────────────────┘
-```
-
-**涉及模块**：✅ CRUD ✅ 自定义字段 ✅ 嵌套/跳转 ✅ 权限状态 ✅ 评论 ✅ 提醒
-**集成亮点**：自定义字段值作为状态转换条件 + 子图独立统计 + JumpLink 跨模块引用 + 完整导入导出复用
-
----
-
-### 5.3 场景三：审批流 + 多节点并行
-
-**参与角色**：发起人（1人）、部门主管（3人）、财务（1人）、总经理（1人）
-
-**特点**：角色权限精细控制 + 多角色认领 + 催促提醒 + @提及
-
-```
-┌─ 流程 ──────────────────────────────────────────────────┐
-│                                                        │
-│  ① 发起人创建"采购审批申请" Mission                     │
-│     - 节点: 申请→主管审批→财务审核→总经理批准→归档     │
-│     - 角色: initiator(free) / supervisor(approval,      │
-│             需管理员审批) / finance(delegated) /         │
-│             gm(delegated)                               │
-│                                                        │
-│  ② 发起人填写自定义字段：                               │
-│     - 采购金额 (number) → 如果 > 10000，跳过主管        │
-│       直接到总经理                                      │
-│     - 供应商 (text), 合同附件 (file)                     │
-│                                                        │
-│  ③ 3位部门主管都可审批（并行）：                         │
-│     - 节点 completionRule = "count", target = 2         │
-│     - 任意 2 人批准即可 → 节点进度 1/2                   │
-│     - 首位批准的人在评论中 @财务 "请尽快审核"             │
-│       → 财务收到 @ 提醒                                  │
-│                                                        │
-│  ④ 如果某主管 3 天未操作：                              │
-│     - idle 提醒触发 → 通知该主管 "您有待审批项"          │
-│     - 发起人也可手动点击"催促"                           │
-│                                                        │
-│  ⑤ 财务审核发现金额超标 → blocked 状态                  │
-│     - 评论说明原因 → 发起人修改后重新提交                 │
-│                                                        │
-│  ⑥ 全部完成后 → 导出 JSON 归档                          │
-│     - 包含完整评论记录作为审计依据                        │
-│     - 每步操作有时间戳，可追溯                           │
-│                                                        │
-│  ⑦ 可复制此 Mission 作为模板 → 修改金额阈值再次使用      │
-└────────────────────────────────────────────────────────┘
-```
-
-**涉及模块**：✅ CRUD ✅ 自定义字段 ✅ 权限状态 ✅ 评论 ✅ 提醒
-**集成亮点**：completionRule=count 实现并行审批 + 金额字段条件路由 + idle 提醒 + 完整审计追溯
-
----
-
-## 六、状态管理（Pinia Store）
-
-```
-stores/mission/
-├── mission.js              # 核心 CRUD
-├── mission-graph.js        # 图视图状态
-├── mission-comment.js      # 评论管理
-├── mission-reminder.js     # 提醒管理
-└── mission-stats.js        # 完成统计 (v3 新增)
-```
-
-### useMissionStore
-**CRUD + 导入导出**：
-- `missions` — Mission 列表索引
-- `currentMission` — 当前加载的 Mission
-- `loadMission(id)`, `createMission(data)`, `updateMission(patches)`, `deleteMission(id)`
-- `addNode(data)`, `removeNode(id)`, `updateNode(id, patch)`
-- `addEdge(src, tgt, label)`, `removeEdge(id)`
-- `addRole(data)`, `removeRole(id)`, `updateRole(id, patch)`
-- `importMission(json)` → 含冲突检测
-- `exportMission(id)` → 返回 JSON blob
-- `exportMissionZip(id)` → 返回 ZIP blob（含子图和评论）
-- `getNodeById(id)` — 递归查找（含子图）
-
-**角色认领**：
-- `getClaimPolicy(roleId)`
-- `claimRole(roleId)` — 自动判断 free → 直接通过，approval → pending
-- `claimRoleWithPassword(roleId, password)`
-- `approveClaim(assignmentId)`, `rejectClaim(assignmentId, reason)`
-- `delegateRole(roleId, userId)`
-- `getPendingClaims()`
-
-**权限判定**：
-- `checkNodeOperation(userId, nodeId)` → `{ canOperate: bool, reason: string }`
-- `checkFieldVisibility(userId, fieldId)` → `'hidden' | 'readonly' | 'editable'`
-
-### useMissionGraphStore
-- `selectedNodeId` / `selectedEdgeId`
-- `activeRoleFilter`
-- `zoomLevel` / `panOffset`
-- `expandedSubNodes` — 展开的子图节点 ID 集合
-- `selectNode(id)`, `selectEdge(id)`
-- `setRoleFilter(roleId)`, `toggleSubGraph(nodeId)`
-
-### useMissionCommentStore
-- `commentsByNode` — Map<nodeId, Comment[]>
-- `addComment(nodeId, content, parentId?)` — 自动解析 `@` 生成 mentions
-- `updateComment(commentId, content)`, `deleteComment(commentId)`
-- `getMentionedUsers(nodeId)` — 从评论中提取被 @ 的用户
-
-### useMissionReminderStore
-- `reminders` — Reminder[]（含 auto-generated mention reminders）
-- `addReminder(rule)`, `removeReminder(id)`
-- `checkReminders()` — 事件驱动 + 定时扫描
-- `dismissReminder(id)`
-- `triggerManualUrge(nodeId, message)` — 手动催促
-
-### useMissionStatsStore (v3 新增)
-- `getMissionProgress(id)` → `{ done: number, total: number, pct: number }`
-- `getRoleProgress(missionId, roleId)` → `{ assigned: number, completed: number }`
-- `getNodeCompletionDetail(nodeId)` → `{ completions: CompletionRecord[], remaining: string[] }`
-- `getSubMissionSummary(nodeId)` → `{ done: number, total: number }`
-
----
-
-## 七、与现有系统的关系
+## 七、与现有系统的关系（v2 新增）
 
 | 维度 | 说明 |
 |---|---|
-| **复用 WgEditor** | TaskNode.content 直接使用 WgEditor 编辑 HTML 内容 |
-| **复用 Notification 引用** | content 中 `[[notif:id]]` 渲染为通知链接 |
-| **独立数据通道** | Mission 数据存 JSON 文件，不走 Bmob |
-| **独立路由** | `/missions/*` 命名空间，不影响现有通知路由 |
-| **复用用户系统** | `useUserStore` 用于角色认领和操作者记录 |
-| **复用附件模型** | Attachment 结构与通知的 File 注册表兼容 |
-| **角色 ≠ 系统权限** | 任务角色仅在该 Mission 内有效，不绑定系统管理员 |
+| **编辑模式** | 仅限管理员/创建者使用 CRUD，普通用户在编辑模式下也会被 `addNode()`/`addEdge()`/`removeRole()` 等函数拦截 |
+| **管理员测试** | adminBypass 默认关闭，admin 在 execute 模式下也受角色约束；调试栏可打开绕过 |
+| **count/all 模式** | 不显示"标记完成"按钮，只显示"标记我已填写"，满人自动 `changeNodeStatus('completed')` |
+| **角色名映射** | 无需手动配置 `mission.permissions`，按角色名称自动匹配。不匹配则 fallback 到 observer（零转换） |
+| **权限叠加** | getAllowedTransitions 使用用户所有已认领角色的 transitions，不限于匹配节点的角色 |
+| **无操作提示** | noOpReason computed 输出具体原因，替代笼统的"无可用操作" |
+| **持久化** | localStorage：missions:index / mission:{id} / missions:recycle / missions:adminBypass |
 
 ---
 
-## 八、实施路线（按功能模块）
+## 八、实施路线（v2 更新）
 
 ```
-P0 ──────── P1 ──────── P2 ──────── P3 ──────── P4
-│           │           │           │           │
-├ 数据模型   ├ 角色认领   ├ 内容编辑   ├ 自定义字段 ├ 催促提醒
-├ 图渲染     ├ 状态变更   ├ JumpLink  ├ 评论线程   ├ 导入导出ZIP
-├ CRUD       ├ 完成统计   ├ 角色审批   ├ 子图嵌套   ├ 图编辑器
-├ 缩放拖拽   ├ 导入导出   │           ├ 权限校验   ├ 多端同步
-│           │           │           ├ 完成统计   │
+P0 ──────────── P1 ──────────── P2 ──────────── P3 ──────────── P4
+│               │               │               │               │
+├ 数据模型 ✅    ├ 角色认领✅    ├ 内容编辑      ├ 自定义字段    ├ 催促提醒
+├ 图渲染 ✅      ├ 状态变更✅    ├ JumpLink      ├ 评论线程      ├ 导入导出ZIP
+├ CRUD ✅        ├ 完成统计✅    ├ 角色审批 ✅   ├ 子图嵌套      ├ 图编辑器
+├ 缩放拖拽 ✅    ├ 导入导出 ✅   │               ├ 权限校验 ✅   ├ 多端同步
+│               │               │               ├ 完成统计      │
+│               │               │               │               │
+│ v2 新增:       │ v2 新增:      │               │               │
+│ ├ 编辑/执行    │ ├ 权限叠加    │               │               │
+│ ├ adminBypass  │ ├ 无操作提示  │               │               │
+│ ├ 角色名映射   │ ├ 达标标记   │               │               │
+│ ├ 调试预设     │ ├ DEFAULT_   │               │               │
+│ │              │ │ PERMISSIONS │               │               │
 ```
 
-### P0 — 基础框架
-| 内容 | 产出 | 模块 |
+### P0 — 基础框架 ✅（含 v2 扩展）
+| 内容 | 产出 | 状态 |
 |---|---|---|
-| 数据模型 + JSON Schema + 类型定义 | `src/types/mission.js` | CRUD |
-| 图渲染（dagre + SVG 只读） | MissionGraph + NodeCard + EdgeLine | 视图 |
-| useMissionStore（加载/CRUD） | Pinia store | CRUD |
-| 哈斯图交互（缩放/平移/拖拽） | GraphCanvas + GraphControls | 视图 |
+| 数据模型 + 类型定义 | `src/types/mission.js` | ✅ |
+| 图渲染（dagre + SVG） | GraphCanvas + NodeCard + EdgeLine | ✅ |
+| useMissionStore（加载/CRUD） | Pinia store | ✅ |
+| 哈斯图交互（缩放/平移/拖拽） | GraphCanvas + GraphControls | ✅ |
+| **编辑模式/执行模式** | MissionGraphView 模式切换 | ✅ v2 |
+| **adminBypass 开关** | store.state + 调试栏 UI | ✅ v2 |
+| **角色名 → 权限映射** | _getRolePermissions + nameMap | ✅ v2 |
+| **10 个调试预设** | mission-presets.js | ✅ v2 |
 
-### P1 — 核心操作
-| 内容 | 产出 | 模块 |
+### P1 — 核心操作 ✅（含 v2 扩展）
+| 内容 | 产出 | 状态 |
 |---|---|---|
-| 角色认领 + 角色过滤 | RoleFilter + Assignment | 权限 |
-| 节点详情面板 + 状态变更 | DetailPanel + StatusTransition | 状态 |
-| 完成模式支持（single/count/all） | StatusTransition 扩展 | 状态 + 统计 |
-| 基础导入导出（JSON 单文件） | ImportExport | 导入导出 |
+| 角色认领 + 4 种策略 | claimRole / claimRoleWithPassword / approveClaim / delegateRole | ✅ |
+| 节点详情面板 + 状态变更 | MissionGraphView 内联面板 + changeStatus | ✅ |
+| 完成模式（single/count/all） | markComplete + 自动完成 | ✅ |
+| 基础导入导出（JSON） | exportMission / importMission | ✅ |
+| **权限叠加** | getAllowedTransitions 用 userRoleIds 而非 matchingRoleIds | ✅ v2 |
+| **无操作原因提示** | noOpReason computed（5 种原因） | ✅ v2 |
+| **达标标记** | count/all 模式部分完成时显示 | ✅ v2 |
+| **DEFAULT_PERMISSIONS 诚实化** | 移除空转换/统一 label | ✅ v2 |
 
-### P2 — 内容与协作
-| 内容 | 产出 | 模块 |
+### P2 — 内容与协作（待实现）
+| 内容 | 产出 | 状态 |
 |---|---|---|
-| 节点内容编辑（复用 WgEditor） | MissionNodeDetailView | CRUD |
-| JumpLink 引用（node/mission/notification） | JumpLinkRenderer | 跳转 |
-| 角色认领审核 + 口令/委派 | RoleClaimPanel + ClaimApprovalList + PasswordClaimDialog | 权限 |
-| 节点级操作权限（allowedOperators） | checkNodeOperation 校验 + UI 禁用 | 权限 |
+| 节点内容编辑（WgEditor） | MissionNodeDetailView | ❌ |
+| JumpLink 渲染 | JumpLinkRenderer | ❌ |
+| 认领审核 + 口令/委派 UI | 已集成在角色对话框 | ✅ 基础 |
+| 节点级操作权限 | checkNodeOperation + UI 锁定 | ✅ |
 
-### P3 — 扩展系统
-| 内容 | 产出 | 模块 |
-|---|---|---|
-| 自定义字段 + 编辑器 + 可见性控制 | CustomFieldForm + CustomFieldEditor | 自定义字段 |
-| 评论线程 + @提及 + 提醒联动 | CommentThread | 评论 + 提醒 |
-| 子图嵌套 + 面包屑 + 状态聚合 | SubMissionViewer + BreadcrumbNav + SubMissionSummary | 嵌套 |
-| 角色权限控制状态转换 | Permission 校验 + UI 状态禁用 | 权限 |
-| 完成统计面板 | CompletionList + useMissionStatsStore + MissionStatsView | 统计 |
+### P3 — 扩展系统（待实现）
+| 内容 | 状态 |
+|---|---|
+| 自定义字段 + 可见性控制 | ❌ |
+| 评论线程 + @提及 | ❌ |
+| 子图嵌套 + 面包屑 | ❌ |
+| 完成统计面板 | ❌ |
 
-### P4 — 高级功能
-| 内容 | 产出 | 模块 |
-|---|---|---|
-| 催促提醒（手动 + 自动扫描 + @mention 联动） | ReminderDialog + useMissionReminderStore 完善 | 提醒 |
-| 导入导出（ZIP 多文件 + 冲突策略选择） | ImportExport 扩展 | 导入导出 |
-| 图编辑器模式（可视化创建/删除节点和边） | 编辑器模式 | CRUD |
-| 多端同步（Bmob 文件/WebDAV） | 同步适配器 | 存储 |
+### P4 — 高级功能（待实现）
+| 内容 | 状态 |
+|---|---|
+| 催促提醒 | ❌ |
+| ZIP 导入导出 | ❌ |
+| 图编辑器模式 | ❌ |
+| 多端同步 | ❌ |
 
 ---
 
-## 九、未决设计问题
+## 九、未决设计问题（v2 更新）
 
-1. **子图数据存储**：小图与父图同文件（≤50节点），大图独立文件
-2. **评论通知方式**：应用内通知栏 → 后续 Bmob 推送
-3. **完成统计并发**：completionRule=count 时多人同时标记完成 → 乐观锁 + 实时刷新
-4. **导入冲突策略**：默认跳过，用户可选覆盖/重命名/合并
-5. **自定义字段条件表达式**：如 "cf-score >= 60 → allow completed" → 先用简单比较规则（大于/小于/等于/包含），后续升级为表达式 DSL
+1. **子图数据存储**：未实现
+2. **评论通知方式**：未实现
+3. **DAG 自动依赖阻塞**：v2 确认当前为手动 blocked，自动引擎待实现
+4. **导入冲突策略**：基础 JSON 导入已实现，冲突策略 UI 待完善
+5. **自定义字段条件表达式**：未实现
+6. **后台定时任务（deadline/idle 提醒）**：未实现
+7. **count/all 模式的「达标」阈值配置**：当前只要有人完成就显示达标，未来可配置阈值百分比
+8. **任务创建者角色**：当前编辑模式对所有 admin 开放，未来可限定为任务创建者
