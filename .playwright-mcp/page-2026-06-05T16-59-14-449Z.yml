@@ -1,0 +1,113 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "📢 通知聚合" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: 📢
+        - heading "通知聚合" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - link "⭐ 收藏" [ref=e10] [cursor=pointer]:
+          - /url: "#/favorites"
+        - link "📋 任务" [ref=e11] [cursor=pointer]:
+          - /url: "#/missions"
+        - link "✏️ 管理" [ref=e12] [cursor=pointer]:
+          - /url: "#/admin"
+        - link "🔬 实验室" [ref=e13] [cursor=pointer]:
+          - /url: /lab/pdf-preview.html
+        - link "⚙️ 设置" [ref=e14] [cursor=pointer]:
+          - /url: "#/settings"
+        - link "ℹ️ 关于" [ref=e15] [cursor=pointer]:
+          - /url: "#/about"
+        - generic [ref=e16]: "|"
+        - generic [ref=e17]: test_user1
+        - button "退出" [ref=e18] [cursor=pointer]
+  - main [ref=e20]:
+    - heading "管理后台" [level=2] [ref=e21]
+    - generic [ref=e22]:
+      - button "📰 通知管理" [ref=e23] [cursor=pointer]
+      - button "👥 管理员管理（4 人）" [ref=e24] [cursor=pointer]
+      - button "🗑️ 回收站（0）" [ref=e25] [cursor=pointer]
+      - button "📚 资讯管理" [active] [ref=e26] [cursor=pointer]
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - paragraph [ref=e30]: 共 6 条资讯
+        - button "＋ 新增资讯" [ref=e31] [cursor=pointer]
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - generic [ref=e36]: � 名言
+              - generic [ref=e37]: 启用
+            - paragraph [ref=e38]: 🧪 孔子名言
+            - paragraph [ref=e39]: 📎 精选 · 2026/6/6
+          - generic [ref=e40]:
+            - button "编辑" [ref=e41] [cursor=pointer]
+            - button "删除" [ref=e42] [cursor=pointer]
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - generic [ref=e46]: � 冷知识
+              - generic [ref=e47]: 启用
+            - paragraph [ref=e48]: 🧪 校园冷知识
+            - paragraph [ref=e49]: 📎 精选 · 2026/6/6
+          - generic [ref=e50]:
+            - button "编辑" [ref=e51] [cursor=pointer]
+            - button "删除" [ref=e52] [cursor=pointer]
+        - generic [ref=e53]:
+          - generic [ref=e54]:
+            - generic [ref=e55]:
+              - generic [ref=e56]: � 小贴士
+              - generic [ref=e57]: 启用
+            - paragraph [ref=e58]: 🧪 高效学习小技巧
+            - paragraph [ref=e59]: 📎 精选 · 2026/6/6
+          - generic [ref=e60]:
+            - button "编辑" [ref=e61] [cursor=pointer]
+            - button "删除" [ref=e62] [cursor=pointer]
+        - generic [ref=e63]:
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - generic [ref=e66]: � 校园新闻
+              - generic [ref=e67]: 置顶
+              - generic [ref=e68]: 启用
+            - paragraph [ref=e69]: 🧪 选课系统开放通知
+            - paragraph [ref=e70]: 📎 教务处 · 2026/6/6
+          - generic [ref=e71]:
+            - button "编辑" [ref=e72] [cursor=pointer]
+            - button "删除" [ref=e73] [cursor=pointer]
+        - generic [ref=e74]:
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]: � 校园新闻
+              - generic [ref=e78]: 必读
+              - generic [ref=e79]: 启用
+            - paragraph [ref=e80]: 🧪 四六级报名提醒
+            - paragraph [ref=e81]: 📎 教务处 · 2026/6/6
+          - generic [ref=e82]:
+            - button "编辑" [ref=e83] [cursor=pointer]
+            - button "删除" [ref=e84] [cursor=pointer]
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - generic [ref=e87]:
+              - generic [ref=e88]: � 规定
+              - generic [ref=e89]: 启用
+            - paragraph [ref=e90]: 🧪 图书馆借阅规则更新
+            - paragraph [ref=e91]: 📎 图书馆 · 2026/6/6
+          - generic [ref=e92]:
+            - button "编辑" [ref=e93] [cursor=pointer]
+            - button "删除" [ref=e94] [cursor=pointer]
+      - generic [ref=e95]:
+        - generic [ref=e97]: 🧪 资讯调试面板
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - button "🔄 重置当天状态" [ref=e100] [cursor=pointer]
+            - button "📤 测试推送" [ref=e101] [cursor=pointer]
+            - button "🌱 一键生成默认资讯" [ref=e102] [cursor=pointer]
+            - button "🏷 标记旧数据" [ref=e103] [cursor=pointer]
+            - button "📄 显示全部 JSON" [ref=e104] [cursor=pointer]
+          - generic [ref=e105]:
+            - generic [ref=e106]: "items: 6条"
+            - generic [ref=e107]: "viewedIds: [0aef1388ce, 5c91964d9f, aeee15d0e6, 9e66c10640, 30c7686a03, 4f51e4a259]"
+            - generic [ref=e108]: "favoriteIds: [空]"
+            - generic [ref=e109]: "lastFetchDate: 2026-06-05"
+            - generic [ref=e110]: "dismissed: false"
+            - generic [ref=e111]: "today: (未设置)"

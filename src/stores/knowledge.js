@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { getActiveItems } from '@/api/knowledge'
 import { createItem, updateItem, deleteItem, getAllItems, getItem } from '@/api/knowledge'
+import Bmob from '@/api/bmob'
 import {
   loadUserState,
   saveUserState,
@@ -331,14 +332,17 @@ export const useKnowledgeStore = defineStore('knowledge', {
       for (const item of this.items) {
         const title = item.title || ''
         const tags = item.tags || []
-        // 跳过已有标记的
         if (tags.includes('测试数据')) continue
-        // 标题以 🧪 开头 → 只缺标签
-        // 旧数据（无 🧪 前缀）→ 标题和标签都补
         const newTitle = title.startsWith('🧪') ? title : `🧪 ${title}`
-        const newTags = [...new Set([...tags, '测试数据'])]
         try {
-          await updateItem(item.objectId, { title: newTitle, tags: newTags })
+          // 更新标题
+          if (newTitle !== title) {
+            await updateItem(item.objectId, { title: newTitle })
+          }
+          // 追加标签（Bmob 数组字段必须用 addUnique 操作符）
+          const q = Bmob.Query('KnowledgeItems')
+          q.addUnique('tags', ['测试数据'])
+          await q.save(item.objectId)
           count++
         } catch (e) {
           console.warn('标记测试资讯失败:', title, e?.message || e)

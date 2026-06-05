@@ -10,6 +10,9 @@
           <router-link to="/favorites" class="text-sm text-gray-500 hover:text-gray-700 no-underline">
             ⭐ 收藏
           </router-link>
+          <router-link to="/" class="text-sm text-gray-500 hover:text-gray-700 no-underline">
+            📚 资讯
+          </router-link>
           <router-link to="/missions" class="text-sm text-gray-500 hover:text-gray-700 no-underline">
             📋 任务
           </router-link>

@@ -1,0 +1,77 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "📢 通知聚合" [active] [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: 📢
+        - heading "通知聚合" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - link "⭐ 收藏" [ref=e10] [cursor=pointer]:
+          - /url: "#/favorites"
+        - link "📋 任务" [ref=e11] [cursor=pointer]:
+          - /url: "#/missions"
+        - link "✏️ 管理" [ref=e12] [cursor=pointer]:
+          - /url: "#/admin"
+        - link "🔬 实验室" [ref=e13] [cursor=pointer]:
+          - /url: /lab/pdf-preview.html
+        - link "⚙️ 设置" [ref=e14] [cursor=pointer]:
+          - /url: "#/settings"
+        - link "ℹ️ 关于" [ref=e15] [cursor=pointer]:
+          - /url: "#/about"
+        - generic [ref=e16]: "|"
+        - generic [ref=e17]: test_user1
+        - button "退出" [ref=e18] [cursor=pointer]
+  - main [ref=e241]:
+    - heading "管理后台" [level=2] [ref=e242]
+    - generic [ref=e243]:
+      - button "📰 通知管理" [ref=e244] [cursor=pointer]
+      - button "👥 管理员管理（0 人）" [ref=e245] [cursor=pointer]
+      - button "🗑️ 回收站（0）" [ref=e246] [cursor=pointer]
+      - button "📚 资讯管理" [ref=e247] [cursor=pointer]
+    - generic [ref=e248]:
+      - generic [ref=e249]:
+        - paragraph [ref=e250]: 共 5 条通知
+        - generic [ref=e251]:
+          - button "📥 导出 JSON" [ref=e252] [cursor=pointer]
+          - button "📄 导出 HTML" [ref=e253] [cursor=pointer]
+          - button "🤖 AI 生成" [ref=e254] [cursor=pointer]
+          - button "＋ 新建通知" [ref=e255] [cursor=pointer]
+      - generic [ref=e256]:
+        - generic [ref=e257] [cursor=pointer]:
+          - generic [ref=e258]:
+            - generic [ref=e259]:
+              - generic [ref=e260]: 📊 zongce
+              - generic [ref=e261]: ⭐ 置顶
+            - paragraph [ref=e262]: 关于2025-2026学年综测学生干部加分材料收集与评优工作通知
+            - paragraph [ref=e263]: 2026/6/5
+          - generic [ref=e264]:
+            - button "编辑" [ref=e265]
+            - button "🗑️" [ref=e266]
+        - generic [ref=e267] [cursor=pointer]:
+          - generic [ref=e268]:
+            - generic [ref=e269]:
+              - generic [ref=e270]: 📝 homework
+              - generic [ref=e271]: ⭐ 置顶
+            - paragraph [ref=e272]: 关于Python实验作业提交的通知
+            - paragraph [ref=e273]: 2026/6/5
+          - generic [ref=e274]:
+            - button "编辑" [ref=e275]
+            - button "🗑️" [ref=e276]
+        - generic [ref=e277] [cursor=pointer]:
+          - generic [ref=e278]:
+            - generic [ref=e279]:
+              - generic [ref=e280]: 📌 other
+              - generic [ref=e281]: ⭐ 置顶
+            - paragraph [ref=e282]: 📊 Mermaid 流程图渲染测试（三种图表）
+            - paragraph [ref=e283]: 2026/6/5
+          - generic [ref=e284]:
+            - button "编辑" [ref=e285]
+            - button "🗑️" [ref=e286]
+        - generic [ref=e287] [cursor=pointer]:
+          - generic [ref=e288]:
+            - generic [ref=e290]: 🎉 activity
+            - paragraph [ref=e291]: 关于2026级新生学长及迎新使者选拔招募的通知
+            - paragraph [ref=e292]: 2026/6/5
+          - generic [ref=e293]:
+            - button "编辑" [ref=e294]
+            - button "🗑️" [ref=e295]

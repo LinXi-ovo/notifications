@@ -77,10 +77,11 @@ export async function createItem(data) {
  */
 export async function updateItem(id, data) {
   const q = Bmob.Query(TABLE)
+  q.set('id', id)
   Object.entries(data).forEach(([key, value]) => {
     q.set(key, value)
   })
-  return await q.save(id)
+  return await q.save()
 }
 
 /**

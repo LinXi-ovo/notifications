@@ -1,0 +1,175 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "📢 通知聚合" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: 📢
+        - heading "通知聚合" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - link "⭐ 收藏" [ref=e10] [cursor=pointer]:
+          - /url: "#/favorites"
+        - link "📋 任务" [ref=e11] [cursor=pointer]:
+          - /url: "#/missions"
+        - link "✏️ 管理" [ref=e12] [cursor=pointer]:
+          - /url: "#/admin"
+        - link "🔬 实验室" [ref=e13] [cursor=pointer]:
+          - /url: /lab/pdf-preview.html
+        - link "⚙️ 设置" [ref=e14] [cursor=pointer]:
+          - /url: "#/settings"
+        - link "ℹ️ 关于" [ref=e15] [cursor=pointer]:
+          - /url: "#/about"
+        - generic [ref=e16]: "|"
+        - generic [ref=e17]: test_user1
+        - button "退出" [ref=e18] [cursor=pointer]
+  - main [ref=e241]:
+    - heading "管理后台" [level=2] [ref=e242]
+    - generic [ref=e243]:
+      - button "📰 通知管理" [ref=e244] [cursor=pointer]
+      - button "👥 管理员管理（4 人）" [ref=e296] [cursor=pointer]
+      - button "🗑️ 回收站（0）" [ref=e246] [cursor=pointer]
+      - button "📚 资讯管理" [active] [ref=e247] [cursor=pointer]
+    - generic [ref=e298]:
+      - generic [ref=e299]:
+        - paragraph [ref=e300]: 共 12 条资讯
+        - button "＋ 新增资讯" [ref=e301] [cursor=pointer]
+      - generic [ref=e302]:
+        - generic [ref=e303]:
+          - generic [ref=e304]:
+            - generic [ref=e305]:
+              - generic [ref=e306]: � 名言
+              - generic [ref=e307]: 启用
+            - paragraph [ref=e308]: 🧪 孔子名言
+            - paragraph [ref=e309]: 📎 精选 · 2026/6/6
+          - generic [ref=e310]:
+            - button "编辑" [ref=e311] [cursor=pointer]
+            - button "删除" [ref=e312] [cursor=pointer]
+        - generic [ref=e313]:
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - generic [ref=e316]: � 冷知识
+              - generic [ref=e317]: 启用
+            - paragraph [ref=e318]: 🧪 校园冷知识
+            - paragraph [ref=e319]: 📎 精选 · 2026/6/6
+          - generic [ref=e320]:
+            - button "编辑" [ref=e321] [cursor=pointer]
+            - button "删除" [ref=e322] [cursor=pointer]
+        - generic [ref=e323]:
+          - generic [ref=e324]:
+            - generic [ref=e325]:
+              - generic [ref=e326]: � 小贴士
+              - generic [ref=e327]: 启用
+            - paragraph [ref=e328]: 🧪 高效学习小技巧
+            - paragraph [ref=e329]: 📎 精选 · 2026/6/6
+          - generic [ref=e330]:
+            - button "编辑" [ref=e331] [cursor=pointer]
+            - button "删除" [ref=e332] [cursor=pointer]
+        - generic [ref=e333]:
+          - generic [ref=e334]:
+            - generic [ref=e335]:
+              - generic [ref=e336]: � 校园新闻
+              - generic [ref=e337]: 置顶
+              - generic [ref=e338]: 启用
+            - paragraph [ref=e339]: 🧪 选课系统开放通知
+            - paragraph [ref=e340]: 📎 教务处 · 2026/6/6
+          - generic [ref=e341]:
+            - button "编辑" [ref=e342] [cursor=pointer]
+            - button "删除" [ref=e343] [cursor=pointer]
+        - generic [ref=e344]:
+          - generic [ref=e345]:
+            - generic [ref=e346]:
+              - generic [ref=e347]: � 校园新闻
+              - generic [ref=e348]: 必读
+              - generic [ref=e349]: 启用
+            - paragraph [ref=e350]: 🧪 四六级报名提醒
+            - paragraph [ref=e351]: 📎 教务处 · 2026/6/6
+          - generic [ref=e352]:
+            - button "编辑" [ref=e353] [cursor=pointer]
+            - button "删除" [ref=e354] [cursor=pointer]
+        - generic [ref=e355]:
+          - generic [ref=e356]:
+            - generic [ref=e357]:
+              - generic [ref=e358]: � 规定
+              - generic [ref=e359]: 启用
+            - paragraph [ref=e360]: 🧪 图书馆借阅规则更新
+            - paragraph [ref=e361]: 📎 图书馆 · 2026/6/6
+          - generic [ref=e362]:
+            - button "编辑" [ref=e363] [cursor=pointer]
+            - button "删除" [ref=e364] [cursor=pointer]
+        - generic [ref=e365]:
+          - generic [ref=e366]:
+            - generic [ref=e367]:
+              - generic [ref=e368]: � 名言
+              - generic [ref=e369]: 启用
+            - paragraph [ref=e370]: 孔子名言
+            - paragraph [ref=e371]: 📎 精选 · 2026/6/5
+          - generic [ref=e372]:
+            - button "编辑" [ref=e373] [cursor=pointer]
+            - button "删除" [ref=e374] [cursor=pointer]
+        - generic [ref=e375]:
+          - generic [ref=e376]:
+            - generic [ref=e377]:
+              - generic [ref=e378]: � 冷知识
+              - generic [ref=e379]: 启用
+            - paragraph [ref=e380]: 校园冷知识
+            - paragraph [ref=e381]: 📎 精选 · 2026/6/5
+          - generic [ref=e382]:
+            - button "编辑" [ref=e383] [cursor=pointer]
+            - button "删除" [ref=e384] [cursor=pointer]
+        - generic [ref=e385]:
+          - generic [ref=e386]:
+            - generic [ref=e387]:
+              - generic [ref=e388]: � 小贴士
+              - generic [ref=e389]: 启用
+            - paragraph [ref=e390]: 高效学习小技巧
+            - paragraph [ref=e391]: 📎 精选 · 2026/6/5
+          - generic [ref=e392]:
+            - button "编辑" [ref=e393] [cursor=pointer]
+            - button "删除" [ref=e394] [cursor=pointer]
+        - generic [ref=e395]:
+          - generic [ref=e396]:
+            - generic [ref=e397]:
+              - generic [ref=e398]: � 校园新闻
+              - generic [ref=e399]: 置顶
+              - generic [ref=e400]: 启用
+            - paragraph [ref=e401]: 选课系统开放通知
+            - paragraph [ref=e402]: 📎 教务处 · 2026/6/5
+          - generic [ref=e403]:
+            - button "编辑" [ref=e404] [cursor=pointer]
+            - button "删除" [ref=e405] [cursor=pointer]
+        - generic [ref=e406]:
+          - generic [ref=e407]:
+            - generic [ref=e408]:
+              - generic [ref=e409]: � 校园新闻
+              - generic [ref=e410]: 必读
+              - generic [ref=e411]: 启用
+            - paragraph [ref=e412]: 四六级报名提醒
+            - paragraph [ref=e413]: 📎 教务处 · 2026/6/5
+          - generic [ref=e414]:
+            - button "编辑" [ref=e415] [cursor=pointer]
+            - button "删除" [ref=e416] [cursor=pointer]
+        - generic [ref=e417]:
+          - generic [ref=e418]:
+            - generic [ref=e419]:
+              - generic [ref=e420]: � 规定
+              - generic [ref=e421]: 启用
+            - paragraph [ref=e422]: 图书馆借阅规则更新
+            - paragraph [ref=e423]: 📎 图书馆 · 2026/6/5
+          - generic [ref=e424]:
+            - button "编辑" [ref=e425] [cursor=pointer]
+            - button "删除" [ref=e426] [cursor=pointer]
+      - generic [ref=e427]:
+        - generic [ref=e429]: 🧪 资讯调试面板
+        - generic [ref=e430]:
+          - generic [ref=e431]:
+            - button "🔄 重置当天状态" [ref=e432] [cursor=pointer]
+            - button "📤 测试推送" [ref=e433] [cursor=pointer]
+            - button "🌱 一键生成默认资讯" [ref=e434] [cursor=pointer]
+            - button "🏷 标记旧数据" [ref=e435] [cursor=pointer]
+            - button "📄 显示全部 JSON" [ref=e436] [cursor=pointer]
+          - generic [ref=e437]:
+            - generic [ref=e438]: "items: 12条"
+            - generic [ref=e439]: "viewedIds: [0aef1388ce, 5c91964d9f, aeee15d0e6, 9e66c10640, 30c7686a03, 4f51e4a259]"
+            - generic [ref=e440]: "favoriteIds: [空]"
+            - generic [ref=e441]: "lastFetchDate: 2026-06-05"
+            - generic [ref=e442]: "dismissed: false"
+            - generic [ref=e443]: "today: 2026-06-05"

@@ -1,0 +1,57 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "📢 通知聚合" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: 📢
+        - heading "通知聚合" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - link "⭐ 收藏" [ref=e10] [cursor=pointer]:
+          - /url: "#/favorites"
+        - link "📋 任务" [ref=e11] [cursor=pointer]:
+          - /url: "#/missions"
+        - link "✏️ 管理" [ref=e12] [cursor=pointer]:
+          - /url: "#/admin"
+        - link "🔬 实验室" [ref=e13] [cursor=pointer]:
+          - /url: /lab/pdf-preview.html
+        - link "⚙️ 设置" [ref=e14] [cursor=pointer]:
+          - /url: "#/settings"
+        - link "ℹ️ 关于" [ref=e15] [cursor=pointer]:
+          - /url: "#/about"
+        - generic [ref=e16]: "|"
+        - generic [ref=e17]: test_user1
+        - button "退出" [ref=e18] [cursor=pointer]
+  - main [ref=e336]:
+    - heading "⚙️ 设置" [level=2] [ref=e337]
+    - generic [ref=e338]:
+      - generic [ref=e339]:
+        - generic [ref=e340]:
+          - paragraph [ref=e341]: 🧪 显示测试通知
+          - paragraph [ref=e342]: 在首页显示类型为「测试」的通知
+        - checkbox [ref=e344]
+      - separator [ref=e346]
+      - generic [ref=e347]:
+        - generic [ref=e348]:
+          - paragraph [ref=e349]: 📚 显示每日资讯
+          - paragraph [ref=e350]: 在首页右下角展示每日资讯卡片
+        - checkbox [checked] [ref=e352]
+      - generic [ref=e354]:
+        - generic [ref=e355]:
+          - paragraph [ref=e356]: 📱 移动端显示资讯
+          - paragraph [ref=e357]: 在首页通知列表顶部嵌入资讯卡片
+        - checkbox [ref=e359]
+      - separator [ref=e361]
+      - generic [ref=e362]:
+        - generic [ref=e363]:
+          - paragraph [ref=e364]: 🧪 调试模式
+          - paragraph [ref=e365]: 显示 HTML 源码、Mermaid 调试预设等开发者功能
+        - checkbox [ref=e367]
+      - separator [ref=e369]
+      - generic [ref=e370]:
+        - paragraph [ref=e371]: 🔬 实验室
+        - paragraph [ref=e372]: 功能试验和效果演示
+        - generic [ref=e373]:
+          - link "📄 模拟通知 · PDF 预览测试" [ref=e374] [cursor=pointer]:
+            - /url: "#/lab/mock-notification"
+          - link "🔧 PDF.js 独立演示" [ref=e375] [cursor=pointer]:
+            - /url: /lab/pdf-viewer.html
