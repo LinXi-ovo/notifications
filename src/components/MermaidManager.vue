@@ -1,7 +1,11 @@
 <template>
   <teleport to="body">
     <div v-if="visible" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @mousedown.self="onBackdrop">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col relative">
+        <!-- Toast -->
+        <div v-if="toastMsg" class="absolute top-4 left-1/2 -translate-x-1/2 z-10 px-4 py-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg">
+          {{ toastMsg }}
+        </div>
         <!-- 标题 -->
         <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 class="text-lg font-bold text-gray-800 m-0">📊 Mermaid 管理</h3>
@@ -103,8 +107,28 @@ function rebuildEntries() {
   }))
 }
 
+const toastMsg = ref('')
+let toastTimer = null
+
+function showToast(msg) {
+  toastMsg.value = msg
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMsg.value = '' }, 1500)
+}
+
 function copyToken(id) {
-  navigator.clipboard?.writeText(`[[!${id}]]`).catch(() => {})
+  navigator.clipboard?.writeText(`[[!${id}]]`).then(() => {
+    showToast('✅ 已复制 [[!' + id + ']]')
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea')
+    ta.value = `[[!${id}]]`
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    showToast('✅ 已复制')
+  })
 }
 
 function openNew() {
