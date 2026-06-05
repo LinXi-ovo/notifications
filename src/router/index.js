@@ -8,9 +8,13 @@ import FavoritesView from '@/views/FavoritesView.vue'
 import CategoryManagerView from '@/views/CategoryManagerView.vue'
 import SettingsView from '@/views/SettingsView.vue'
 import LabMockNotification from '@/views/LabMockNotification.vue'
+import MissionListView from '@/views/mission/MissionListView.vue'
+import MissionGraphView from '@/views/mission/MissionGraphView.vue'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
+  { path: '/missions', name: 'missions', component: MissionListView, meta: { requiresAuth: true } },
+  { path: '/mission/:id', name: 'mission-graph', component: MissionGraphView, meta: { requiresAuth: true } },
   { path: '/detail/:id', name: 'detail', component: DetailView, meta: { requiresAuth: true } },
   { path: '/favorites', name: 'favorites', component: FavoritesView, meta: { requiresAuth: true } },
   { path: '/login', name: 'login', component: LoginView, meta: { guest: true } },
