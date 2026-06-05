@@ -42,7 +42,7 @@
                 class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg border border-purple-200 no-underline hover:bg-purple-100 cursor-pointer"
               >📄 模拟通知 · PDF 预览测试</router-link>
               <a
-                href="/lab/pdf-preview.html"
+                href="/lab/pdf-viewer.html"
                 target="_blank"
                 class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg border border-purple-200 no-underline hover:bg-purple-100 cursor-pointer"
               >🔧 PDF.js 独立演示</a>
