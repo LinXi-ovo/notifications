@@ -604,7 +604,6 @@
       v-if="showReminder"
       @close="showReminder = false"
     />
-  </div>
 </template>
 
 <script setup>
