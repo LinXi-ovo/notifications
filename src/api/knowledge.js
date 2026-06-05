@@ -11,8 +11,7 @@ const TABLE = 'KnowledgeItems'
 export async function getActiveItems({ limit = 50 } = {}) {
   const q = Bmob.Query(TABLE)
   q.equalTo('isActive', '==', true)
-  q.descending('priority')
-  q.descending('createdAt')
+  q.order('-priority', '-createdAt')
   q.limit(limit)
   const results = await q.find()
   return results || []
@@ -27,7 +26,7 @@ export async function getActiveItems({ limit = 50 } = {}) {
  */
 export async function getAllItems({ pageSize = 100, page } = {}) {
   const q = Bmob.Query(TABLE)
-  q.descending('createdAt')
+  q.order('-createdAt')
   q.limit(pageSize)
   if (page !== undefined) q.skip(page * pageSize)
   const results = await q.find()
