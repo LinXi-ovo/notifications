@@ -357,6 +357,11 @@
             <span class="text-gray-500 dark:text-gray-400 tabular-nums">{{ selectedNode.completions.length }}/{{ completionTargetDisplay }}</span>
           </div>
           <ProgressBar :pct="completionPct" :show-label="false" />
+          <!-- 达标标记 -->
+          <div v-if="selectedNode.completions.length > 0 && selectedNode.status !== 'completed'" class="mt-1 text-xs">
+            <span class="text-green-600 dark:text-green-400 font-medium">📊 达标</span>
+            <span class="text-gray-400 ml-1">已达最低完成人数，下游节点可开始</span>
+          </div>
           <!-- 已完成列表 -->
           <div v-if="selectedNode.completions.length" class="mt-2 flex flex-wrap gap-1">
             <span v-for="c in selectedNode.completions" :key="c.userId" class="text-xs px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">✅ {{ c.userName || c.userId }}</span>
@@ -754,11 +759,17 @@ const allTransitionsForNode = computed(() => {
 /** 权限感知的状态转换（执行模式用 — 从 store 获取） */
 const permissionedTransitions = computed(() => {
   if (!selectedNode.value || !userStore.username) return []
-  const transitions = missionStore.getAllowedTransitions(userStore.username, selectedNode.value.id)
-  // 补充 emoji 前缀
+  let transitions = missionStore.getAllowedTransitions(userStore.username, selectedNode.value.id)
+
+  // count/all 模式：不允许手动"标记完成"，由满人自动完成
+  if (selectedNode.value.completionRule !== 'single') {
+    transitions = transitions.filter(t => t.to !== 'completed')
+  }
+
+  // 补充 label
   return transitions.map(t => ({
     ...t,
-    label: t.label || (t.to === 'completed' ? '✅ 标记完成' : t.to === 'in-progress' ? '▶️ 开始执行' : `➡️ ${t.to}`)
+    label: t.label || (t.to === 'in-progress' ? '▶️ 开始执行' : `➡️ ${t.to}`)
   }))
 })
 
