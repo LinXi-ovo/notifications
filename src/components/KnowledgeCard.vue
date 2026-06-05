@@ -195,6 +195,11 @@ const isFav = computed(() => {
   return id ? store.userState.favoriteIds.includes(id) : false
 })
 
+/** 是否为测试数据（标签含"测试数据"则显示测试徽章） */
+const isTestItem = computed(() => {
+  return store.currentItem?.tags?.includes('测试数据')
+})
+
 /** 分类显示名称 */
 const categoryLabel = computed(() => {
   const cat = KNOWLEDGE_CATEGORIES.find(c => c.value === store.currentItem?.category)
