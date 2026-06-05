@@ -42,7 +42,7 @@ export const useMissionStore = defineStore('mission', {
     /** 错误信息 */
     error: null,
     /** 管理员权限绕过开关（调试用） */
-    adminBypass: true
+    adminBypass: false
   }),
 
   getters: {
