@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔬 PDF 预览测试 - 实验室</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, 'PingFang SC', sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 20px; color: #333; margin-bottom: 4px; }
+    .desc { font-size: 13px; color: #999; margin-bottom: 16px; }
+    .url-bar {
+      display: flex; gap: 8px; margin-bottom: 16px;
+    }
+    .url-bar input {
+      flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px;
+      font-size: 13px; outline: none;
+    }
+    .url-bar input:focus { border-color: #3b82f6; }
+    .url-bar button {
+      padding: 8px 16px; background: #3b82f6; color: #fff;
+      border: none; border-radius: 6px; cursor: pointer; font-size: 13px;
+    }
+    .url-bar button:hover { background: #2563eb; }
+    .url-bar button:disabled { opacity: 0.5; cursor: default; }
+
+    .toolbar {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+      font-size: 13px; color: #666;
+    }
+    .toolbar button {
+      padding: 4px 12px; background: #fff; border: 1px solid #ddd;
+      border-radius: 4px; cursor: pointer; font-size: 13px;
+    }
+    .toolbar button:hover { background: #f0f0f0; }
+    .toolbar button:disabled { opacity: 0.3; cursor: default; }
+    .toolbar span { font-size: 13px; color: #999; }
+
+    #pdf-container {
+      background: #e0e0e0;
+      border-radius: 8px;
+      padding: 20px;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      overflow-x: auto;
+    }
+    #pdf-container canvas {
+      display: block;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      background: #fff;
+      max-width: 100%;
+      height: auto !important;
+    }
+    .page-info { font-size: 13px; color: #999; }
+    .error {
+      padding: 20px; text-align: center; color: #e00; font-size: 14px;
+    }
+    .loading { padding: 40px; text-align: center; color: #999; font-size: 14px; }
+
+    .quick-links {
+      margin-top: 16px; padding: 16px; background: #fff; border-radius: 8px;
+      border: 1px solid #eee;
+    }
+    .quick-links p { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; }
+    .quick-links a {
+      display: inline-block; margin: 2px 6px 2px 0; padding: 4px 10px;
+      background: #f0f7ff; color: #3b82f6; border-radius: 4px;
+      font-size: 12px; text-decoration: none;
+    }
+    .quick-links a:hover { background: #dbeafe; }
+    .info-box {
+      margin-top: 16px; padding: 12px 16px; background: #fffbeb;
+      border: 1px solid #fde68a; border-radius: 8px; font-size: 12px; color: #92400e;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🔬 PDF 内联预览测试</h1>
+  <p class="desc">使用 PDF.js 在浏览器中直接渲染 PDF，不依赖浏览器内置 PDF 阅读器</p>
+
+  <div class="url-bar">
+    <input id="pdfUrl" type="text" placeholder="输入 PDF 链接..." />
+    <button id="loadBtn">加载</button>
+  </div>
+
+  <div class="toolbar">
+    <button id="prevBtn" disabled>← 上一页</button>
+    <span id="pageInfo">— / —</span>
+    <button id="nextBtn" disabled>下一页 →</button>
+    <span id="zoomInfo">100%</span>
+    <button id="zoomIn">＋</button>
+    <button id="zoomOut">−</button>
+  </div>
+
+  <div id="pdf-container">
+    <div class="loading">输入 PDF 链接，点击「加载」</div>
+  </div>
+
+  <div class="quick-links">
+    <p>快速测试：</p>
+    <a href="#" data-url="https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf">Mozilla 示例 PDF</a>
+  </div>
+
+  <div class="info-box">
+    <strong>📌 说明</strong><br/>
+    PDF.js 通过 <code>canvas</code> 逐页渲染 PDF，<strong>不受 COS Content-Disposition 影响</strong>。
+    只要 COS 允许跨域读取（CORS），PDF.js 就能正常加载和渲染。<br/>
+    当前 App 用的是 iframe 方案（依赖浏览器内置 PDF 阅读器），如果 COS 返回 <code>Content-Disposition: attachment</code>
+    会导致白屏。这个测试页展示的是另一种方案的效果。
+  </div>
+</div>
+
+<script>
+const DEFAULT_PDF = 'https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf'
+
+const pdfUrlInput = document.getElementById('pdfUrl')
+const loadBtn = document.getElementById('loadBtn')
+const container = document.getElementById('pdf-container')
+const prevBtn = document.getElementById('prevBtn')
+const nextBtn = document.getElementById('nextBtn')
+const pageInfo = document.getElementById('pageInfo')
+const zoomInfo = document.getElementById('zoomInfo')
+const zoomInBtn = document.getElementById('zoomIn')
+const zoomOutBtn = document.getElementById('zoomOut')
+
+let pdfDoc = null
+let currentPage = 1
+let scale = 1.5
+
+async function loadPDF(url) {
+  container.innerHTML = '<div class="loading">⏳ 加载 PDF 中...</div>'
+  resetControls()
+
+  // 自动补全 https://
+  if (!/^https?:\/\//i.test(url)) {
+    url = 'https://' + url
+  }
+
+  try {
+    pdfDoc = await pdfjsLib.getDocument(url).promise
+    currentPage = 1
+    updateControls()
+    renderPage(currentPage)
+  } catch (e) {
+    container.innerHTML = `<div class="error">❌ 加载失败：${e.message}</div>`
+  }
+}
+
+function resetControls() {
+  pdfDoc = null
+  prevBtn.disabled = true
+  nextBtn.disabled = true
+  pageInfo.textContent = '— / —'
+}
+
+function updateControls() {
+  if (!pdfDoc) return
+  prevBtn.disabled = currentPage <= 1
+  nextBtn.disabled = currentPage >= pdfDoc.numPages
+  pageInfo.textContent = `${currentPage} / ${pdfDoc.numPages}`
+}
+
+async function renderPage(num) {
+  if (!pdfDoc) return
+  try {
+    const page = await pdfDoc.getPage(num)
+    const viewport = page.getViewport({ scale })
+    // 清除旧 canvas
+    const oldCanvas = container.querySelector('canvas')
+    if (oldCanvas) oldCanvas.remove()
+
+    const canvas = document.createElement('canvas')
+    canvas.className = 'pdf-page'
+    container.prepend(canvas)
+    const ctx = canvas.getContext('2d')
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+
+    await page.render({ canvasContext: ctx, viewport }).promise
+    updateControls()
+  } catch (e) {
+    container.innerHTML += `<div class="error">⚠️ 第 ${num} 页渲染失败：${e.message}</div>`
+  }
+}
+
+loadBtn.addEventListener('click', () => {
+  const url = pdfUrlInput.value.trim()
+  if (url) loadPDF(url)
+})
+
+pdfUrlInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loadBtn.click()
+})
+
+prevBtn.addEventListener('click', () => {
+  if (pdfDoc && currentPage > 1) {
+    currentPage--
+    renderPage(currentPage)
+  }
+})
+
+nextBtn.addEventListener('click', () => {
+  if (pdfDoc && currentPage < pdfDoc.numPages) {
+    currentPage++
+    renderPage(currentPage)
+  }
+})
+
+zoomInBtn.addEventListener('click', () => {
+  scale = Math.min(scale + 0.25, 4)
+  zoomInfo.textContent = Math.round(scale * 100 / 1.5) + '%'
+  if (pdfDoc) renderPage(currentPage)
+})
+
+zoomOutBtn.addEventListener('click', () => {
+  scale = Math.max(scale - 0.25, 0.5)
+  zoomInfo.textContent = Math.round(scale * 100 / 1.5) + '%'
+  if (pdfDoc) renderPage(currentPage)
+})
+
+// 快捷链接填充
+document.querySelectorAll('.quick-links a').forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.preventDefault()
+    pdfUrlInput.value = a.dataset.url
+    loadPDF(a.dataset.url)
+  })
+})
+
+// 初始加载示例
+pdfUrlInput.value = DEFAULT_PDF
+loadPDF(DEFAULT_PDF)
+</script>
+</body>
+</html>

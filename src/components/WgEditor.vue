@@ -205,6 +205,17 @@ function handleCustomPaste(editor, event, callback) {
     return
   }
 
+  // 自动链接粘贴的 URL（还原 Tiptap LinkExt 行为）
+  if (text && /^https?:\/\/[^\s]+$/.test(text.trim())) {
+    event.preventDefault()
+    callback(false)
+    const url = text.trim()
+    editor.dangerouslyInsertHtml(
+      `<p><a href="${escapeAttr(url)}" target="_blank">${escapeHtml(url)}</a></p>`
+    )
+    return
+  }
+
   callback(true) // 放行默认粘贴
 }
 
@@ -217,6 +228,13 @@ function escapeAttr(str) {
   return str
     .replace(/&/g, '&amp;')
     .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 }

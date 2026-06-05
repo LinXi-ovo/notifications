@@ -13,6 +13,9 @@
           <router-link v-if="userStore.isAdmin" to="/admin" class="text-sm text-gray-500 hover:text-gray-700 no-underline">
             ✏️ 管理
           </router-link>
+          <a v-if="userStore.isAdmin" href="/lab/pdf-preview.html" target="_blank" class="text-sm text-gray-500 hover:text-gray-700 no-underline">
+            🔬 实验室
+          </a>
           <router-link to="/settings" class="text-sm text-gray-500 hover:text-gray-700 no-underline">
             ⚙️ 设置
           </router-link>

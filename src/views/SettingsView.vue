@@ -29,6 +29,22 @@
             <div class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500 peer-disabled:opacity-40"></div>
           </label>
         </div>
+
+        <!-- 实验室（仅管理员） -->
+        <template v-if="isAdmin">
+          <hr class="border-gray-200" />
+          <div>
+            <p class="text-sm font-medium text-gray-800 m-0">🔬 实验室</p>
+            <p class="text-xs text-gray-400 mt-0.5 mb-3">功能试验和效果演示</p>
+            <div class="flex flex-wrap gap-2">
+              <a
+                href="/lab/pdf-preview.html"
+                target="_blank"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg border border-purple-200 no-underline hover:bg-purple-100 cursor-pointer"
+              >📄 PDF.js 内联预览演示</a>
+            </div>
+          </div>
+        </template>
       </div>
     </main>
   </div>
