@@ -105,9 +105,14 @@ export const useMissionStore = defineStore('mission', {
 
     // ──────────────── Mission CRUD ────────────────
 
-    /** 创建新 Mission */
+    /** 创建新 Mission（含默认角色） */
     createMission(title, createdBy) {
       const mission = createMission(title, createdBy)
+      // 添加默认角色
+      mission.roles.push(
+        createRole('普通成员', '#3B82F6', '🟢', { type: 'free' }),
+        createRole('管理员', '#EF4444', '🔴', { type: 'free' })
+      )
       // 写入索引
       this.index.push({
         id: mission.id,
