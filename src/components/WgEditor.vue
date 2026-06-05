@@ -47,9 +47,8 @@ import { ref, shallowRef, watch, onBeforeUnmount, nextTick } from 'vue'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import '@wangeditor/editor/dist/css/style.css'
 
-// ── 自定义菜单 & 元素类型（副作用：全局注册） ──
+// ── 自定义菜单（副作用：全局注册） ──
 import './WgEditor/custom-menus.js'
-import './WgEditor/mermaid-plugin.js'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -57,10 +56,31 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const editorRef = shallowRef(null)
-const valueHtml = ref(props.modelValue || '')
 const focused = ref(false)
 const showSource = ref(false)
 const sourceContent = ref('')
+
+// ── Mermaid 转换辅助 ──
+// Bmob 存的是 <div data-mermaid="CODE">，编辑器内显示为 <p data-mermaid-code="CODE">📊 第一行</p>
+function divMermaidToPlaceholder(str) {
+  return str.replace(
+    /<div\s+data-mermaid="([^"]*?)"\s*><\/div>/g,
+    (match, code) => {
+      const firstLine = (code.split('\n')[0] || '').trim() || 'Mermaid'
+      return `<p data-mermaid-code="${code.replace(/"/g, '&quot;')}" style="color:#667085;background:#f8f9fa;border:1px dashed #d0d5dd;border-radius:6px;padding:8px 12px;font-size:13px;font-family:monospace;margin:8px 0;">📊 ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
+    }
+  )
+}
+
+function placeholderToDivMermaid(str) {
+  return str.replace(
+    /<p\s+data-mermaid-code="([^"]*?)"[^>]*?>.*?<\/p>/gs,
+    (match, code) => `<div data-mermaid="${code}"></div>`
+  )
+}
+
+// v-model 内部用 placeholder 格式，对外 emit 用原始格式
+const valueHtml = ref(divMermaidToPlaceholder(props.modelValue || ''))
 
 // ── Mermaid 粘贴检测关键词 ──
 const MERMAID_KEYWORDS = [
@@ -72,8 +92,9 @@ const MERMAID_KEYWORDS = [
 // ── 同步外部 v-model ──
 watch(() => props.modelValue, (val) => {
   const incoming = val || ''
-  if (incoming !== valueHtml.value) {
-    valueHtml.value = incoming
+  const currentRaw = placeholderToDivMermaid(valueHtml.value)
+  if (incoming !== currentRaw) {
+    valueHtml.value = divMermaidToPlaceholder(incoming)
   }
 })
 
@@ -124,8 +145,9 @@ function handleCreated(editor) {
 }
 
 function handleChange(editor) {
-  valueHtml.value = editor.getHtml()
-  emit('update:modelValue', valueHtml.value)
+  const html = editor.getHtml()
+  valueHtml.value = html
+  emit('update:modelValue', placeholderToDivMermaid(html))
 }
 
 function handleFocus() {
@@ -157,8 +179,12 @@ function handleCustomPaste(editor, event, callback) {
   if (text && isMermaidCode(text)) {
     event.preventDefault()
     callback(false)
-    const escaped = escapeAttr(text.trim())
-    editor.dangerouslyInsertHtml(`<div data-mermaid="${escaped}"></div>`)
+    const code = text.trim()
+    const escaped = escapeAttr(code)
+    const firstLine = (code.split('\n')[0] || '').trim() || 'Mermaid'
+    editor.dangerouslyInsertHtml(
+      `<p data-mermaid-code="${escaped}" style="color:#667085;background:#f8f9fa;border:1px dashed #d0d5dd;border-radius:6px;padding:8px 12px;font-size:13px;font-family:monospace;margin:8px 0;">📊 ${firstLine.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`
+    )
     return
   }
 
