@@ -14,16 +14,18 @@
         </div>
       </div>
 
-      <!-- viewer iframe 加载 PDF.js 渲染 -->
-      <div class="flex-1 bg-gray-100 relative min-h-[300px]">
-        <div v-if="loading" class="absolute inset-0 flex items-center justify-center">
+      <!-- PDF viewer 区域 -->
+      <div class="flex-1 bg-gray-100 relative min-h-0 flex">
+        <!-- 加载中 -->
+        <div v-if="loading" class="absolute inset-0 flex items-center justify-center z-10">
           <div class="text-center">
             <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p class="text-sm text-gray-400">正在加载 PDF...</p>
           </div>
         </div>
+        <!-- viewer iframe（v-if 确保创建时已有正确尺寸） -->
         <iframe
-          v-show="!loading"
+          v-if="showViewer"
           :key="iframeKey"
           :src="viewerUrl"
           class="w-full h-full border-none"
@@ -35,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -46,9 +48,9 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const loading = ref(false)
+const showViewer = ref(false)
 const iframeKey = ref(0)
 
-/** viewer URL：用 ?file= 传递 PDF 地址 */
 const viewerUrl = computed(() => {
   if (!props.url) return ''
   const encoded = encodeURIComponent(props.url)
@@ -62,13 +64,21 @@ function onIframeLoad() {
 
 function close() {
   loading.value = false
+  showViewer.value = false
   emit('close')
 }
 
 watch(() => props.visible, (val) => {
   if (val && props.url) {
     loading.value = true
-    iframeKey.value++
+    // 先销毁旧 iframe，再创建新的以确保正确尺寸
+    showViewer.value = false
+    nextTick(() => {
+      iframeKey.value++
+      showViewer.value = true
+    })
+  } else if (!val) {
+    showViewer.value = false
   }
 })
 </script>
