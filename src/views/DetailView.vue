@@ -157,7 +157,7 @@ watch([contentRef, notification], async () => {
         if (!code) return
         try {
           const id = `dm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-          const { svg } = await mermaid.renderAsync(id, code)
+          const { svg } = await mermaid.render(id, code)
           el.innerHTML = svg
           el.classList.add('mermaid-rendered')
           const svgEl = el.querySelector('svg')

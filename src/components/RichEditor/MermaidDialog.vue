@@ -96,7 +96,7 @@ async function renderPreview() {
     // 只清 SVG 容器，不影响外层的 Vue 条件渲染
     svgContainer.value.innerHTML = ''
     const id = `md-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-    const { svg } = await mermaidApi.renderAsync(id, c)
+    const { svg } = await mermaidApi.render(id, c)
 
     svgContainer.value.innerHTML = svg
     const svgEl = svgContainer.value.querySelector('svg')

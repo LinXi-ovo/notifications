@@ -55,7 +55,7 @@ async function renderDiagram() {
 
     svgContainer.value.innerHTML = ''
     const id = `mv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
-    const { svg } = await mermaidApi.renderAsync(id, c)
+    const { svg } = await mermaidApi.render(id, c)
 
     svgContainer.value.innerHTML = svg
     const svgEl = svgContainer.value.querySelector('svg')
