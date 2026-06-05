@@ -1,0 +1,10 @@
+{
+  "name": "filesystem-mcp",
+  "version": "1.2.0",
+  "type": "module",
+  "description": "自定义文件系统 MCP Server — 为 Claude Code 提供本地文件操作能力",
+  "main": "index.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.9.0"
+  }
+}
