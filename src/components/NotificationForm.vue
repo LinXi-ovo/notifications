@@ -16,7 +16,7 @@
       <!-- 富文本编辑器 -->
       <div>
         <label class="block text-sm text-gray-600 mb-1">内容 *</label>
-        <RichEditor v-model="form.content" />
+        <WgEditor v-model="form.content" />
       </div>
 
       <!-- 更多选项 -->
@@ -85,7 +85,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { createNotification, updateNotification } from '@/api/notification'
 import { getCategories } from '@/api/category'
 import { useUserStore } from '@/stores/user'
-import RichEditor from '@/components/RichEditor.vue'
+import WgEditor from '@/components/WgEditor.vue'
 
 const props = defineProps({
   notification: { type: Object, default: null }
