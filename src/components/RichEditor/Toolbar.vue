@@ -39,7 +39,7 @@ const props = defineProps({
   showSource: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['toggle-source', 'insert-image', 'insert-audio', 'insert-video', 'insert-file', 'insert-link'])
+const emit = defineEmits(['toggle-source', 'insert-image', 'insert-audio', 'insert-video', 'insert-file', 'insert-link', 'insert-mermaid'])
 
 const ed = computed(() => props.editor)
 
@@ -60,6 +60,7 @@ const mediaButtons = computed(() => [
   { title: '插入视频', icon: '🎬', handler: () => emit('insert-video') },
   { title: '插入文件', icon: '📎', handler: () => emit('insert-file') },
   { title: '粘贴链接（Ctrl+V）', icon: '🔗', handler: () => emit('insert-link') },
+  { title: '插入流程图', icon: '📊', handler: () => emit('insert-mermaid') },
 ])
 
 function toolBtnClass(active) {

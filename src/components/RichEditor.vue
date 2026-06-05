@@ -10,6 +10,7 @@
       @insert-video="pickFile('video')"
       @insert-file="pickFile('file')"
       @insert-link="handleInsertLink"
+@insert-mermaid="insertMermaid"
     />
 
     <!-- 链接按钮直接用 prompt，不涉及 Vue 组件，零副作用 -->
@@ -42,6 +43,7 @@ import LinkExt from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 import Toolbar from './RichEditor/Toolbar.vue'
+import { MermaidNode } from './RichEditor/MermaidNode.js'
 import { uploadFile } from '@/api/cos'
 
 const props = defineProps({
@@ -64,6 +66,7 @@ const editor = useEditor({
     ImageExt.configure({ inline: false }),
     LinkExt.configure({ openOnClick: false }),
     Placeholder.configure({ placeholder: '开始编辑通知内容...' }),
+    MermaidNode,
   ],
   onUpdate: ({ editor }) => {
     if (!showSource.value) {
@@ -214,6 +217,16 @@ function compressImage(file, { maxWidth = 1200, quality = 0.8 } = {}) {
 // ── 链接插入：提示用户快捷键，浏览器原生行为最可靠 ──
 function handleInsertLink() {
   alert('💡 选中文字后按 Ctrl+V 粘贴链接地址，浏览器会自动生成超链接。\n\n也可以直接输入链接文本，编辑器会自动识别。')
+}
+
+// ── 插入 Mermaid 流程图 ──
+function insertMermaid() {
+  const code = `graph TD
+  A[开始] --> B{判断}
+  B -->|是| C[处理]
+  B -->|否| D[结束]
+  C --> D`
+  editor.value?.chain().focus().insertMermaid(code).run()
 }
 
 // ── 工具栏操作 ──

@@ -145,6 +145,29 @@ onMounted(async () => {
 watch([contentRef, notification], async () => {
   if (!contentRef.value) return
   await nextTick()
+  // 渲染 Mermaid 流程图
+  const mermaids = contentRef.value?.querySelectorAll('[data-mermaid]')
+  if (mermaids?.length) {
+    import('mermaid').then(mod => {
+      const mermaid = mod.default || mod
+      mermaid.initialize({ startOnLoad: false, theme: 'default' })
+      mermaids.forEach(async (el) => {
+        const code = el.getAttribute('data-mermaid') || ''
+        if (!code) return
+        try {
+          const id = `dm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+          const { svg } = await mermaid.renderAsync(id, code)
+          el.innerHTML = svg
+          el.classList.add('mermaid-rendered')
+          const svgEl = el.querySelector('svg')
+          if (svgEl) { svgEl.style.maxWidth = '100%'; svgEl.style.height = 'auto' }
+        } catch (e) {
+          el.innerHTML = `<pre class="text-xs text-red-500 p-2 bg-red-50 rounded">⚠️ 流程图渲染失败</pre>`
+        }
+      })
+    }).catch(() => {})
+  }
+
   const imgs = contentRef.value.querySelectorAll('img')
   imgs.forEach(img => {
     img.addEventListener('click', (e) => {
