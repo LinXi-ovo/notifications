@@ -211,10 +211,19 @@ async function generate() {
   "sourcePerson": "发布人",
   "originalLink": "原文链接（如果有URL则提取）",
   "priority": 0,
-  "tags": ["标签1", "标签2"]
+  "tags": ["标签1", "标签2"],
+  "mermaid": [
+    { "title": "图标题", "code": "graph TD\\n  A[\"开始\"] --> B[\"结束\"]" }
+  ]
 }
 
 优先级：0=普通, 1=置顶, 2=重要, 3=紧急。根据内容判断。
+
+mermaid 说明：
+- 如果内容有流程/步骤/时间线/决策分支，生成 Mermaid 代码
+- title 为图表标题，code 为纯 Mermaid 代码（无 \`\`\` 标记）
+- 中文标签必须用双引号包裹：A["开始"]
+- 不需要时留空数组 []
 
 原始内容：
 ${rawInput.value}`
@@ -250,6 +259,23 @@ ${rawInput.value}`
     }
 
     result.value = JSON.parse(jsonMatch[0])
+
+    // 处理 Mermaid 代码：生成 Token 并注入到正文
+    if (result.value.mermaid?.length) {
+      const mermaidMap = {}
+      let content = result.value.content || ''
+
+      result.value.mermaid.forEach((item, i) => {
+        if (!item.code) return
+        const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
+        mermaidMap[id] = { code: item.code, title: item.title || '' }
+        // 在正文末尾追加 Token
+        content += `\n\n<p>[[!${id}]]</p>`
+      })
+
+      result.value.content = content
+      result.value._mermaidMap = mermaidMap
+    }
   } catch (e) {
     error.value = '请求失败: ' + (e.message || e)
   } finally {
@@ -339,7 +365,12 @@ function escapeHtml(str) {
 
 function apply() {
   if (result.value) {
-    emit('apply', { ...result.value })
+    const data = { ...result.value }
+    delete data._mermaidMap // 不 emit 这个临时字段
+    emit('apply', {
+      ...data,
+      mermaidMap: result.value._mermaidMap || {},
+    })
     close()
   }
 }

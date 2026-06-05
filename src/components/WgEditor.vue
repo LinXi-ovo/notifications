@@ -83,6 +83,21 @@ const parsed = parseMermaid(props.modelValue || '')
 const valueHtml = ref(parsed.html)
 mermaidMap.value = parsed.map
 
+// 从 sessionStorage 读取 AI 生成的 Mermaid 数据（一次性）
+try {
+  const aiMap = sessionStorage.getItem('ai_mermaid_map')
+  if (aiMap) {
+    sessionStorage.removeItem('ai_mermaid_map')
+    const parsedMap = JSON.parse(aiMap)
+    // 合并到现有 map，不覆盖已有条目
+    for (const [id, entry] of Object.entries(parsedMap)) {
+      if (!mermaidMap.value[id]) {
+        mermaidMap.value[id] = entry
+      }
+    }
+  }
+} catch (e) { /* ignore */ }
+
 // ── Mermaid 粘贴检测关键词 ──
 const MERMAID_KEYWORDS = [
   'graph ', 'sequenceDiagram', 'gantt', 'classDiagram', 'pie ',

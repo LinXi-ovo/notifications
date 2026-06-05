@@ -264,6 +264,12 @@ function handleAiResult(data) {
   showForm.value = true
   showAiGenerator.value = false
   editingNotification.value = data
+  // Mermaid 数据通过会话级存储传给 WgEditor
+  if (data.mermaidMap && Object.keys(data.mermaidMap).length > 0) {
+    try {
+      sessionStorage.setItem('ai_mermaid_map', JSON.stringify(data.mermaidMap))
+    } catch (e) { /* ignore */ }
+  }
 }
 
 async function toggleRole(u) {
