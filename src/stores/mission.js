@@ -40,7 +40,9 @@ export const useMissionStore = defineStore('mission', {
     /** 加载状态 */
     loading: false,
     /** 错误信息 */
-    error: null
+    error: null,
+    /** 管理员权限绕过开关（调试用） */
+    adminBypass: true
   }),
 
   getters: {
@@ -627,7 +629,7 @@ export const useMissionStore = defineStore('mission', {
       if (!this.currentMission) return { canOperate: false, reason: '没有加载任务', roleIds: [] }
 
       // Step 1: 管理员免检
-      const isAdmin = userId === 'admin'
+      const _isAdmin = userId === 'admin' && this.adminBypass
       const userRoleIds = this._getUserRoleIds(userId)
 
       const node = this.currentMission.nodes.find(n => n.id === nodeId)
@@ -636,27 +638,27 @@ export const useMissionStore = defineStore('mission', {
       // Step 2a: allowedOperators 白名单（节点级角色白名单）
       if (node.allowedOperators.length > 0) {
         const hasAllowedRole = node.allowedOperators.some(rId => userRoleIds.includes(rId))
-        if (!hasAllowedRole && !isAdmin) {
+        if (!hasAllowedRole && !_isAdmin) {
           return { canOperate: false, reason: '该节点仅限特定角色操作', roleIds: userRoleIds }
         }
       }
 
       // Step 2b: allowedUsers 白名单（节点级用户白名单）
-      if (node.allowedUsers.length > 0 && !node.allowedUsers.includes(userId) && !isAdmin) {
+      if (node.allowedUsers.length > 0 && !node.allowedUsers.includes(userId) && !_isAdmin) {
         return { canOperate: false, reason: '该节点仅限特定用户操作', roleIds: userRoleIds }
       }
 
       // Step 2c: 检查是否至少有一个角色认领了 assignedRole
-      const hasAssignedRole = userRoleIds.includes(node.assignedRole) || isAdmin
+      const hasAssignedRole = userRoleIds.includes(node.assignedRole) || _isAdmin
       if (!hasAssignedRole) {
         // 但如果在 allowedOperators 中有角色，则不要求 assignedRole 匹配
         const hasAnyRoleForNode = node.allowedOperators.length === 0 || node.allowedOperators.some(rId => userRoleIds.includes(rId))
-        if (!hasAnyRoleForNode && !isAdmin) {
+        if (!hasAnyRoleForNode && !_isAdmin) {
           return { canOperate: false, reason: '未认领该节点所需的角色', roleIds: userRoleIds }
         }
       }
 
-      if (isAdmin) return { canOperate: true, reason: '管理员权限', roleIds: userRoleIds }
+      if (_isAdmin) return { canOperate: true, reason: '管理员权限', roleIds: userRoleIds }
 
       return { canOperate: true, reason: '', roleIds: userRoleIds }
     },
@@ -670,8 +672,8 @@ export const useMissionStore = defineStore('mission', {
     getAllowedTransitions(userId, nodeId) {
       if (!this.currentMission) return []
 
-      const isAdmin = userId === 'admin'
-      if (isAdmin) {
+      const _isAdmin = userId === 'admin' && this.adminBypass
+      if (_isAdmin) {
         // 管理员：返回所有可能的转换
         const node = this.currentMission.nodes.find(n => n.id === nodeId)
         if (!node) return []
@@ -716,8 +718,8 @@ export const useMissionStore = defineStore('mission', {
     checkStatusTransition(userId, nodeId, toStatus) {
       if (!this.currentMission) return { allowed: false, reason: '没有加载任务' }
 
-      const isAdmin = userId === 'admin'
-      if (isAdmin) return { allowed: true, reason: '' }
+      const _isAdmin = userId === 'admin' && this.adminBypass
+      if (_isAdmin) return { allowed: true, reason: '' }
 
       const node = this.currentMission.nodes.find(n => n.id === nodeId)
       if (!node) return { allowed: false, reason: '节点不存在' }
@@ -743,10 +745,10 @@ export const useMissionStore = defineStore('mission', {
         return { canOperate: false, canComment: false, canEditContent: false, transitions: [], canComplete: false, reason: '没有加载任务' }
       }
 
-      const isAdmin = userId === 'admin'
+      const _isAdmin = userId === 'admin' && this.adminBypass
       const nodeOp = this.checkNodeOperation(userId, nodeId)
 
-      if (!nodeOp.canOperate && !isAdmin) {
+      if (!nodeOp.canOperate && !_isAdmin) {
         return {
           canOperate: false,
           canComment: false,
@@ -758,7 +760,7 @@ export const useMissionStore = defineStore('mission', {
       }
 
       // 收集所有角色的权限
-      const userRoleIds = isAdmin
+      const userRoleIds = _isAdmin
         ? (this.currentMission.roles?.map(r => r.id) || [])
         : nodeOp.roleIds
 
@@ -773,7 +775,7 @@ export const useMissionStore = defineStore('mission', {
       }
 
       // 管理员全部允许
-      if (isAdmin) {
+      if (_isAdmin) {
         canComment = true
         canEditContent = true
       }
@@ -830,8 +832,8 @@ export const useMissionStore = defineStore('mission', {
     checkFieldPermission(userId, fieldId) {
       if (!this.currentMission) return 'hidden'
 
-      const isAdmin = userId === 'admin'
-      if (isAdmin) return 'editable'
+      const _isAdmin = userId === 'admin' && this.adminBypass
+      if (_isAdmin) return 'editable'
 
       const field = this.currentMission.customFields.find(f => f.id === fieldId)
       if (!field) return 'hidden'
@@ -939,6 +941,11 @@ export const useMissionStore = defineStore('mission', {
     /** 清除错误 */
     clearError() {
       this.error = null
+    },
+
+    /** 设置管理员权限绕过 */
+    setAdminBypass(val) {
+      this.adminBypass = !!val
     }
   }
 })

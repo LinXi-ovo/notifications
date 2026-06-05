@@ -78,6 +78,17 @@
 
       <span class="text-gray-400 dark:text-gray-500">|</span>
 
+      <!-- 管理员绕过开关 -->
+      <label class="flex items-center gap-1 cursor-pointer select-none" title="关闭后 admin 用户也会受角色权限限制">
+        <span class="text-yellow-600 dark:text-yellow-500 font-medium">👑</span>
+        <span class="text-yellow-700 dark:text-yellow-300">绕过</span>
+        <div class="relative w-8 h-4 rounded-full transition-colors" :class="missionStore.adminBypass ? 'bg-yellow-400' : 'bg-gray-300 dark:bg-gray-600'" @click.stop="toggleAdminBypass">
+          <div class="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform" :class="missionStore.adminBypass ? 'translate-x-4' : ''" />
+        </div>
+      </label>
+
+      <span class="text-gray-400 dark:text-gray-500">|</span>
+
       <!-- 诊断工具 -->
       <button
         class="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-800/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-700/40 transition-colors"
@@ -423,6 +434,9 @@
           <p class="text-gray-600 dark:text-gray-300">
             当前用户: <strong>{{ userStore.username || '未登录' }}</strong>
             <span v-if="userStore.username === 'admin'" class="ml-2 text-blue-600 font-semibold">👑 管理员</span>
+            <span v-if="userStore.username === 'admin'" class="ml-2 text-xs" :class="missionStore.adminBypass ? 'text-green-600' : 'text-red-500'">
+              [绕过权限: {{ missionStore.adminBypass ? '✅ 开启' : '❌ 关闭' }}]
+            </span>
           </p>
           <p class="text-gray-600 dark:text-gray-300">
             已认领角色: <span v-if="userRoleNames.length">{{ userRoleNames.join(', ') }}</span>
@@ -466,7 +480,7 @@
           </table>
 
           <div class="text-gray-500 dark:text-gray-400 mt-2">
-            <p>💡 管理员 (admin) 可以操作所有节点。admin 的认领操作不会受角色限制。</p>
+            <p>💡 管理员 (admin) {{ missionStore.adminBypass ? '可以绕过权限操作所有节点' : '受权限控制，与普通用户相同' }}。可在调试栏切换 👑 绕过 开关。</p>
             <p>💡 节点的 allowedOperators 和 allowedUsers 是白名单，空 = 不限制。</p>
           </div>
         </div>
@@ -820,6 +834,11 @@ function delegateRole(roleId) {
   } else {
     alert('❌ ' + result.reason)
   }
+}
+
+// ── 管理员绕过开关 ──
+function toggleAdminBypass() {
+  missionStore.setAdminBypass(!missionStore.adminBypass)
 }
 
 // ── 调试模式：加载预设（覆盖当前任务，不创建新条目） ──
