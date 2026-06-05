@@ -11,6 +11,7 @@ import {
 const STORAGE_KEY_INDEX = 'missions:index'
 const STORAGE_KEY_RECYCLE = 'missions:recycle'
 const STORAGE_KEY_PREFIX = 'mission:'
+const STORAGE_KEY_ADMIN_BYPASS = 'missions:adminBypass'
 const RECYCLE_DAYS = 30 // 回收站保留天数
 
 /** localStorage 工具 */
@@ -41,8 +42,8 @@ export const useMissionStore = defineStore('mission', {
     loading: false,
     /** 错误信息 */
     error: null,
-    /** 管理员权限绕过开关（调试用） */
-    adminBypass: false
+    /** 管理员权限绕过开关（调试用，持久化） */
+    adminBypass: loadJSON(STORAGE_KEY_ADMIN_BYPASS, false)
   }),
 
   getters: {
@@ -953,6 +954,7 @@ export const useMissionStore = defineStore('mission', {
     /** 设置管理员权限绕过 */
     setAdminBypass(val) {
       this.adminBypass = !!val
+      saveJSON(STORAGE_KEY_ADMIN_BYPASS, this.adminBypass)
     }
   }
 })

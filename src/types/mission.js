@@ -268,8 +268,7 @@ export const DEFAULT_PERMISSIONS = {
   },
   reviewer: {
     transitions: [
-      { from: 'in-progress', to: 'completed', label: '审核通过' },
-      { from: 'completed', to: 'completed', label: '已验证' }
+      { from: 'in-progress', to: 'completed', label: '标记完成' }
     ],
     canComment: true,
     canEditContent: false,
@@ -277,9 +276,7 @@ export const DEFAULT_PERMISSIONS = {
     canEditFields: []
   },
   approver: {
-    transitions: [
-      { from: 'completed', to: 'completed', label: '批准' }
-    ],
+    transitions: [],
     canComment: true,
     canEditContent: false,
     canViewFields: ['*'],
