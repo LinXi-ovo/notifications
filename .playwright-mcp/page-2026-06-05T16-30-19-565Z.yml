@@ -1,0 +1,33 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "📢 通知聚合" [ref=e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=e7]: 📢
+        - heading "通知聚合" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - link "⭐ 收藏" [ref=e10] [cursor=pointer]:
+          - /url: "#/favorites"
+        - link "📋 任务" [ref=e11] [cursor=pointer]:
+          - /url: "#/missions"
+        - link "✏️ 管理" [ref=e12] [cursor=pointer]:
+          - /url: "#/admin"
+        - link "🔬 实验室" [ref=e13] [cursor=pointer]:
+          - /url: /lab/pdf-preview.html
+        - link "⚙️ 设置" [ref=e14] [cursor=pointer]:
+          - /url: "#/settings"
+        - generic [ref=e15]: "|"
+        - generic [ref=e16]: test_user1
+        - button "退出" [ref=e17] [cursor=pointer]
+  - generic [ref=e18]:
+    - button "全部 (0)" [ref=e21] [cursor=pointer]
+    - main [ref=e22]:
+      - generic [ref=e24]:
+        - textbox "搜索通知..." [ref=e25]
+        - generic [ref=e26]: 🔍
+      - generic [ref=e27]:
+        - generic [ref=e28]: 📭
+        - paragraph [ref=e29]: 还没有通知，等管理员发布吧
+    - link "＋" [ref=e30] [cursor=pointer]:
+      - /url: "#/admin?create=true"
+    - button "?" [ref=e31] [cursor=pointer]

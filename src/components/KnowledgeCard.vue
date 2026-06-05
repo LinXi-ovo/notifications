@@ -23,6 +23,10 @@
             <span class="text-sm">📚</span>
             <span class="text-xs font-semibold text-gray-700">每日资讯</span>
             <span
+              v-if="isTestItem"
+              class="text-[10px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 rounded font-bold animate-pulse"
+            >🧪 测试</span>
+            <span
               v-if="store.browsingHistory"
               class="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded"
             >回看</span>

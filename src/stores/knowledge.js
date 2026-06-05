@@ -303,12 +303,12 @@ export const useKnowledgeStore = defineStore('knowledge', {
     /** 一键生成默认资讯（调试用） */
     async seedDefaultItems() {
       const defaults = [
-        { title: '图书馆借阅规则更新', content: '<p>自 2026 年 6 月起，每人最多可借 <strong>20 本书</strong>，借期延长至 60 天。</p>', category: 'rule', source: '图书馆', priority: 0, tags: ['图书馆', '借阅'], isActive: true },
-        { title: '四六级报名提醒', content: '<p>2026 年下半年四六级考试报名时间为 <strong>9 月 1 日-9 月 15 日</strong>，请同学们注意时间。</p>', category: 'news', source: '教务处', priority: 2, tags: ['四六级', '考试'], isActive: true },
-        { title: '选课系统开放通知', content: '<p>下学期选课将于 <strong>7 月 10 日</strong> 开放，请提前查看培养方案。</p>', category: 'news', source: '教务处', priority: 1, tags: ['选课'], isActive: true },
-        { title: '高效学习小技巧', content: '<p>使用 <strong>番茄工作法</strong>（25 分钟专注 + 5 分钟休息）能有效提升学习效率。</p>', category: 'tip', source: '精选', priority: 0, tags: ['学习', '效率'], isActive: true },
-        { title: '校园冷知识', content: '<p>图书馆五楼西侧的自习区 <strong>人最少</strong>，还配有电源插座，适合带电脑学习。</p>', category: 'fact', source: '精选', priority: 0, tags: ['图书馆'], isActive: true },
-        { title: '孔子名言', content: '<p><strong>学而不思则罔，思而不学则殆。</strong></p><p>—— 学习而不思考就会迷惘，思考而不学习就会陷入困境。</p>', category: 'quote', source: '精选', priority: 0, tags: ['名言'], isActive: true }
+        { title: '🧪 图书馆借阅规则更新', content: '<p>自 2026 年 6 月起，每人最多可借 <strong>20 本书</strong>，借期延长至 60 天。</p>', category: 'rule', source: '图书馆', priority: 0, tags: ['图书馆', '借阅', '测试数据'], isActive: true },
+        { title: '🧪 四六级报名提醒', content: '<p>2026 年下半年四六级考试报名时间为 <strong>9 月 1 日-9 月 15 日</strong>，请同学们注意时间。</p>', category: 'news', source: '教务处', priority: 2, tags: ['四六级', '考试', '测试数据'], isActive: true },
+        { title: '🧪 选课系统开放通知', content: '<p>下学期选课将于 <strong>7 月 10 日</strong> 开放，请提前查看培养方案。</p>', category: 'news', source: '教务处', priority: 1, tags: ['选课', '测试数据'], isActive: true },
+        { title: '🧪 高效学习小技巧', content: '<p>使用 <strong>番茄工作法</strong>（25 分钟专注 + 5 分钟休息）能有效提升学习效率。</p>', category: 'tip', source: '精选', priority: 0, tags: ['学习', '效率', '测试数据'], isActive: true },
+        { title: '🧪 校园冷知识', content: '<p>图书馆五楼西侧的自习区 <strong>人最少</strong>，还配有电源插座，适合带电脑学习。</p>', category: 'fact', source: '精选', priority: 0, tags: ['图书馆', '测试数据'], isActive: true },
+        { title: '🧪 孔子名言', content: '<p><strong>学而不思则罔，思而不学则殆。</strong></p><p>—— 学习而不思考就会迷惘，思考而不学习就会陷入困境。</p>', category: 'quote', source: '精选', priority: 0, tags: ['名言', '测试数据'], isActive: true }
       ]
       const results = []
       for (const item of defaults) {
