@@ -45,6 +45,21 @@
       </div>
     </div>
 
+    <!-- 🧪 调试工具栏 -->
+    <div v-if="debugMode" class="flex items-center gap-2 px-4 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-700/30 text-xs shrink-0">
+      <span class="font-medium text-yellow-700 dark:text-yellow-400">🧪 调试</span>
+      <span class="text-gray-400 dark:text-gray-500">|</span>
+      <button
+        v-for="p in presets"
+        :key="p.name"
+        class="px-2 py-0.5 rounded bg-yellow-100 dark:bg-yellow-800/30 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-700/40 transition-colors"
+        @click="loadPreset(p.fn)"
+        :title="p.description"
+      >
+        ➕ {{ p.name }}
+      </button>
+    </div>
+
     <!-- 主区域: 画布 + 侧栏 -->
     <div class="flex flex-1 min-h-0">
       <!-- 侧栏 -->
@@ -299,18 +314,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useMissionStore } from '@/stores/mission'
 import { useUserStore } from '@/stores/user'
+import { ALL_PRESETS } from '@/utils/mission-presets'
 import GraphCanvas from '@/components/mission/GraphCanvas.vue'
 import GraphControls from '@/components/mission/GraphControls.vue'
 import ProgressBar from '@/components/mission/ProgressBar.vue'
 import StatusBadge from '@/components/mission/StatusBadge.vue'
 
 const route = useRoute()
+const router = useRouter()
 const missionStore = useMissionStore()
 const userStore = useUserStore()
+
+// 调试模式
+const debugMode = ref(localStorage.getItem('mermaid-debug') === 'true')
+const presets = ALL_PRESETS
 
 const canvasRef = ref(null)
 const selectedNodeId = ref(null)
@@ -512,5 +533,38 @@ function markNodeComplete() {
   const userName = userStore.username
   missionStore.markComplete(selectedNode.value.id, userStore.username, userName)
   alert('已标记完成！')
+}
+
+// ── 调试模式：加载预设 ──
+function loadPreset(presetFn) {
+  const mission = presetFn()
+  // 当前用户认领第一个角色以便操作
+  if (userStore.username) {
+    const firstRole = mission.roles[0]
+    if (firstRole) {
+      mission.assignments.push({
+        roleId: firstRole.id,
+        userId: userStore.username,
+        assignedAt: new Date().toISOString(),
+        status: 'approved'
+      })
+    }
+  }
+  // 写入 store 和 localStorage
+  missionStore.currentMission = mission
+  missionStore._saveMission()
+  // 确保索引中有
+  if (!missionStore.index.find(i => i.id === mission.id)) {
+    missionStore.index.push({
+      id: mission.id,
+      title: mission.title,
+      status: mission.status,
+      createdAt: mission.createdAt,
+      updatedAt: mission.updatedAt
+    })
+    missionStore._updateIndex()
+  }
+  // 跳转到新任务
+  router.push('/mission/' + mission.id)
 }
 </script>
