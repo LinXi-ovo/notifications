@@ -597,9 +597,7 @@ export const useMissionStore = defineStore('mission', {
         '普通成员': 'executor', '成员': 'executor', '执行人': 'executor',
         '班长': 'executor',     '组长': 'executor',  '发起人': 'executor',
         '自由成员': 'executor', '口令角色': 'executor',
-        // ── 审核类 ──
-        '审核员': 'reviewer', '主管': 'reviewer', '财务': 'reviewer',
-        '需审批角色': 'reviewer', '委派角色': 'reviewer',
+        '需审批角色': 'executor', '委派角色': 'executor',
         // ── 审批类 ──
         '审批人': 'approver', '辅导员': 'approver', '总经理': 'approver',
         // ── 管理类 ──
