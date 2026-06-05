@@ -683,20 +683,21 @@ export const useMissionStore = defineStore('mission', {
       const userRoleIds = this._getUserRoleIds(userId)
       if (!userRoleIds.length) return []
 
-      // 只筛选被允许操作该节点的角色
-      //   - allowedOperators 有值 → 只取其中的角色
-      //   - allowedOperators 为空 → 只取 assignedRole
+      // 检查用户是否至少有一个角色能操作该节点
+      //   - allowedOperators 有值 → 匹配其中的角色
+      //   - allowedOperators 为空 → 匹配 assignedRole
       const allowedRoles = node.allowedOperators.length > 0
         ? node.allowedOperators
         : [node.assignedRole]
-      const matchingRoleIds = userRoleIds.filter(rId => allowedRoles.includes(rId))
-      if (!matchingRoleIds.length) return []
+      const canOperate = userRoleIds.some(rId => allowedRoles.includes(rId))
+      if (!canOperate) return []
 
-      // 收集匹配角色的允许转换
+      // 能操作后，使用用户所有已认领角色的转换（权限叠加）
+      // 例如：用户同时有执行人(todo→进行中)和审核员(进行中→完成)，两者都可用
       const allowedTransitions = []
       const seen = new Set()
 
-      for (const roleId of matchingRoleIds) {
+      for (const roleId of userRoleIds) {
         const perm = this._getRolePermissions(roleId)
         if (!perm || !perm.transitions) continue
 
