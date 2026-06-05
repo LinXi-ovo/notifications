@@ -36,6 +36,42 @@
         📥 导入 JSON
         <input type="file" accept=".json" class="hidden" @change="onImportFile" />
       </label>
+      <button class="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors font-medium" @click="showAiImport = true">
+        🤖 AI 导入
+      </button>
+    </div>
+
+    <!-- AI 导入模态框 -->
+    <div v-if="showAiImport" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showAiImport = false">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">🤖 AI 生成任务</h2>
+          <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showAiImport = false">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div class="flex-1 overflow-auto p-4 space-y-3">
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            将 AI 按照 <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">doc/skills/任务生成助手.md</code> 规范生成的 JSON 粘贴到下方，系统将自动解析并创建任务。
+          </p>
+          <textarea
+            v-model="aiJsonInput"
+            rows="12"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-mono text-xs focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+            placeholder='将 AI 输出的 JSON 粘贴到这里...'
+          ></textarea>
+          <p v-if="aiError" class="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">{{ aiError }}</p>
+          <p v-if="aiSuccess" class="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">✅ {{ aiSuccess }}</p>
+          <details class="text-xs text-gray-400">
+            <summary class="cursor-pointer hover:text-gray-600">💡 没有 AI？粘贴示例 JSON 试试</summary>
+            <pre class="mt-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg overflow-x-auto text-[10px] leading-relaxed">{{ exampleJson }}</pre>
+          </details>
+        </div>
+        <div class="flex justify-end gap-2 px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+          <button class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" @click="showAiImport = false">取消</button>
+          <button class="px-4 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50" :disabled="!aiJsonInput.trim()" @click="submitAiImport">🤖 解析并创建</button>
+        </div>
+      </div>
     </div>
 
     <!-- 任务列表 -->
@@ -105,16 +141,60 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useMissionStore } from '@/stores/mission'
 import { useUserStore } from '@/stores/user'
+import { parseAiMission } from '@/utils/ai-mission-parser'
 import ProgressBar from '@/components/mission/ProgressBar.vue'
 
+const router = useRouter()
 const missionStore = useMissionStore()
 const userStore = useUserStore()
 
 const showCreateModal = ref(false)
 const newMissionTitle = ref('')
 const loading = ref(false)
+
+// AI 导入
+const showAiImport = ref(false)
+const aiJsonInput = ref('')
+const aiError = ref('')
+const aiSuccess = ref('')
+const exampleJson = `{
+  "title": "综测信息收集",
+  "description": "学生填写 → 班长汇总 → 辅导员审核",
+  "roles": [
+    { "name": "普通成员", "color": "#3B82F6", "emoji": "🟢", "claimPolicy": "free" },
+    { "name": "班长", "color": "#F59E0B", "emoji": "👨‍🎓", "claimPolicy": "free" },
+    { "name": "辅导员", "color": "#EF4444", "emoji": "🔴", "claimPolicy": "delegated" }
+  ],
+  "nodes": [
+    {
+      "title": "填写信息表",
+      "description": "登录系统填写个人信息",
+      "assignedRole": "普通成员",
+      "completionRule": "count",
+      "completionTarget": 30,
+      "deadline": "2026-06-15T23:59:59.000Z"
+    },
+    {
+      "title": "班长汇总提交",
+      "description": "汇总后提交给辅导员",
+      "assignedRole": "班长",
+      "completionRule": "single",
+      "completionTarget": 1,
+      "dependsOn": ["填写信息表"]
+    },
+    {
+      "title": "辅导员审核",
+      "description": "审核汇总材料",
+      "assignedRole": "辅导员",
+      "completionRule": "single",
+      "completionTarget": 1,
+      "dependsOn": ["班长汇总提交"]
+    }
+  ]
+}`
 
 const missions = computed(() => {
   return missionStore.index.map(item => {
@@ -163,6 +243,46 @@ function permanentlyDelete(id) {
 function emptyRecycleBin() {
   if (confirm('确定清空回收站？所有条目将被永久删除，无法恢复。')) {
     missionStore.emptyRecycleBin()
+  }
+}
+
+// ── AI 导入 ──
+function submitAiImport() {
+  aiError.value = ''
+  aiSuccess.value = ''
+
+  try {
+    const mission = parseAiMission(aiJsonInput.value)
+    // 让当前用户认领第一个角色
+    if (userStore.username && mission.roles[0]) {
+      mission.assignments.push({
+        roleId: mission.roles[0].id,
+        userId: userStore.username,
+        assignedAt: new Date().toISOString(),
+        status: 'approved'
+      })
+    }
+    // 写入 store
+    missionStore.currentMission = mission
+    missionStore._saveMission()
+    missionStore.index.push({
+      id: mission.id,
+      title: mission.title,
+      status: mission.status,
+      createdAt: mission.createdAt,
+      updatedAt: mission.updatedAt
+    })
+    missionStore._updateIndex()
+
+    aiSuccess.value = `"${mission.title}" 创建成功！即将跳转... (${mission.nodes.length} 个节点，${mission.roles.length} 个角色)`
+    setTimeout(() => {
+      showAiImport.value = false
+      aiJsonInput.value = ''
+      aiSuccess.value = ''
+      router.push('/mission/' + mission.id)
+    }, 1500)
+  } catch (e) {
+    aiError.value = e.message
   }
 }
 
