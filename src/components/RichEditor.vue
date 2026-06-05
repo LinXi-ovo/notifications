@@ -31,6 +31,13 @@
 
     <!-- 隐藏的文件输入 -->
     <input ref="fileInput" type="file" class="hidden" @change="onFileSelected" />
+
+    <!-- Mermaid 对话框 -->
+    <MermaidDialog
+      :visible="showMermaidDialog"
+      @close="showMermaidDialog = false"
+      @insert="handleMermaidInsert"
+    />
   </div>
 </template>
 
@@ -44,6 +51,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 import Toolbar from './RichEditor/Toolbar.vue'
 import { MermaidNode } from './RichEditor/MermaidNode.js'
+import MermaidDialog from './RichEditor/MermaidDialog.vue'
 import { uploadFile } from '@/api/cos'
 
 const props = defineProps({
@@ -55,6 +63,7 @@ const fileInput = ref(null)
 const showSource = ref(false)
 const sourceContent = ref('')
 const focused = ref(false)
+const showMermaidDialog = ref(false)
 let pendingType = 'image'
 
 // ── 编辑器 ──
@@ -221,11 +230,11 @@ function handleInsertLink() {
 
 // ── 插入 Mermaid 流程图 ──
 function insertMermaid() {
-  const code = `graph TD
-  A[开始] --> B{判断}
-  B -->|是| C[处理]
-  B -->|否| D[结束]
-  C --> D`
+  showMermaidDialog.value = true
+}
+
+function handleMermaidInsert(code) {
+  showMermaidDialog.value = false
   editor.value?.chain().focus().insertMermaid(code).run()
 }
 
