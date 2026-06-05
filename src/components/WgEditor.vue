@@ -183,8 +183,8 @@ function handleCustomPaste(editor, event, callback) {
     callback(false)
     const code = text.trim()
     const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
-    mermaidMap.value = { ...mermaidMap.value, [id]: code }
-    editor.dangerouslyInsertHtml(`[[!${id}]]`)
+    mermaidMap.value = { ...mermaidMap.value, [id]: { code } }
+    editor.dangerouslyInsertHtml(`<p>[[!${id}]]</p>`)
     return
   }
 
