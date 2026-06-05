@@ -3,7 +3,7 @@
     <!-- 折叠态：? 按钮 -->
     <button
       v-if="collapsed"
-      class="fixed bottom-6 right-6 z-40 w-8 h-8 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center text-sm font-bold cursor-pointer border-none hover:bg-blue-600 transition-colors"
+      class="fixed bottom-6 left-6 z-40 w-8 h-8 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center text-sm font-bold cursor-pointer border-none hover:bg-blue-600 transition-colors"
       title="查看每日资讯"
       @click="expand"
     >
@@ -14,7 +14,7 @@
     <Transition name="knowledge-slide">
       <div
         v-if="!collapsed && store.currentItem"
-        class="fixed bottom-6 right-6 z-40 bg-white rounded-xl shadow-xl border border-gray-100 w-80 max-h-[300px] flex flex-col overflow-hidden"
+        class="fixed bottom-6 left-6 z-40 bg-white rounded-xl shadow-xl border border-gray-100 w-80 max-h-[300px] flex flex-col overflow-hidden"
         :class="{ 'border-yellow-300 ring-2 ring-yellow-200': isPriority2 }"
       >
         <!-- 头部 -->
@@ -87,7 +87,7 @@
     <Transition name="knowledge-fade">
       <div
         v-if="showAllRead"
-        class="fixed bottom-6 right-6 z-40 bg-white rounded-xl shadow-lg border px-5 py-4 text-center text-sm text-gray-500"
+        class="fixed bottom-6 left-6 z-40 bg-white rounded-xl shadow-lg border px-5 py-4 text-center text-sm text-gray-500"
       >
         🎉 今日资讯已全部阅读
       </div>

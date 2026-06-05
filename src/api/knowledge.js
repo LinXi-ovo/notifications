@@ -9,12 +9,18 @@ const TABLE = 'KnowledgeItems'
  * @returns {Promise<Object[]>}
  */
 export async function getActiveItems({ limit = 50 } = {}) {
-  const q = Bmob.Query(TABLE)
-  q.equalTo('isActive', '==', true)
-  q.order('-priority', '-createdAt')
-  q.limit(limit)
-  const results = await q.find()
-  return results || []
+  try {
+    const q = Bmob.Query(TABLE)
+    q.equalTo('isActive', true)
+    q.order('-priority')
+    q.order('-createdAt')
+    q.limit(limit)
+    const results = await q.find()
+    return results || []
+  } catch (e) {
+    console.warn('KnowledgeItems 表尚未创建或查询失败:', e?.message || e)
+    return []
+  }
 }
 
 /**
@@ -25,12 +31,17 @@ export async function getActiveItems({ limit = 50 } = {}) {
  * @returns {Promise<{list: Object[], total: number}>}
  */
 export async function getAllItems({ pageSize = 100, page } = {}) {
-  const q = Bmob.Query(TABLE)
-  q.order('-createdAt')
-  q.limit(pageSize)
-  if (page !== undefined) q.skip(page * pageSize)
-  const results = await q.find()
-  return { list: results || [], total: (results || []).length }
+  try {
+    const q = Bmob.Query(TABLE)
+    q.order('-createdAt')
+    q.limit(pageSize)
+    if (page !== undefined) q.skip(page * pageSize)
+    const results = await q.find()
+    return { list: results || [], total: (results || []).length }
+  } catch (e) {
+    console.warn('KnowledgeItems 表尚未创建:', e?.message || e)
+    return { list: [], total: 0 }
+  }
 }
 
 /**

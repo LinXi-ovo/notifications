@@ -103,9 +103,9 @@ export const useKnowledgeStore = defineStore('knowledge', {
       try {
         this.today = new Date().toISOString().slice(0, 10)
         const results = await getActiveItems({ limit: 50 })
-        this.items = results
+        this.items = results || []
       } catch (e) {
-        console.error('拉取资讯失败:', e)
+        console.warn('拉取资讯失败，表可能尚未创建:', e?.message || e)
         this.items = []
       } finally {
         this.loading = false
