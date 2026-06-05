@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务系统 · 互动哈斯图演示</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #1e293b; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+
+/* ── Header ── */
+.header { background: #fff; padding: 14px 28px; box-shadow: 0 1px 3px rgba(0,0,0,.08); display: flex; align-items: center; gap: 16px; flex-shrink: 0; z-index: 10; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header .mission-badge { font-size: 12px; color: #64748b; background: #f1f5f9; padding: 2px 10px; border-radius: 10px; }
+
+/* ── Toolbar ── */
+.toolbar { background: #fff; padding: 10px 28px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
+.toolbar .label { font-size: 13px; color: #64748b; font-weight: 500; }
+.role-btn { padding: 4px 14px; border-radius: 14px; border: 1.5px solid #ddd; background: #fff; cursor: pointer; font-size: 13px; transition: all .15s; }
+.role-btn:hover { border-color: #94a3b8; }
+.role-btn.active { background: #eef2ff; border-color: #6366f1; color: #4338ca; font-weight: 500; }
+.role-btn .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.stats { margin-left: auto; font-size: 13px; color: #64748b; display: flex; gap: 16px; }
+.stats span { display: flex; align-items: center; gap: 4px; }
+
+/* ── Graph Area ── */
+.graph-area { flex: 1; position: relative; overflow: hidden; background: #f8fafc; background-image: radial-gradient(#d1d5db 0.5px, transparent 0.5px); background-size: 20px 20px; }
+.graph-area svg { width: 100%; height: 100%; display: block; }
+
+/* ── Node Cards (SVG) ── */
+.node-card { cursor: pointer; transition: opacity .15s; }
+.node-card .card-bg { fill: #fff; stroke: #e2e8f0; stroke-width: 1.5; transition: stroke .15s, filter .15s; filter: drop-shadow(0 1px 2px rgba(0,0,0,.06)); }
+.node-card:hover .card-bg { stroke: #818cf8; stroke-width: 2; filter: drop-shadow(0 4px 12px rgba(99,102,241,.15)); }
+.node-card .role-strip { rx: 2; }
+.node-card .title-text { font-size: 14px; font-weight: 600; fill: #1e293b; }
+.node-card .role-label { font-size: 11px; fill: #64748b; }
+.node-card .status-badge { rx: 10; }
+.node-card .status-text { font-size: 11px; font-weight: 500; fill: #fff; text-anchor: middle; dominant-baseline: central; }
+.node-card .dep-count { font-size: 10px; fill: #94a3b8; }
+
+/* ── Edges ── */
+.edge-path { fill: none; stroke: #cbd5e1; stroke-width: 2; }
+.edge-path:hover { stroke: #818cf8; stroke-width: 2.5; }
+.edge-marker { fill: #cbd5e1; }
+
+/* ── Detail Panel ── */
+#detail-panel { position: fixed; top: 0; right: 0; width: 380px; height: 100%; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,.12); transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1); z-index: 100; display: flex; flex-direction: column; }
+#detail-panel.open { transform: translateX(0); }
+#detail-panel .panel-header { padding: 20px 24px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+#detail-panel .panel-header h2 { font-size: 17px; font-weight: 600; line-height: 1.4; margin: 0; flex: 1; }
+#detail-panel .close-btn { background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; padding: 0 4px; line-height: 1; }
+#detail-panel .close-btn:hover { color: #475569; }
+#detail-panel .panel-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
+.info-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 14px; }
+.info-row .tag { padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 500; }
+.info-row .label { color: #94a3b8; min-width: 52px; }
+.panel-body .desc { margin: 16px 0; padding: 14px 16px; background: #f8fafc; border-radius: 8px; font-size: 13px; line-height: 1.6; color: #475569; }
+.panel-body .deps-section { margin-top: 16px; }
+.panel-body .deps-section h4 { font-size: 13px; color: #64748b; margin-bottom: 8px; }
+.dep-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #f8fafc; border-radius: 6px; margin-bottom: 4px; font-size: 13px; }
+.dep-item .arrow { color: #94a3b8; }
+.panel-body .no-deps { color: #94a3b8; font-size: 13px; }
+
+/* ── Backdrop ── */
+#backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.15); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 99; }
+#backdrop.show { opacity: 1; pointer-events: auto; }
+
+/* ── Legend ── */
+.legend { display: flex; align-items: center; gap: 12px; margin-left: 20px; font-size: 12px; color: #64748b; }
+.legend-item { display: flex; align-items: center; gap: 4px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* ── Hover tooltip for edges ── */
+.edge-tooltip { position: absolute; background: #1e293b; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 12px; pointer-events: none; opacity: 0; transition: opacity .1s; z-index: 50; }
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .header { padding: 10px 16px; }
+  .toolbar { padding: 8px 16px; }
+  #detail-panel { width: 100vw; }
+  .stats { font-size: 11px; gap: 8px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>📋 任务系统</h1>
+  <span class="mission-badge">2026 年秋季评奖评优</span>
+</div>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <span class="label">角色过滤:</span>
+  <button class="role-btn active" data-role="all"><span class="dot" style="background:#6366f1"></span>全部</button>
+  <span class="stats" id="stats-bar"></span>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:#9CA3AF"></span>未开始</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#3B82F6"></span>进行中</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#10B981"></span>已完成</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#EF4444"></span>阻塞</span>
+  </div>
+</div>
+
+<!-- Graph -->
+<div class="graph-area" id="graph-area">
+  <svg id="graph-svg">
+    <defs>
+      <marker id="arrow" markerWidth="10" markerHeight="7" refX="11" refY="3.5" orient="auto" markerUnits="strokeWidth">
+        <polygon points="0 0, 9 3.5, 0 7" fill="#cbd5e1" />
+      </marker>
+    </defs>
+  </svg>
+</div>
+
+<!-- Detail Panel -->
+<div id="backdrop"></div>
+<div id="detail-panel">
+  <div class="panel-header">
+    <h2 id="panel-title">节点详情</h2>
+    <button class="close-btn" id="panel-close">✕</button>
+  </div>
+  <div class="panel-body" id="panel-body">
+    <!-- filled dynamically -->
+  </div>
+</div>
+
+<script>
+/* ===================================================================
+   1. DATA
+   =================================================================== */
+const NODE_W = 210, NODE_H = 85;
+
+const STATUS = {
+  'todo':       { label: '未开始',   color: '#9CA3AF', bg: '#F3F4F6' },
+  'in-progress':{ label: '进行中',   color: '#3B82F6', bg: '#EFF6FF' },
+  'completed':  { label: '已完成',   color: '#10B981', bg: '#ECFDF5' },
+  'blocked':    { label: '阻塞',     color: '#EF4444', bg: '#FEF2F2' },
+  'cancelled':  { label: '取消',     color: '#6B7280', bg: '#F9FAFB' }
+};
+
+const MISSION = {
+  id: 'mission-demo',
+  title: '2026 年秋季评奖评优',
+  roles: [
+    { id: 'executor',  name: '执行人',  color: '#10B981', emoji: '🛠️' },
+    { id: 'reviewer',  name: '审核员',  color: '#3B82F6', emoji: '🔍' },
+    { id: 'approver',  name: '审批人',  color: '#EF4444', emoji: '✍️' }
+  ],
+  nodes: [
+    { id:'n1', title:'发布评奖通知',        role:'executor', status:'completed', desc:'撰写并发布本年度评奖评优正式通知，明确申请条件、时间节点和所需材料。' },
+    { id:'n2', title:'收集申请材料',        role:'executor', status:'completed', desc:'接收各班提交的申请书、成绩单、证明材料，汇总整理形成初审名册。' },
+    { id:'n3', title:'材料初审',            role:'reviewer', status:'completed', desc:'核对每份材料的完整性和合规性，对不符合要求的材料发起补充通知。' },
+    { id:'n4', title:'综测计算',            role:'executor', status:'in-progress',desc:'根据综测细则计算每位申请人的综合测评分数，形成排名草稿。' },
+    { id:'n5', title:'综测复核',            role:'reviewer', status:'todo',      desc:'对综测计算结果进行抽样复核，确认计分规则执行无误。' },
+    { id:'n6', title:'排名公示',            role:'executor', status:'blocked',   desc:'将最终排名在学院公告栏和微信群进行为期 5 个工作日的公示。', blockReason:'等待综测复核完成' },
+    { id:'n7', title:'审批确认',            role:'approver', status:'todo',      desc:'院长/党委书记对公示无异议的名单进行最终审批签字。' },
+    { id:'n8', title:'名单发布',            role:'approver', status:'todo',      desc:'正式发布本年评奖评优结果，颁发证书和奖金。' }
+  ],
+  edges: [
+    { source:'n1', target:'n2', label:'发布通知后才能开始收集' },
+    { source:'n2', target:'n3', label:'材料齐整才可初审' },
+    { source:'n2', target:'n4', label:'材料→综测计算' },
+    { source:'n3', target:'n5', label:'初审通过→复核' },
+    { source:'n4', target:'n5', label:'计算结果→复核' },
+    { source:'n5', target:'n6', label:'复核通过→公示' },
+    { source:'n6', target:'n7', label:'公示无异议→审批' },
+    { source:'n7', target:'n8', label:'审批→发布' }
+  ]
+};
+
+/* Build lookup maps */
+const nodeMap = Object.fromEntries(MISSION.nodes.map(n => [n.id, n]));
+const roleMap = Object.fromEntries(MISSION.roles.map(r => [r.id, r]));
+
+/* ===================================================================
+   2. DAGRE — layout
+   =================================================================== */
+const g = new dagre.graphlib.Graph();
+g.setGraph({ rankdir: 'TB', nodesep: 70, ranksep: 100, marginx: 50, marginy: 50 });
+g.setDefaultEdgeLabel(() => ({}));
+
+MISSION.nodes.forEach(n => g.setNode(n.id, { width: NODE_W, height: NODE_H }));
+MISSION.edges.forEach(e => g.setEdge(e.source, e.target, { label: e.label }));
+
+dagre.layout(g);
+
+/* ===================================================================
+   3. SVG RENDER
+   =================================================================== */
+const svg = d3.select('#graph-svg');
+const container = svg.append('g').attr('class', 'graph-container');
+const area = document.getElementById('graph-area');
+let activeFilter = 'all';
+let activeNodeId = null;
+
+/* ---- arrows already in defs ---- */
+
+/* ---- edges ---- */
+function getEdgePath(sn, tn) {
+  const sx = sn.x, sy = sn.y + NODE_H / 2;
+  const tx = tn.x, ty = tn.y - NODE_H / 2;
+  const dy = ty - sy, dx = tx - sx;
+  if (dy < 5) return `M${sx},${sy} L${tx},${ty}`;
+  // S-curve: cubic bezier with control points offset horizontally to avoid overlapping
+  const off = Math.min(Math.abs(dx) * 0.3, 40);
+  const c1x = sx + (dx > 0 ? off : -off), c1y = sy + dy * 0.35;
+  const c2x = tx - (dx > 0 ? off : -off), c2y = sy + dy * 0.65;
+  return `M${sx},${sy} C${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
+}
+
+container.append('g').attr('class', 'edges')
+  .selectAll('path')
+  .data(MISSION.edges)
+  .join('path')
+    .attr('class', 'edge-path')
+    .attr('d', e => getEdgePath(g.node(e.source), g.node(e.target)))
+    .attr('marker-end', 'url(#arrow)')
+    .append('title')
+      .text(e => e.label);
+
+/* ---- nodes ---- */
+const nodeGroup = container.append('g').attr('class', 'nodes');
+
+function renderNodes() {
+  nodeGroup.selectAll('*').remove();
+  const filtered = activeFilter === 'all'
+    ? MISSION.nodes
+    : MISSION.nodes.filter(n => n.role === activeFilter);
+
+  const hiddenIds = new Set(MISSION.nodes.filter(n => !filtered.includes(n)).map(n => n.id));
+
+  const groups = nodeGroup.selectAll('g.node-card')
+    .data(filtered)
+    .join('g')
+      .attr('class', 'node-card')
+      .attr('transform', n => `translate(${g.node(n.id).x - NODE_W/2}, ${g.node(n.id).y - NODE_H/2})`)
+      .style('opacity', 1)
+      .on('click', (ev, d) => showDetail(d.id));
+
+  /* card background */
+  groups.append('rect')
+    .attr('class', 'card-bg')
+    .attr('width', NODE_W)
+    .attr('height', NODE_H)
+    .attr('rx', 8);
+
+  /* role strip */
+  const getRoleColor = n => roleMap[n.role]?.color || '#94a3b8';
+  groups.append('rect')
+    .attr('class', 'role-strip')
+    .attr('x', 0).attr('y', 0)
+    .attr('width', NODE_W).attr('height', 5)
+    .attr('fill', n => getRoleColor(n));
+
+  /* title */
+  groups.append('text')
+    .attr('class', 'title-text')
+    .attr('x', 16).attr('y', 30)
+    .text(n => n.title);
+
+  /* role label */
+  groups.append('text')
+    .attr('class', 'role-label')
+    .attr('x', 16).attr('y', 50)
+    .text(n => `${roleMap[n.role]?.emoji || ''} ${roleMap[n.role]?.name || n.role}`);
+
+  /* status badge */
+  const s = STATUS;
+  groups.each(function(n) {
+    const cfg = s[n.status] || s['todo'];
+    const statW = cfg.label.length * 12 + 16;
+    const statX = NODE_W - 16 - statW;
+    d3.select(this).append('rect')
+      .attr('class', 'status-badge')
+      .attr('x', statX).attr('y', 22)
+      .attr('width', statW).attr('height', 20)
+      .attr('fill', cfg.color);
+    d3.select(this).append('text')
+      .attr('class', 'status-text')
+      .attr('x', statX + statW / 2).attr('y', 32)
+      .text(cfg.label);
+  });
+
+  /* dependencies count (mini info) */
+  groups.append('text')
+    .attr('class', 'dep-count')
+    .attr('x', 16).attr('y', 70)
+    .text(n => {
+      const inDeg = MISSION.edges.filter(e => e.target === n.id).length;
+      const outDeg = MISSION.edges.filter(e => e.source === n.id).length;
+      return `⬅ ${inDeg}   ➡ ${outDeg}`;
+    });
+}
+
+renderNodes();
+
+/* ---- dim hidden (filtered out) ---- */
+function updateFilterVisibility() {
+  if (activeFilter === 'all') {
+    nodeGroup.selectAll('.node-card').style('opacity', 1);
+    container.selectAll('.edge-path').style('opacity', 1);
+    return;
+  }
+  const visible = new Set(
+    MISSION.nodes.filter(n => n.role === activeFilter).map(n => n.id)
+  );
+  nodeGroup.selectAll('.node-card')
+    .style('opacity', n => visible.has(n.id) ? 1 : 0.2);
+  container.selectAll('.edge-path')
+    .style('opacity', e => visible.has(e.source) && visible.has(e.target) ? 1 : 0.1);
+}
+
+/* ===================================================================
+   4. ZOOM / PAN
+   =================================================================== */
+const zoom = d3.zoom()
+  .scaleExtent([0.15, 3])
+  .on('zoom', ev => container.attr('transform', ev.transform));
+
+svg.call(zoom);
+
+/* fit to view on init */
+function fitView() {
+  const rect = area.getBoundingClientRect();
+  const bw = g.graph().width || 1000;
+  const bh = g.graph().height || 800;
+  const pad = 60;
+  const sc = Math.min((rect.width - pad * 2) / bw, (rect.height - pad * 2) / bh, 1.2);
+  const tx = (rect.width - bw * sc) / 2;
+  const ty = (rect.height - bh * sc) / 2 + 20;
+  svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(sc));
+}
+setTimeout(fitView, 50);
+window.addEventListener('resize', fitView);
+
+/* ===================================================================
+   5. STATS
+   =================================================================== */
+function updateStats() {
+  const all = MISSION.nodes;
+  const done = all.filter(n => n.status === 'completed').length;
+  const prog = all.filter(n => n.status === 'in-progress').length;
+  const blk = all.filter(n => n.status === 'blocked').length;
+  const todo = all.filter(n => n.status === 'todo').length;
+  document.getElementById('stats-bar').innerHTML = `
+    <span>📊 ${done}/${all.length}</span>
+    <span>⏳ ${prog}</span>
+    <span>⏸️ ${blk}</span>
+    <span>⬜ ${todo}</span>
+  `;
+}
+updateStats();
+
+/* ===================================================================
+   6. ROLE FILTER
+   =================================================================== */
+const roleBtns = document.querySelectorAll('.role-btn');
+roleBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    roleBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.role;
+    renderNodes();
+    updateFilterVisibility();
+    // Fit view after filter change
+    setTimeout(fitView, 50);
+  });
+});
+
+// Add role buttons dynamically
+const label = document.querySelector('.toolbar .label');
+const allBtn = document.querySelector('.role-btn');
+const statsBar = document.getElementById('stats-bar');
+MISSION.roles.forEach(r => {
+  const btn = document.createElement('button');
+  btn.className = 'role-btn';
+  btn.dataset.role = r.id;
+  btn.innerHTML = `<span class="dot" style="background:${r.color}"></span>${r.emoji} ${r.name}`;
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = r.id;
+    renderNodes();
+    updateFilterVisibility();
+    setTimeout(fitView, 50);
+  });
+  allBtn.parentNode.insertBefore(btn, statsBar);
+});
+
+/* ===================================================================
+   7. DETAIL PANEL
+   =================================================================== */
+const panel = document.getElementById('detail-panel');
+const backdrop = document.getElementById('backdrop');
+const panelTitle = document.getElementById('panel-title');
+const panelBody = document.getElementById('panel-body');
+const panelClose = document.getElementById('panel-close');
+
+function showDetail(nodeId) {
+  activeNodeId = nodeId;
+  const n = nodeMap[nodeId];
+  if (!n) return;
+  const role = roleMap[n.role];
+  const s = STATUS[n.status] || STATUS['todo'];
+
+  panelTitle.textContent = n.title;
+
+  const inEdges = MISSION.edges.filter(e => e.target === nodeId);
+  const outEdges = MISSION.edges.filter(e => e.source === nodeId);
+  const inNodes = inEdges.map(e => nodeMap[e.source]).filter(Boolean);
+  const outNodes = outEdges.map(e => nodeMap[e.target]).filter(Boolean);
+
+  panelBody.innerHTML = `
+    <div class="info-row"><span class="label">状态</span>
+      <span class="tag" style="background:${s.bg};color:${s.color}">${s.label}</span>
+    </div>
+    <div class="info-row"><span class="label">角色</span>
+      <span class="tag" style="background:${role.color}22;color:${role.color}">${role.emoji} ${role.name}</span>
+    </div>
+    <div class="info-row"><span class="label">节点ID</span><span style="color:#94a3b8;font-size:12px">${n.id}</span></div>
+    <div class="desc">${n.desc}</div>
+    ${inNodes.length ? `
+      <div class="deps-section">
+        <h4>⬅ 前置依赖 (${inNodes.length})</h4>
+        ${inNodes.map(p => `
+          <div class="dep-item">
+            <span class="status-dot" style="width:6px;height:6px;border-radius:50%;background:${STATUS[p.status]?.color||'#9CA3AF'};display:inline-block"></span>
+            <span>${p.title}</span>
+            <span style="font-size:11px;color:#94a3b8">${STATUS[p.status]?.label||''}</span>
+          </div>`).join('')}
+      </div>` : '<div class="no-deps">⬅ 无前置依赖（起始节点）</div>'}
+    ${outNodes.length ? `
+      <div class="deps-section" style="margin-top:12px">
+        <h4>➡ 后续节点 (${outNodes.length})</h4>
+        ${outNodes.map(c => `
+          <div class="dep-item">
+            <span class="status-dot" style="width:6px;height:6px;border-radius:50%;background:${STATUS[c.status]?.color||'#9CA3AF'};display:inline-block"></span>
+            <span>${c.title}</span>
+            <span style="font-size:11px;color:#94a3b8">${STATUS[c.status]?.label||''}</span>
+          </div>`).join('')}
+      </div>` : '<div class="no-deps" style="margin-top:12px">➡ 无后续节点（终点节点）</div>'}
+    ${n.status === 'blocked' && n.blockReason ? `<div class="info-row" style="margin-top:16px"><span class="label">阻塞原因</span><span style="color:#EF4444;font-size:13px">${n.blockReason}</span></div>` : ''}
+  `;
+
+  panel.classList.add('open');
+  backdrop.classList.add('show');
+}
+
+function hideDetail() {
+  panel.classList.remove('open');
+  backdrop.classList.remove('show');
+  activeNodeId = null;
+}
+
+panelClose.addEventListener('click', hideDetail);
+backdrop.addEventListener('click', hideDetail);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideDetail(); });
+
+/* ===================================================================
+   8. INIT
+   =================================================================== */
+updateFilterVisibility();
+console.log('✅ 任务系统演示已加载');
+console.log(`📊 ${MISSION.nodes.filter(n=>n.status==='completed').length}/${MISSION.nodes.length} 已完成`);
+</script>
+</body>
+</html>

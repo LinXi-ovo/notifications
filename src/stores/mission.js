@@ -560,33 +560,299 @@ export const useMissionStore = defineStore('mission', {
 
     // ──────────────── 权限判定 ────────────────
 
-    /** 检查用户能否操作节点 */
-    checkNodeOperation(userId, nodeId) {
-      if (!this.currentMission) return { canOperate: false, reason: '没有加载任务' }
+    /**
+     * 获取用户在当前 Mission 中已认领的角色 ID 列表
+     * @param {string} userId
+     * @returns {string[]}
+     */
+    _getUserRoleIds(userId) {
+      if (!this.currentMission) return []
+      return this.currentMission.assignments
+        .filter(a => a.userId === userId && a.status === 'approved')
+        .map(a => a.roleId)
+    },
 
+    /**
+     * 获取角色的权限配置（合并 mission.permissions + DEFAULT_PERMISSIONS）
+     * @param {string} roleId
+     * @returns {import('@/types/mission').Permission|null}
+     */
+    _getRolePermissions(roleId) {
+      if (!this.currentMission) return null
+      // 优先从 mission.permissions 获取
+      const customPerm = this.currentMission.permissions.find(p => p.roleId === roleId)
+      if (customPerm) return customPerm
+
+      // 从角色名称映射到 DEFAULT_PERMISSIONS
+      const role = this.currentMission.roles.find(r => r.id === roleId)
+      if (!role) return null
+
+      // 按角色名称尝试匹配
+      const nameMap = {
+        '普通成员': 'executor',
+        '执行人': 'executor',
+        '成员': 'executor',
+        '审核员': 'reviewer',
+        '审批人': 'approver',
+        '管理员': 'admin',
+        '负责人': 'admin',
+        '观察员': 'observer',
+        '辅导员': 'approver',
+        '主管': 'reviewer',
+        '财务': 'reviewer',
+        '总经理': 'approver',
+        '班长': 'executor',
+        '组长': 'executor',
+        '发起人': 'executor'
+      }
+      const key = nameMap[role.name]
+      if (key && DEFAULT_PERMISSIONS[key]) return DEFAULT_PERMISSIONS[key]
+
+      // 默认返回 executor 权限
+      return DEFAULT_PERMISSIONS.executor
+    },
+
+    /**
+     * 三步权限判定法 — 检查用户能否操作节点
+     *
+     * Step 1: 管理员免检
+     * Step 2: 节点级白名单（allowedOperators / allowedUsers）
+     * Step 3: 角色级权限
+     *
+     * @param {string} userId
+     * @param {string} nodeId
+     * @returns {{ canOperate: boolean, reason: string, roleIds: string[] }}
+     */
+    checkNodeOperation(userId, nodeId) {
+      if (!this.currentMission) return { canOperate: false, reason: '没有加载任务', roleIds: [] }
+
+      // Step 1: 管理员免检
       const isAdmin = userId === 'admin'
-      if (isAdmin) return { canOperate: true, reason: '' }
+      const userRoleIds = this._getUserRoleIds(userId)
 
       const node = this.currentMission.nodes.find(n => n.id === nodeId)
-      if (!node) return { canOperate: false, reason: '节点不存在' }
+      if (!node) return { canOperate: false, reason: '节点不存在', roleIds: userRoleIds }
 
-      // 检查用户是否已认领了该节点的 assignedRole
-      const userRole = this.currentMission.assignments.find(
-        a => a.userId === userId && a.roleId === node.assignedRole && a.status === 'approved'
-      )
-      if (!userRole) return { canOperate: false, reason: '未认领该角色' }
-
-      // allowedOperators 白名单
-      if (node.allowedOperators.length > 0 && !node.allowedOperators.includes(node.assignedRole)) {
-        return { canOperate: false, reason: '该节点仅限特定角色操作' }
+      // Step 2a: allowedOperators 白名单（节点级角色白名单）
+      if (node.allowedOperators.length > 0) {
+        const hasAllowedRole = node.allowedOperators.some(rId => userRoleIds.includes(rId))
+        if (!hasAllowedRole && !isAdmin) {
+          return { canOperate: false, reason: '该节点仅限特定角色操作', roleIds: userRoleIds }
+        }
       }
 
-      // allowedUsers 白名单
-      if (node.allowedUsers.length > 0 && !node.allowedUsers.includes(userId)) {
-        return { canOperate: false, reason: '该节点仅限特定用户操作' }
+      // Step 2b: allowedUsers 白名单（节点级用户白名单）
+      if (node.allowedUsers.length > 0 && !node.allowedUsers.includes(userId) && !isAdmin) {
+        return { canOperate: false, reason: '该节点仅限特定用户操作', roleIds: userRoleIds }
       }
 
-      return { canOperate: true, reason: '' }
+      // Step 2c: 检查是否至少有一个角色认领了 assignedRole
+      const hasAssignedRole = userRoleIds.includes(node.assignedRole) || isAdmin
+      if (!hasAssignedRole) {
+        // 但如果在 allowedOperators 中有角色，则不要求 assignedRole 匹配
+        const hasAnyRoleForNode = node.allowedOperators.length === 0 || node.allowedOperators.some(rId => userRoleIds.includes(rId))
+        if (!hasAnyRoleForNode && !isAdmin) {
+          return { canOperate: false, reason: '未认领该节点所需的角色', roleIds: userRoleIds }
+        }
+      }
+
+      if (isAdmin) return { canOperate: true, reason: '管理员权限', roleIds: userRoleIds }
+
+      return { canOperate: true, reason: '', roleIds: userRoleIds }
+    },
+
+    /**
+     * 获取用户对指定节点允许的状态转换列表
+     * @param {string} userId
+     * @param {string} nodeId
+     * @returns {Array<{ from: string, to: string, label: string }>}
+     */
+    getAllowedTransitions(userId, nodeId) {
+      if (!this.currentMission) return []
+
+      const isAdmin = userId === 'admin'
+      if (isAdmin) {
+        // 管理员：返回所有可能的转换
+        const node = this.currentMission.nodes.find(n => n.id === nodeId)
+        if (!node) return []
+        return this._getAllPossibleTransitions(node.status)
+      }
+
+      const userRoleIds = this._getUserRoleIds(userId)
+      if (!userRoleIds.length) return []
+
+      const node = this.currentMission.nodes.find(n => n.id === nodeId)
+      if (!node) return []
+
+      // 收集用户所有角色的允许转换
+      const allowedTransitions = []
+      const seen = new Set()
+
+      for (const roleId of userRoleIds) {
+        const perm = this._getRolePermissions(roleId)
+        if (!perm || !perm.transitions) continue
+
+        for (const t of perm.transitions) {
+          if (t.from === node.status) {
+            const key = `${t.from}→${t.to}`
+            if (!seen.has(key)) {
+              seen.add(key)
+              allowedTransitions.push(t)
+            }
+          }
+        }
+      }
+
+      return allowedTransitions
+    },
+
+    /**
+     * 检查用户是否允许执行特定的状态转换
+     * @param {string} userId
+     * @param {string} nodeId
+     * @param {string} toStatus
+     * @returns {{ allowed: boolean, reason: string }}
+     */
+    checkStatusTransition(userId, nodeId, toStatus) {
+      if (!this.currentMission) return { allowed: false, reason: '没有加载任务' }
+
+      const isAdmin = userId === 'admin'
+      if (isAdmin) return { allowed: true, reason: '' }
+
+      const node = this.currentMission.nodes.find(n => n.id === nodeId)
+      if (!node) return { allowed: false, reason: '节点不存在' }
+
+      const transitions = this.getAllowedTransitions(userId, nodeId)
+      const match = transitions.find(t => t.to === toStatus)
+
+      if (!match) {
+        return { allowed: false, reason: '你的角色不允许此状态转换' }
+      }
+
+      return { allowed: true, reason: '' }
+    },
+
+    /**
+     * 获取用户对节点的所有允许操作
+     * @param {string} userId
+     * @param {string} nodeId
+     * @returns {{ canOperate: boolean, canComment: boolean, canEditContent: boolean, transitions: Array, canComplete: boolean, reason: string }}
+     */
+    getAllowedOperations(userId, nodeId) {
+      if (!this.currentMission) {
+        return { canOperate: false, canComment: false, canEditContent: false, transitions: [], canComplete: false, reason: '没有加载任务' }
+      }
+
+      const isAdmin = userId === 'admin'
+      const nodeOp = this.checkNodeOperation(userId, nodeId)
+
+      if (!nodeOp.canOperate && !isAdmin) {
+        return {
+          canOperate: false,
+          canComment: false,
+          canEditContent: false,
+          transitions: [],
+          canComplete: false,
+          reason: nodeOp.reason
+        }
+      }
+
+      // 收集所有角色的权限
+      const userRoleIds = isAdmin
+        ? (this.currentMission.roles?.map(r => r.id) || [])
+        : nodeOp.roleIds
+
+      let canComment = false
+      let canEditContent = false
+
+      for (const roleId of userRoleIds) {
+        const perm = this._getRolePermissions(roleId)
+        if (!perm) continue
+        if (perm.canComment) canComment = true
+        if (perm.canEditContent) canEditContent = true
+      }
+
+      // 管理员全部允许
+      if (isAdmin) {
+        canComment = true
+        canEditContent = true
+      }
+
+      const transitions = this.getAllowedTransitions(userId, nodeId)
+
+      // 判断能否标记完成（in-progress → completed 在 transitions 中）
+      const canComplete = transitions.some(t => t.to === 'completed')
+
+      return {
+        canOperate: true,
+        canComment,
+        canEditContent,
+        transitions,
+        canComplete,
+        reason: ''
+      }
+    },
+
+    /**
+     * 获取所有可能的转换（基于当前状态，不考虑角色限制）
+     * @param {string} status
+     * @returns {Array<{ from: string, to: string, label: string }>}
+     */
+    _getAllPossibleTransitions(status) {
+      const allTransitions = {
+        'todo': [
+          { from: 'todo', to: 'in-progress', label: '▶️ 开始执行' }
+        ],
+        'in-progress': [
+          { from: 'in-progress', to: 'completed', label: '✅ 标记完成' },
+          { from: 'in-progress', to: 'blocked', label: '⛔ 标记阻塞' }
+        ],
+        'completed': [
+          { from: 'completed', to: 'in-progress', label: '🔄 重新打开' }
+        ],
+        'blocked': [
+          { from: 'blocked', to: 'in-progress', label: '🔄 解除阻塞' },
+          { from: 'blocked', to: 'cancelled', label: '🗑️ 取消' }
+        ],
+        'cancelled': [
+          { from: 'cancelled', to: 'todo', label: '🔄 恢复' }
+        ]
+      }
+      return allTransitions[status] || []
+    },
+
+    /**
+     * 检查用户对字段的权限
+     * @param {string} userId
+     * @param {string} fieldId
+     * @returns {'hidden' | 'readonly' | 'editable'}
+     */
+    checkFieldPermission(userId, fieldId) {
+      if (!this.currentMission) return 'hidden'
+
+      const isAdmin = userId === 'admin'
+      if (isAdmin) return 'editable'
+
+      const field = this.currentMission.customFields.find(f => f.id === fieldId)
+      if (!field) return 'hidden'
+
+      const userRoleIds = this._getUserRoleIds(userId)
+
+      // 可见性检查: visibleToRoles 为空表示所有人可见
+      if (field.visibleToRoles.length > 0 && !field.visibleToRoles.includes('*')) {
+        const canSee = field.visibleToRoles.some(rId => userRoleIds.includes(rId))
+        if (!canSee) return 'hidden'
+      }
+
+      // 可编辑性检查
+      if (field.editableByRoles.length > 0 && !field.editableByRoles.includes('*')) {
+        const canEdit = field.editableByRoles.some(rId => userRoleIds.includes(rId))
+        if (canEdit) return 'editable'
+        return 'readonly'
+      }
+
+      // 默认：如果不在 ediableByRoles 中但可见，则为只读
+      return 'readonly'
     },
 
     // ──────────────── 导入导出 ────────────────

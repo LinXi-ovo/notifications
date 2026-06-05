@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务系统 v2 · 角色认领与权限演示</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f0f2f5; color: #1e293b; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+
+/* ── Header ── */
+.header { background: #fff; padding: 12px 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08); display: flex; align-items: center; gap: 12px; flex-shrink: 0; z-index: 10; flex-wrap: wrap; }
+.header h1 { font-size: 17px; font-weight: 600; }
+.header .badge { font-size: 12px; padding: 2px 10px; border-radius: 10px; background: #eef2ff; color: #4338ca; }
+.header .user-info { margin-left: auto; font-size: 13px; color: #64748b; display: flex; align-items: center; gap: 6px; }
+
+/* ── Main layout ── */
+.main { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Left: Claim Panel ── */
+.claim-panel { width: 300px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+.claim-panel .panel-title { font-size: 14px; font-weight: 600; padding: 16px 20px 12px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 6px; }
+.claim-panel .section { padding: 12px 20px; }
+.claim-panel .section-title { font-size: 12px; font-weight: 500; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+
+/* role card */
+.role-card { border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; transition: all .15s; }
+.role-card:hover { border-color: #cbd5e1; }
+.role-card .role-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.role-card .role-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.role-card .role-desc { font-size: 12px; color: #64748b; }
+.role-card .policy-tag { font-size: 11px; padding: 1px 8px; border-radius: 8px; font-weight: 500; }
+.policy-free { background: #ecfdf5; color: #059669; }
+.policy-approval { background: #fffbeb; color: #d97706; }
+.policy-password { background: #f3e8ff; color: #7c3aed; }
+.policy-delegated { background: #fef2f2; color: #dc2626; }
+
+/* claim button */
+.claim-btn { display: block; width: 100%; margin-top: 8px; padding: 6px 0; border-radius: 6px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all .12s; }
+.claim-btn.free { background: #10B981; color: #fff; }
+.claim-btn.free:hover { background: #059669; }
+.claim-btn.free:disabled { background: #d1d5db; cursor: not-allowed; }
+.claim-btn.approval { background: #f59e0b; color: #fff; }
+.claim-btn.approval:hover { background: #d97706; }
+.claim-btn.approval:disabled { background: #d1d5db; cursor: not-allowed; }
+.claim-btn.delegated { background: #ef4444; color: #fff; }
+.claim-btn.delegated:hover { background: #dc2626; }
+.claim-btn.claimed { background: #e2e8f0; color: #94a3b8; cursor: default; }
+.claim-btn.pending-approval { background: #fef3c7; color: #b45309; cursor: default; }
+
+/* sim controls */
+.sim-section { margin-top: 8px; padding: 12px 14px; background: #f8fafc; border-radius: 8px; }
+.sim-section .sim-title { font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
+.sim-btn { padding: 5px 12px; border-radius: 6px; border: 1.5px solid #cbd5e1; background: #fff; font-size: 12px; cursor: pointer; transition: all .12s; margin-right: 6px; margin-bottom: 4px; }
+.sim-btn:hover { border-color: #818cf8; color: #4338ca; }
+.sim-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* claimed list */
+.claimed-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+.claimed-item:last-child { border-bottom: none; }
+.claimed-item .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.claimed-item .check { color: #10B981; font-weight: bold; margin-left: auto; }
+
+/* ── Right: Graph Area ── */
+.graph-area { flex: 1; position: relative; overflow: hidden; background: #f8fafc; background-image: radial-gradient(#d1d5db 0.5px, transparent 0.5px); background-size: 20px 20px; }
+.graph-area svg { width: 100%; height: 100%; display: block; }
+
+/* ── Nodes ── */
+.node-card { cursor: pointer; transition: opacity .12s; }
+.node-card .card-bg { rx: 8; }
+.node-card.locked { cursor: not-allowed; }
+.node-card.locked .card-bg { fill: #f1f5f9; stroke: #e2e8f0; }
+.node-card.operable .card-bg { fill: #fff; stroke: #cbd5e1; transition: stroke .15s, filter .15s; filter: drop-shadow(0 1px 2px rgba(0,0,0,.06)); }
+.node-card.operable:hover .card-bg { stroke: #818cf8; stroke-width: 2; filter: drop-shadow(0 4px 12px rgba(99,102,241,.15)); }
+.node-card .role-strip { rx: 2; }
+.node-card .title-text { font-size: 14px; font-weight: 600; }
+.node-card .lock-icon { font-size: 16px; }
+.node-card .permission-label { font-size: 10px; fill: #94a3b8; }
+.node-card .status-badge { rx: 8; }
+.node-card .status-text { font-size: 10px; font-weight: 500; fill: #fff; text-anchor: middle; dominant-baseline: central; }
+
+/* ── Edges ── */
+.edge-path { fill: none; stroke: #cbd5e1; stroke-width: 2; marker-end: url(#arrow); }
+
+/* ── Detail Panel ── */
+#detail-panel { position: fixed; bottom: 0; left: 300px; right: 0; background: #fff; border-top: 2px solid #e2e8f0; transform: translateY(100%); transition: transform .2s cubic-bezier(.4,0,.2,1); z-index: 50; padding: 16px 24px; }
+#detail-panel.open { transform: translateY(0); }
+#detail-panel .dp-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+#detail-panel .dp-title { font-size: 15px; font-weight: 600; }
+#detail-panel .dp-close { border: none; background: none; font-size: 18px; color: #94a3b8; cursor: pointer; }
+#detail-panel .dp-body { font-size: 13px; display: flex; gap: 20px; flex-wrap: wrap; }
+#detail-panel .dp-body .col { flex: 1; min-width: 180px; }
+#detail-panel .dp-row { margin-bottom: 6px; }
+#detail-panel .dp-row .label { color: #94a3b8; }
+#detail-panel .perm-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+#detail-panel .perm-badge.ok { background: #ecfdf5; color: #059669; }
+#detail-panel .perm-badge.no { background: #fef2f2; color: #dc2626; }
+
+/* ── Backdrop ── */
+#backdrop { position: fixed; bottom: 0; left: 300px; right: 0; height: 100%; background: rgba(0,0,0,.1); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 49; }
+#backdrop.show { opacity: 1; pointer-events: auto; }
+
+/* ── Toast ── */
+.toast-container { position: fixed; top: 16px; right: 16px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+.toast { padding: 10px 16px; border-radius: 8px; font-size: 13px; color: #fff; animation: slideIn .2s ease; box-shadow: 0 4px 12px rgba(0,0,0,.1); max-width: 360px; }
+.toast.success { background: #059669; }
+.toast.warning { background: #d97706; }
+.toast.error { background: #dc2626; }
+.toast.info { background: #2563eb; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ── Legend ── */
+.graph-footer { position: absolute; bottom: 12px; left: 16px; display: flex; gap: 12px; font-size: 11px; color: #94a3b8; background: rgba(255,255,255,.85); padding: 6px 12px; border-radius: 6px; }
+.graph-footer .item { display: flex; align-items: center; gap: 4px; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) { .claim-panel { width: 240px; } #detail-panel { left: 240px; } }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <h1>📋 任务系统 v2</h1>
+  <span class="badge">角色认领 · 节点权限</span>
+  <span class="badge" style="background:#f0fdf4;color:#16a34a">提交班级汇总材料</span>
+  <div class="user-info" id="user-info">👤 当前用户: demo_user</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Left: Claim Panel -->
+  <div class="claim-panel" id="claim-panel">
+    <div class="panel-title">🪪 角色认领</div>
+    <div class="section">
+      <div class="section-title">📌 可用角色</div>
+      <div id="role-list"></div>
+    </div>
+    <div class="section">
+      <div class="section-title">✅ 我已认领</div>
+      <div id="claimed-list"><span style="color:#94a3b8;font-size:13px">尚未认领任何角色</span></div>
+    </div>
+    <div class="section" id="sim-section" style="border-top:1px solid #f1f5f9;margin-top:auto">
+      <div class="section-title">🎮 模拟操作</div>
+      <div id="sim-buttons">
+        <button class="sim-btn" data-action="approve-monitor" disabled>✅ 批准班长申请</button>
+        <button class="sim-btn" data-action="delegate-leader" disabled>🔴 委派负责人</button>
+        <button class="sim-btn" data-action="reset">⟳ 重置所有认领</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Graph -->
+  <div class="graph-area" id="graph-area">
+    <svg id="graph-svg">
+      <defs>
+        <marker id="arrow" markerWidth="10" markerHeight="7" refX="11" refY="3.5" orient="auto" markerUnits="strokeWidth">
+          <polygon points="0 0, 9 3.5, 0 7" fill="#cbd5e1" />
+        </marker>
+      </defs>
+    </svg>
+    <div class="graph-footer">
+      <span class="item">🟢 可操作</span>
+      <span class="item">🔒 不可操作</span>
+      <span class="item">← 依赖方向</span>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel -->
+<div id="backdrop"></div>
+<div id="detail-panel">
+  <div class="dp-header">
+    <span class="dp-title" id="dp-title">节点详情</span>
+    <button class="dp-close" id="dp-close">✕</button>
+  </div>
+  <div class="dp-body" id="dp-body"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+/* ===================================================================
+   1. DATA
+   =================================================================== */
+const NODE_W = 210, NODE_H = 80;
+
+const STATUS = {
+  todo:        { label:'未开始', color:'#9CA3AF', bg:'#F3F4F6' },
+  'in-progress':{ label:'进行中', color:'#3B82F6', bg:'#EFF6FF' },
+  completed:   { label:'已完成', color:'#10B981', bg:'#ECFDF5' },
+  blocked:     { label:'阻塞',   color:'#EF4444', bg:'#FEF2F2' }
+};
+
+const MISSION = {
+  title: '提交班级汇总材料',
+  roles: [
+    { id:'member', name:'普通成员', desc:'填写个人信息表', color:'#10B981', emoji:'🟢',
+      claimPolicy:{ type:'free' } },
+    { id:'class-monitor', name:'班长', desc:'汇总并提交全班材料', color:'#F59E0B', emoji:'🟡',
+      claimPolicy:{ type:'approval', approverRole:'leader' } },
+    { id:'leader', name:'负责人', desc:'审核确认最终结果', color:'#EF4444', emoji:'🔴',
+      claimPolicy:{ type:'delegated' } }
+  ],
+  nodes: [
+    { id:'n1', title:'填写个人信息表', role:'member', status:'todo',
+      desc:'每位同学填写个人基本信息、联系方式、紧急联系人。',
+      allowedOperators:['member','class-monitor','leader'] },
+    { id:'n2', title:'班长汇总材料', role:'class-monitor', status:'blocked',
+      desc:'班长收集全班信息表，汇总为 Excel 文档。',
+      allowedOperators:['class-monitor','leader'] },
+    { id:'n3', title:'提交汇总表', role:'class-monitor', status:'todo',
+      desc:'将汇总后的材料提交至系统。', allowedOperators:['class-monitor'] },
+    { id:'n4', title:'审核确认', role:'leader', status:'todo',
+      desc:'负责人审核汇总表的完整性和准确性。', allowedOperators:['leader'] },
+    { id:'n5', title:'归档完成', role:'leader', status:'todo',
+      desc:'审核通过后归档，流程结束。', allowedOperators:['leader'] }
+  ],
+  edges: [
+    { source:'n1', target:'n2', label:'信息收集完毕' },
+    { source:'n2', target:'n3', label:'汇总完成' },
+    { source:'n3', target:'n4', label:'已提交' },
+    { source:'n4', target:'n5', label:'审核通过' }
+  ]
+};
+
+const nodeMap = Object.fromEntries(MISSION.nodes.map(n => [n.id, n]));
+const roleMap = Object.fromEntries(MISSION.roles.map(r => [r.id, r]));
+
+/* ===================================================================
+   2. STATE
+   =================================================================== */
+const state = {
+  claimedRoles: [],       // role IDs that user has claimed
+  pendingClaims: [],      // role IDs pending approval
+  selectedNodeId: null,
+  claimPolicyTags: {
+    free:      { label:'自由认领', cls:'policy-free' },
+    approval:  { label:'需审核',   cls:'policy-approval' },
+    password:  { label:'口令',     cls:'policy-password' },
+    delegated: { label:'仅委派',   cls:'policy-delegated' }
+  }
+};
+
+/* ===================================================================
+   3. HELPERS
+   =================================================================== */
+function canOperateNode(node) {
+  if (!node.allowedOperators || node.allowedOperators.length === 0) return true;
+  return node.allowedOperators.some(r => state.claimedRoles.includes(r));
+}
+
+function isRoleClaimed(roleId) {
+  return state.claimedRoles.includes(roleId) || state.pendingClaims.includes(roleId);
+}
+
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+/* ===================================================================
+   4. DAGRE LAYOUT
+   =================================================================== */
+const g = new dagre.graphlib.Graph();
+g.setGraph({ rankdir:'TB', nodesep:60, ranksep:90, marginx:50, marginy:50 });
+g.setDefaultEdgeLabel(() => ({}));
+MISSION.nodes.forEach(n => g.setNode(n.id, { width:NODE_W, height:NODE_H }));
+MISSION.edges.forEach(e => g.setEdge(e.source, e.target, { label:e.label }));
+dagre.layout(g);
+
+/* ===================================================================
+   5. SVG RENDER
+   =================================================================== */
+const svg = d3.select('#graph-svg');
+const container = svg.append('g').attr('class', 'graph-container');
+const area = document.getElementById('graph-area');
+
+let selectedNodeId = null;
+
+function renderGraph() {
+  container.selectAll('*').remove();
+
+  /* edges */
+  container.append('g').selectAll('path')
+    .data(MISSION.edges).join('path')
+    .attr('class', 'edge-path')
+    .attr('d', e => {
+      const sn = g.node(e.source), tn = g.node(e.target);
+      const sx=sn.x, sy=sn.y+NODE_H/2, tx=tn.x, ty=tn.y-NODE_H/2;
+      const dx=tx-sx, dy=ty-sy;
+      if (dy<5) return `M${sx},${sy}L${tx},${ty}`;
+      const off=Math.min(Math.abs(dx)*.3, 30);
+      return `M${sx},${sy}C${sx+(dx>0?off:-off)},${sy+dy*.35} ${tx-(dx>0?off:-off)},${sy+dy*.65} ${tx},${ty}`;
+    })
+    .append('title').text(e => e.label);
+
+  /* nodes */
+  MISSION.nodes.forEach(n => {
+    const gn = g.node(n.id);
+    const operable = canOperateNode(n);
+    const cx = gn.x, cy = gn.y;
+    const cls = operable ? 'node-card operable' : 'node-card locked';
+
+    const grp = container.append('g')
+      .attr('class', cls)
+      .attr('transform', `translate(${cx-NODE_W/2},${cy-NODE_H/2})`)
+      .on('click', () => showDetail(n.id));
+
+    /* bg */
+    grp.append('rect').attr('class','card-bg')
+      .attr('width',NODE_W).attr('height',NODE_H).attr('rx',8);
+
+    /* role strip */
+    if (operable) {
+      grp.append('rect').attr('class','role-strip')
+        .attr('x',0).attr('y',0).attr('width',NODE_W).attr('height',5)
+        .attr('fill', roleMap[n.role]?.color || '#94a3b8');
+    }
+
+    /* lock/operable icon */
+    const icon = operable ? '🟢' : '🔒';
+    grp.append('text').attr('class','lock-icon')
+      .attr('x',12).attr('y',26).text(icon);
+
+    /* title */
+    grp.append('text').attr('class','title-text')
+      .attr('x',36).attr('y',26)
+      .attr('fill', operable ? '#1e293b' : '#94a3b8')
+      .text(n.title);
+
+    /* role req label */
+    const rolesLabel = n.allowedOperators?.map(r => roleMap[r]?.emoji || r).join('') || '所有人';
+    grp.append('text').attr('class','permission-label')
+      .attr('x',12).attr('y',48)
+      .text(operable ? `允许: ${rolesLabel}` : `仅: ${rolesLabel}`);
+
+    /* status badge */
+    const sc = STATUS[n.status] || STATUS.todo;
+    const sw = sc.label.length*11 + 14;
+    const sx2 = NODE_W - 14 - sw;
+    grp.append('rect').attr('class','status-badge')
+      .attr('x',sx2).attr('y',12).attr('width',sw).attr('height',18)
+      .attr('fill', sc.color);
+    grp.append('text').attr('class','status-text')
+      .attr('x',sx2+sw/2).attr('y',21).text(sc.label);
+  });
+}
+
+/* ===================================================================
+   6. CLAIM PANEL
+   =================================================================== */
+function renderClaimPanel() {
+  const list = document.getElementById('role-list');
+  const claimedEl = document.getElementById('claimed-list');
+
+  /* available roles */
+  list.innerHTML = '';
+  MISSION.roles.forEach(r => {
+    const policy = r.claimPolicy;
+    const tag = state.claimPolicyTags[policy.type] || { label:'?', cls:'' };
+    const claimed = state.claimedRoles.includes(r.id);
+    const pending = state.pendingClaims.includes(r.id);
+
+    const card = document.createElement('div');
+    card.className = 'role-card';
+    card.style.borderColor = claimed ? r.color : undefined;
+
+    const btnLabel = claimed ? '✓ 已认领'
+      : pending ? '⏳ 审批中'
+      : policy.type === 'free' ? '立即认领'
+      : policy.type === 'approval' ? '申请认领'
+      : policy.type === 'delegated' ? '需管理员委派'
+      : '认领';
+
+    const btnDisabled = claimed || pending || policy.type === 'delegated';
+    const btnClass = claimed ? 'claimed'
+      : pending ? 'pending-approval'
+      : policy.type === 'free' ? 'free'
+      : policy.type === 'approval' ? 'approval'
+      : 'delegated';
+
+    card.innerHTML = `
+      <div class="role-header">
+        <div class="role-name"><span style="color:${r.color}">${r.emoji}</span>${r.name}</div>
+        <span class="policy-tag ${tag.cls}">${tag.label}</span>
+      </div>
+      <div class="role-desc">${r.desc}</div>
+      ${policy.type === 'approval' ? `<div style="font-size:11px;color:#94a3b8;margin-top:4px">审批人: ${roleMap[policy.approverRole]?.name || policy.approverRole}</div>` : ''}
+      ${policy.type === 'password' ? `<div style="font-size:11px;color:#94a3b8;margin-top:4px">需输入口令</div>` : ''}
+      <button class="claim-btn ${btnClass}" data-role="${r.id}" ${btnDisabled ? 'disabled' : ''}>
+        ${btnLabel}
+      </button>
+    `;
+    list.appendChild(card);
+
+    const btn = card.querySelector('.claim-btn');
+    if (!btnDisabled) {
+      btn.addEventListener('click', () => handleClaim(r.id));
+    }
+    if (policy.type === 'delegated' && state.claimedRoles.includes(r.id)) {
+      btn.disabled = true;
+      btn.className = 'claim-btn claimed';
+      btn.textContent = '✓ 已认领';
+    }
+  });
+
+  /* claimed list */
+  if (state.claimedRoles.length === 0 && state.pendingClaims.length === 0) {
+    claimedEl.innerHTML = '<span style="color:#94a3b8;font-size:13px">尚未认领任何角色</span>';
+  } else {
+    claimedEl.innerHTML = '';
+    state.claimedRoles.forEach(rid => {
+      const r = roleMap[rid];
+      if (!r) return;
+      const d = document.createElement('div');
+      d.className = 'claimed-item';
+      d.innerHTML = `<span class="dot" style="background:${r.color}"></span>${r.emoji} ${r.name}<span class="check">✓</span>`;
+      claimedEl.appendChild(d);
+    });
+    state.pendingClaims.forEach(rid => {
+      const r = roleMap[rid];
+      if (!r) return;
+      const d = document.createElement('div');
+      d.className = 'claimed-item';
+      d.innerHTML = `<span class="dot" style="background:${r.color}"></span>${r.emoji} ${r.name}<span style="font-size:11px;color:#d97706;margin-left:auto">⏳审批中</span>`;
+      claimedEl.appendChild(d);
+    });
+  }
+
+  updateSimButtons();
+}
+
+/* ===================================================================
+   7. CLAIM HANDLING
+   =================================================================== */
+function handleClaim(roleId) {
+  const r = roleMap[roleId];
+  if (!r) return;
+
+  switch (r.claimPolicy.type) {
+    case 'free':
+      state.claimedRoles.push(roleId);
+      toast(`✅ 已认领「${r.name}」，获得对应节点操作权限`, 'success');
+      break;
+    case 'approval':
+      state.pendingClaims.push(roleId);
+      toast(`📩 已提交「${r.name}」认领申请，等待 ${roleMap[r.claimPolicy.approverRole]?.name||'审批人'} 审批`, 'warning');
+      break;
+    case 'password':
+      toast('🔐 此角色需输入口令', 'info');
+      break;
+    case 'delegated':
+      toast('🔴 此角色仅可由管理员委派', 'error');
+      return;
+  }
+
+  syncAll();
+}
+
+function approvePending(roleId) {
+  const idx = state.pendingClaims.indexOf(roleId);
+  if (idx === -1) { toast('没有待审批的申请', 'warning'); return; }
+  state.pendingClaims.splice(idx, 1);
+  state.claimedRoles.push(roleId);
+  const r = roleMap[roleId];
+  toast(`✅ 「${r.name}」认领已批准，获得对应节点操作权限`, 'success');
+  syncAll();
+}
+
+function delegateRole(roleId) {
+  if (state.claimedRoles.includes(roleId)) { toast('已认领此角色', 'info'); return; }
+  state.claimedRoles.push(roleId);
+  const r = roleMap[roleId];
+  toast(`🔴 管理员已委派你为「${r.name}」`, 'success');
+  syncAll();
+}
+
+function resetAll() {
+  state.claimedRoles = [];
+  state.pendingClaims = [];
+  toast('⟳ 已重置所有角色认领', 'info');
+  syncAll();
+}
+
+function syncAll() {
+  renderClaimPanel();
+  renderGraph();
+  updateDetailIfOpen();
+  renderSimButtons();
+}
+
+/* ===================================================================
+   8. SIM BUTTONS
+   =================================================================== */
+function renderSimButtons() {
+  const approveBtn = document.querySelector('[data-action="approve-monitor"]');
+  const delegateBtn = document.querySelector('[data-action="delegate-leader"]');
+  if (approveBtn) approveBtn.disabled = state.pendingClaims.length === 0;
+  if (delegateBtn) delegateBtn.disabled = state.claimedRoles.includes('leader');
+}
+
+function updateSimButtons() {
+  renderSimButtons();
+}
+
+/* ===================================================================
+   9. DETAIL PANEL
+   =================================================================== */
+const panel = document.getElementById('detail-panel');
+const backdrop = document.getElementById('backdrop');
+
+function showDetail(nodeId) {
+  selectedNodeId = nodeId;
+  const n = nodeMap[nodeId]; if (!n) return;
+  const operable = canOperateNode(n);
+  const sc = STATUS[n.status] || STATUS.todo;
+  const role = roleMap[n.role];
+  const inEdges = MISSION.edges.filter(e => e.target === nodeId);
+  const outEdges = MISSION.edges.filter(e => e.source === nodeId);
+
+  document.getElementById('dp-title').textContent = `${n.title} ${operable ? '🟢' : '🔒'}`;
+
+  document.getElementById('dp-body').innerHTML = `
+    <div class="col">
+      <div class="dp-row"><span class="label">状态：</span><span style="color:${sc.color};font-weight:500">${sc.label}</span></div>
+      <div class="dp-row"><span class="label">负责角色：</span>${role?.emoji||''} ${role?.name||n.role}</div>
+      <div class="dp-row"><span class="label">操作权限：</span>
+        <span class="perm-badge ${operable?'ok':'no'}">${operable?'✅ 可操作':'🔒 不可操作'}</span>
+      </div>
+      <div class="dp-row" style="margin-top:8px"><span class="label">允许操作的角色：</span><br>
+        ${(n.allowedOperators?.map(r => roleMap[r]?.emoji + roleMap[r]?.name || r).join('、')) || '所有人'}
+      </div>
+    </div>
+    <div class="col">
+      <div class="dp-row"><span class="label">说明：</span><br>${n.desc}</div>
+      <div class="dp-row" style="margin-top:8px">
+        <span class="label">前置依赖：</span>
+        ${inEdges.length ? inEdges.map(e => `↗ ${nodeMap[e.source]?.title||e.source}`).join('<br>') : '（无，起始节点）'}
+      </div>
+      <div class="dp-row">
+        <span class="label">后续节点：</span>
+        ${outEdges.length ? outEdges.map(e => `↘ ${nodeMap[e.target]?.title||e.target}`).join('<br>') : '（无，终点节点）'}
+      </div>
+    </div>
+  `;
+  panel.classList.add('open');
+  backdrop.classList.add('show');
+}
+
+function hideDetail() {
+  panel.classList.remove('open');
+  backdrop.classList.remove('show');
+  selectedNodeId = null;
+}
+
+function updateDetailIfOpen() {
+  if (selectedNodeId) showDetail(selectedNodeId);
+}
+
+document.getElementById('dp-close').addEventListener('click', hideDetail);
+backdrop.addEventListener('click', hideDetail);
+document.addEventListener('keydown', e => { if (e.key==='Escape') hideDetail(); });
+
+/* ===================================================================
+   10. ZOOM / PAN
+   =================================================================== */
+const zoom = d3.zoom().scaleExtent([0.2,3])
+  .on('zoom', ev => container.attr('transform', ev.transform));
+svg.call(zoom);
+
+function fitView() {
+  const rect = area.getBoundingClientRect();
+  const bw = g.graph().width||800, bh = g.graph().height||600;
+  const pad = 50;
+  const sc = Math.min((rect.width-pad*2)/bw, (rect.height-pad*2)/bh, 1.3);
+  const tx = (rect.width - bw*sc)/2;
+  const ty = (rect.height - bh*sc)/2 + 10;
+  svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(sc));
+}
+setTimeout(fitView, 100);
+window.addEventListener('resize', fitView);
+
+/* ===================================================================
+   11. EVENT BINDINGS
+   =================================================================== */
+document.querySelectorAll('[data-action]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action;
+    switch (action) {
+      case 'approve-monitor':
+        if (state.pendingClaims.includes('class-monitor')) approvePending('class-monitor');
+        else toast('没有待审批的班长申请', 'warning');
+        break;
+      case 'delegate-leader':
+        delegateRole('leader');
+        break;
+      case 'reset':
+        resetAll();
+        break;
+    }
+  });
+});
+
+/* ===================================================================
+   12. INIT
+   =================================================================== */
+syncAll();
+console.log('✅ 任务系统 v2 演示已加载');
+console.log('可操作节点数:', MISSION.nodes.filter(n => canOperateNode(n)).length);
+</script>
+</body>
+</html>

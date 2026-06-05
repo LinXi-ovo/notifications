@@ -88,7 +88,7 @@
           :role-name="getRoleName(node.assignedRole)"
           :role-emoji="getRoleEmoji(node.assignedRole)"
           :role-color="getRoleColor(node.assignedRole)"
-          :is-locked="false"
+          :is-locked="!!(nodeLockMap && nodeLockMap[node.id])"
           :is-selected="selectedNodeId === node.id"
           @select="$emit('selectNode', node.id)"
           @dblclick="$emit('dblclickNode', node.id)"
@@ -119,7 +119,9 @@ const props = defineProps({
   edges: { type: Array, default: () => [] },
   roles: { type: Array, default: () => [] },
   selectedNodeId: { type: String, default: null },
-  selectedEdgeId: { type: String, default: null }
+  selectedEdgeId: { type: String, default: null },
+  /** Map<nodeId, boolean> — 节点锁定状态 */
+  nodeLockMap: { type: Object, default: () => ({}) }
 })
 
 const emit = defineEmits(['selectNode', 'dblclickNode', 'selectEdge', 'update:selectedEdgeId'])

@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务系统 v3 · 集成演示</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#f0f2f5;color:#1e293b;height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none}
+.header{background:#fff;padding:10px 20px;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;align-items:center;gap:10px;flex-shrink:0;z-index:10;flex-wrap:wrap}
+.header h1{font-size:16px;font-weight:600}.header .badge{font-size:11px;padding:2px 8px;border-radius:8px;background:#eef2ff;color:#4338ca}
+.header .user-info{margin-left:auto;font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px}
+.tool-btn{padding:3px 10px;border-radius:5px;border:1px solid #ddd;background:#fff;font-size:12px;cursor:pointer;transition:all .1s}
+.tool-btn:hover{border-color:#818cf8;color:#4338ca}
+.main{flex:1;display:flex;overflow:hidden}
+/* ── Left Panel ── */
+.left-panel{width:220px;background:#fff;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;font-size:13px}
+.left-panel .sec{padding:10px 14px;border-bottom:1px solid #f1f5f9}
+.left-panel .sec-title{font-size:11px;font-weight:600;color:#94a3b8;letter-spacing:.3px;margin-bottom:6px}
+.role-item{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid #f8fafc}
+.role-item:last-child{border-bottom:none}
+.role-btn-sm{padding:2px 10px;border-radius:10px;border:none;font-size:11px;cursor:pointer;color:#fff;transition:all .1s}
+.role-btn-sm:disabled{opacity:.4;cursor:default}
+.stat-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:#475569}
+.stat-row .num{font-weight:600}
+/* ── Graph ── */
+.graph-area{flex:1;position:relative;overflow:hidden;background:#f8fafc;background-image:radial-gradient(#d1d5db .5px,transparent .5px);background-size:18px 18px}
+.graph-area svg{width:100%;height:100%;display:block}
+.node-card{cursor:pointer}.node-card .bg{stroke:#e2e8f0;stroke-width:1.5;transition:all .12s}
+.node-card.operable .bg{fill:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.06))}
+.node-card.operable:hover .bg{stroke:#818cf8;stroke-width:2;filter:drop-shadow(0 3px 10px rgba(99,102,241,.18))}
+.node-card.locked .bg{fill:#f1f5f9;stroke:#e2e8f0}.node-card.locked{cursor:not-allowed}
+.node-card .strip{height:4}
+.node-card .progress-bg{fill:#e5e7eb;rx:3}
+.node-card .progress-fill{rx:3}
+/* ── Detail Panel ── */
+#detail{position:fixed;bottom:0;left:220px;right:0;background:#fff;border-top:2px solid #e2e8f0;transform:translateY(100%);transition:transform .2s;z-index:50;max-height:55%;overflow-y:auto;padding:14px 20px}
+#detail.open{transform:translateY(0)}
+#detail .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+#detail .hd h3{font-size:15px;font-weight:600}
+#detail .hd .tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{padding:1px 8px;border-radius:8px;font-size:11px;font-weight:500;color:#fff}
+#detail .cols{display:flex;gap:16px;flex-wrap:wrap;font-size:13px}
+#detail .cols .c{flex:1;min-width:180px}
+#detail .row{margin-bottom:5px}
+#detail .row .l{color:#94a3b8;display:inline-block;min-width:52px}
+.fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;margin:6px 0;padding:8px 10px;background:#f8fafc;border-radius:6px;font-size:12px}
+.fields-grid .f{display:flex;gap:4px}
+.fields-grid .fl{color:#94a3b8;min-width:40px}
+.comment-item{padding:5px 8px;margin:3px 0;background:#f8fafc;border-radius:5px;font-size:12px;border-left:3px solid #e2e8f0}
+.comment-item .ca{color:#64748b;font-weight:500}.comment-item .ct{color:#94a3b8;font-size:11px}
+.at-mention{color:#4338ca;font-weight:500}
+.comp-list{font-size:12px}.comp-list .done{color:#059669}.comp-list .pending{color:#94a3b8}
+.sub-mission-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:#fffbeb;color:#d97706;border-radius:8px;font-size:11px;font-weight:500}
+#backdrop{position:fixed;bottom:0;left:220px;right:0;height:100%;background:rgba(0,0,0,.08);opacity:0;pointer-events:none;transition:opacity .2s;z-index:49}
+#backdrop.show{opacity:1;pointer-events:auto}
+/* ── Toast ── */
+#toast{position:fixed;top:12px;right:12px;z-index:999;display:flex;flex-direction:column;gap:6px}
+.toast{padding:8px 14px;border-radius:6px;font-size:12px;color:#fff;animation:si .2s;box-shadow:0 3px 10px rgba(0,0,0,.1);max-width:320px}
+.toast.s{background:#059669}.toast.w{background:#d97706}.toast.i{background:#2563eb}.toast.e{background:#dc2626}
+@keyframes si{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.legend{position:absolute;bottom:10px;left:10px;display:flex;gap:10px;font-size:10px;color:#94a3b8;background:rgba(255,255,255,.85);padding:4px 10px;border-radius:5px}
+@media(max-width:640px){.left-panel{width:180px}#detail{left:180px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>📋 v3 集成演示</h1>
+  <span class="badge">提交班级汇总材料</span>
+  <span class="badge" id="progress-label" style="background:#f0fdf4;color:#16a34a">进度 0%</span>
+  <div style="flex:1"></div>
+  <button class="tool-btn" id="btn-export">📥 导出 JSON</button>
+  <span class="user-info" id="user-info">👤 demo_user</span>
+</div>
+<div class="main">
+  <div class="left-panel">
+    <div class="sec">
+      <div class="sec-title">🪪 角色认领</div>
+      <div id="role-list"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">📊 完成统计</div>
+      <div id="stats-area">
+        <div class="stat-row"><span>🟢 普通成员</span> <span class="num" id="s-member">0/0</span></div>
+        <div class="stat-row"><span>🟣 审核员</span> <span class="num" id="s-reviewer">0/0</span></div>
+        <div class="stat-row"><span>🔴 负责人</span> <span class="num" id="s-leader">0/0</span></div>
+        <div class="stat-row" style="border-top:1px solid #e5e7eb;padding-top:6px;margin-top:4px;font-weight:600">总进度 <span class="num" id="s-total">0/0</span></div>
+      </div>
+    </div>
+    <div class="sec" style="margin-top:auto;border-top:1px solid #f1f5f9">
+      <div class="sec-title">🎮 模拟操作</div>
+      <button class="tool-btn" style="width:100%;margin-bottom:4px;font-size:11px" id="btn-approve" disabled>✅ 批准审核员</button>
+      <button class="tool-btn" style="width:100%;margin-bottom:4px;font-size:11px" id="btn-delegate" disabled>🔴 委派负责人</button>
+      <button class="tool-btn" style="width:100%;font-size:11px" id="btn-remind">⏰ 模拟提醒</button>
+    </div>
+  </div>
+  <div class="graph-area" id="graph-area">
+    <svg id="graph-svg"><defs><marker id="a" markerWidth="6" markerHeight="5" refX="10" refY="2.5" orient="auto" markerUnits="strokeWidth"><polygon points="0 0,8 2.5,0 5" fill="#94a3b8"/></marker></defs></svg>
+    <div class="legend"><span>🟢可操作</span><span>🔒锁定</span><span>✅完成统计</span><span>🔽子图</span></div>
+  </div>
+</div>
+<div id="backdrop"></div>
+<div id="detail"><div class="hd"><h3 id="d-title">节点详情</h3><div class="tags" id="d-tags"></div><button id="d-close" style="border:none;background:none;font-size:18px;color:#94a3b8;cursor:pointer">✕</button></div><div class="cols" id="d-body"></div></div>
+<div id="toast"></div>
+<script>
+/* ========== DATA ========== */
+const NW=200,NH=75;
+const ROLES={
+  member:{id:'member',name:'普通成员',color:'#10B981',emoji:'🟢',policy:'free',btn:'立即认领',btnCls:'#10B981'},
+  reviewer:{id:'reviewer',name:'审核员',color:'#8B5CF6',emoji:'🟣',policy:'approval',btn:'申请认领',btnCls:'#8B5CF6'},
+  leader:{id:'leader',name:'负责人',color:'#EF4444',emoji:'🔴',policy:'delegated',btn:'需委派',btnCls:'#94a3b8'}
+};
+const SC={todo:{l:'未开始',c:'#9CA3AF'},'in-progress':{l:'进行中',c:'#3B82F6'},completed:{l:'已完成',c:'#10B981'},blocked:{l:'阻塞',c:'#EF4444'}};
+
+// Diamond DAG: n1 → n2a+n2b → n3 → n4 → n5
+const nodesData=[
+  {id:'n1',title:'发布通知',role:'leader',status:'completed',desc:'发布评奖评优正式通知，明确条件与截止日期',allowedOps:['leader','member','reviewer'],compRule:'single',compTarget:1,compCount:1,hasSub:false,fields:{},fieldSchema:[],comments:[]},
+  {id:'n2a',title:'材料收集A',role:'member',status:'in-progress',desc:'A组收集申请材料与证明文件',allowedOps:['member','reviewer','leader'],compRule:'count',compTarget:20,compCount:5,hasSub:false,fields:{name:'张三',sid:'2024001',dept:'计算机'},fieldSchema:[{id:'name',label:'姓名',type:'text'},{id:'sid',label:'学号',type:'text'},{id:'dept',label:'学院',type:'select',opts:['计算机','数学','物理']}],comments:[{a:'李四',t:'已提交 @审核员 请查收',tm:'06-10 14:00'}]},
+  {id:'n2b',title:'材料初审B',role:'reviewer',status:'in-progress',desc:'B组核对材料完整性和合规性',allowedOps:['reviewer','leader'],compRule:'count',compTarget:3,compCount:1,hasSub:false,fields:{result:'',note:'缺成绩单'},fieldSchema:[{id:'result',label:'初审结果',type:'select',opts:['通过','退回补充','不通过']},{id:'note',label:'备注',type:'textarea'}],comments:[]},
+  {id:'n3',title:'汇总审核',role:'leader',status:'blocked',desc:'汇总全部材料并做最终审核',allowedOps:['leader'],compRule:'single',compTarget:1,compCount:0,hasSub:true,subPct:60,fields:{opinion:''},fieldSchema:[{id:'opinion',label:'审核意见',type:'textarea'}],comments:[{a:'系统',t:'⏳ 等待材料收集和初审完成',tm:'06-11 09:00'}]},
+  {id:'n4',title:'名单公示',role:'leader',status:'todo',desc:'公示拟获奖名单（5个工作日）',allowedOps:['leader'],compRule:'single',compTarget:1,compCount:0,hasSub:false,fields:{},fieldSchema:[],comments:[]},
+  {id:'n5',title:'归档发布',role:'leader',status:'todo',desc:'归档文件并正式发布结果',allowedOps:['leader'],compRule:'single',compTarget:1,compCount:0,hasSub:false,fields:{},fieldSchema:[],comments:[]}
+];
+const edgesData=[
+  {s:'n1',t:'n2a',l:'启动收集'},{s:'n1',t:'n2b',l:'启动初审'},
+  {s:'n2a',t:'n3',l:'收集完毕'},{s:'n2b',t:'n3',l:'初审完成'},
+  {s:'n3',t:'n4',l:'审核通过'},{s:'n4',t:'n5',l:'公示结束'}
+];
+const nm=Object.fromEntries(nodesData.map(n=>[n.id,n]));
+const NODES=nodesData, EDGES=edgesData;
+
+/* ========== STATE ========== */
+let claimed=[], pending=[];
+function hasRole(r){return claimed.includes(r)||pending.includes(r)}
+function canOp(n){
+  if(!n.allowedOps||!n.allowedOps.length)return true;
+  return n.allowedOps.some(r=>claimed.includes(r));
+}
+function progress(n){
+  if(n.compRule==='count')return n.compTarget?Math.round(n.compCount/n.compTarget*100):0;
+  if(n.compRule==='single')return n.status==='completed'?100:0;
+  return 0;
+}
+
+/* ========== DAGRE ========== */
+const g=new dagre.graphlib.Graph();
+g.setGraph({rankdir:'TB',nodesep:50,ranksep:80,marginx:40,marginy:40});
+g.setDefaultEdgeLabel(()=>({}));
+NODES.forEach(n=>g.setNode(n.id,{width:NW,height:NH}));
+EDGES.forEach(e=>g.setEdge(e.s,e.t,{label:e.l}));
+dagre.layout(g);
+
+/* ========== SVG ========== */
+const svg=d3.select('#graph-svg'),c=svg.append('g');
+let selId=null;
+function render(){
+  c.selectAll('*').remove();
+  // edges
+  c.append('g').selectAll('path').data(EDGES).join('path').attr('d',e=>{
+    const sn=g.node(e.s),tn=g.node(e.t),sx=sn.x,sy=sn.y+NH/2-3,tx=tn.x,ty=tn.y-NH/2+5,dy=ty-sy,dx=tx-sx;
+    if(dy<5)return`M${sx},${sy}L${tx},${ty}`;
+    const o=Math.min(Math.abs(dx)*.35,28);
+    return`M${sx},${sy}C${sx+(dx>0?o:-o)},${sy+dy*.35}${tx-(dx>0?o:-o)},${sy+dy*.65}${tx},${ty}`;
+  }).attr('fill','none').attr('stroke','#94a3b8').attr('stroke-width',2.5).attr('marker-end','url(#a)')
+    .append('title').text(e=>e.l);
+  // nodes
+  NODES.forEach(n=>{
+    const gn=g.node(n.id),op=canOp(n),pct=progress(n);
+    const grp=c.append('g').attr('class',`node-card ${op?'operable':'locked'}`)
+      .attr('transform',`translate(${gn.x-NW/2},${gn.y-NH/2})`).on('click',()=>showDetail(n.id));
+    grp.append('rect').attr('class','bg').attr('width',NW).attr('height',NH).attr('rx',7);
+    if(op)grp.append('rect').attr('class','strip').attr('width',NW).attr('height',4).attr('fill',ROLES[n.role]?.color||'#94a3b8').attr('rx',2);
+    // lock/op icon
+    grp.append('text').attr('x',8).attr('y',22).attr('font-size',14).text(op?'🟢':'🔒');
+    // title
+    grp.append('text').attr('x',28).attr('y',22).attr('font-size',13).attr('font-weight',600).attr('fill',op?'#1e293b':'#94a3b8').text(n.title);
+    // role
+    grp.append('text').attr('x',8).attr('y',40).attr('font-size',10).attr('fill','#94a3b8')
+      .text(`${ROLES[n.role]?.emoji||''} ${ROLES[n.role]?.name||n.role}`);
+    // status badge
+    const sc=SC[n.status]||SC.todo,sw=sc.l.length*10+12;
+    grp.append('rect').attr('x',NW-12-sw).attr('y',6).attr('width',sw).attr('height',16).attr('rx',8).attr('fill',sc.c);
+    grp.append('text').attr('x',NW-12-sw/2).attr('y',16).attr('text-anchor','middle').attr('font-size',9).attr('fill','#fff').attr('font-weight',500).text(sc.l);
+    // progress bar (for count mode or sub)
+    if(n.compRule==='count'&&n.compTarget>0){
+      const bw=120,bx=8,by=54;
+      grp.append('rect').attr('x',bx).attr('y',by).attr('width',bw).attr('height',10).attr('rx',5).attr('fill','#e5e7eb');
+      if(pct>0)grp.append('rect').attr('x',bx).attr('y',by).attr('width',bw*pct/100).attr('height',10).attr('rx',5).attr('fill',ROLES[n.role]?.color||'#94a3b8');
+      grp.append('text').attr('x',bx+bw+4).attr('y',by+9).attr('font-size',10).attr('fill','#64748b').text(`✅${n.compCount}/${n.compTarget}`);
+    }
+    // sub-mission badge
+    if(n.hasSub){
+      grp.append('rect').attr('x',NW-52).attr('y',NH-20).attr('width',46).attr('height',14).attr('rx',7).attr('fill','#fffbeb').attr('stroke','#fde68a');
+      grp.append('text').attr('x',NW-29).attr('y',NH-10).attr('text-anchor','middle').attr('font-size',9).attr('fill','#d97706').attr('font-weight',500).text(`🔽 ${n.subPct||0}%`);
+    }
+  });
+  updateStats();
+}
+function updateStats(){
+  // 按角色统计：每个角色下有多少个节点已完成
+  const roleKeys=['member','reviewer','leader'];
+  roleKeys.forEach(r=>{
+    const rNodes=NODES.filter(n=>n.role===r);
+    let done=0; rNodes.forEach(n=>{
+      if(n.status==='completed')done++;
+      else if(n.compRule==='count'&&n.compCount>=n.compTarget)done++;
+    });
+    const el=document.getElementById(`s-${r}`);if(el)el.textContent=`✅${done}/${rNodes.length}`;
+  });
+  const all=NODES;
+  const d=all.filter(n=>n.status==='completed'||(n.compRule==='count'&&n.compCount>=n.compTarget)).length;
+  document.getElementById('s-total').textContent=`✅${d}/${all.length}`;
+  document.getElementById('progress-label').textContent=`进度 ${Math.round(d/all.length*100)}%`;
+}
+
+/* ========== MARK COMPLETE ========== */
+function markComplete(id){
+  const n=nm[id];if(!n)return;
+  if(!canOp(n)){toast('🔒 你的角色无权操作此节点','e');return;}
+  if(n.status==='completed'){toast('✅ 此节点已完成','i');return;}
+  if(n.compRule==='count'){
+    n.compCount=(n.compCount||0)+1;
+    if(n.compCount>=n.compTarget){n.status='completed';toast(`🎉 「${n.title}」全部完成 (${n.compCount}/${n.compTarget})`,'s');}
+    else{toast(`✅ 「${n.title}」${n.compCount}/${n.compTarget}`,'s');}
+  }else{ // single
+    n.status='completed';n.compCount=1;
+    toast(`🎉 「${n.title}」已完成`,'s');
+    // check downstream blocked nodes
+    EDGES.filter(e=>e.s===id).forEach(e=>{
+      const dt=nm[e.t];if(dt&&dt.status==='blocked'){dt.status='in-progress';toast(`🔓 「${dt.title}」已解锁`,'w');}
+    });
+  }
+  render();if(selId)showDetail(selId);updateStats();
+}
+
+/* ========== DETAIL ========== */
+const D=document.getElementById('detail'),DB=document.getElementById('d-body');
+function showDetail(id){
+  selId=id;const n=nm[id];if(!n)return;
+  const op=canOp(n),sc=SC[n.status]||SC.todo,r=ROLES[n.role];
+  document.getElementById('d-title').innerHTML=`${n.title} <span style="font-size:12px;color:#94a3b8;font-weight:400">${n.id}</span>`;
+  document.getElementById('d-tags').innerHTML=`
+    <span class="tag" style="background:${sc.c}">${sc.l}</span>
+    <span class="tag" style="background:${r?.color||'#94a3b8'}">${r?.emoji||''} ${r?.name||''}</span>
+    <span class="tag" style="background:${op?'#059669':'#94a3b8'}">${op?'🟢可操作':'🔒锁定'}</span>`;
+  let html='<div class="c">';
+  html+=`<div class="row"><span class="l">描述</span><br>${n.desc}</div>`;
+  // completion stats
+  if(n.compRule==='count'&&n.compTarget>0){
+    html+=`<div class="row" style="margin-top:6px"><span class="l">完成进度</span><br><div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+      <div style="flex:1;height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden"><div style="height:100%;width:${progress(n)}%;background:${r?.color||'#94a3b8'};border-radius:5px"></div></div>
+      <span style="font-weight:600;font-size:13px">${n.compCount}/${n.compTarget}</span></div></div>`;
+    // completion list
+    const doneUsers=['张三','李四','王五','赵六','钱七','孙八','周九','吴十'].slice(0,n.compCount);
+    const pendingUsers=['郑一','冯二','陈三','褚四','卫五'].slice(0,n.compTarget-n.compCount);
+    html+=`<div class="comp-list" style="margin-top:4px">`;
+    if(doneUsers.length)html+=`<span class="done">✅ ${doneUsers.join(' ')}</span> `;
+    if(pendingUsers.length)html+=`<span class="pending">⬜ ${pendingUsers.join(' ')}</span>`;
+    html+=`</div>`;
+  }
+  // sub-mission
+  if(n.hasSub)html+=`<div class="row" style="margin-top:6px"><span class="sub-mission-badge">🔽 子图进度 ${n.subPct||0}%</span></div>`;
+  // permissions
+  html+=`<div class="row" style="margin-top:6px"><span class="l">允许操作</span> ${n.allowedOps?.map(r=>ROLES[r]?.emoji+ROLES[r]?.name).join('、')||'全部'}</div>`;
+  html+='</div><div class="c">';
+  // custom fields
+  if(n.fieldSchema&&n.fieldSchema.length){
+    html+=`<div class="row"><span class="l">📋 自定义字段</span></div><div class="fields-grid">`;
+    n.fieldSchema.forEach(f=>{
+      const val=n.fields[f.id]||'';
+      html+=`<div class="f"><span class="fl">${f.label}</span>`;
+      if(f.type==='select')html+=`<span style="color:#475569">[▼ ${val||'请选择'}]</span>`;
+      else html+=`<span style="color:#475569">${val||'(空)'}</span>`;
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  }
+  // comments
+  if(n.comments&&n.comments.length){
+    html+=`<div class="row" style="margin-top:6px"><span class="l">💬 评论</span></div>`;
+    n.comments.forEach(cm=>{
+      const txt=cm.t.replace(/@(\w+)/g,'<span class="at-mention" style="cursor:pointer" onclick="toast(\'⏰ 已提醒 @$1\',\'w\');event.stopPropagation()">@$1</span>');
+      html+=`<div class="comment-item"><span class="ca">${cm.a}</span> <span>${txt}</span> <span class="ct">${cm.tm}</span></div>`;
+    });
+  }
+  // edges
+  const inE=EDGES.filter(e=>e.t===n.id),outE=EDGES.filter(e=>e.s===n.id);
+  if(inE.length)html+=`<div class="row" style="margin-top:6px"><span class="l">⬅ 前置</span> ${inE.map(e=>nm[e.s]?.title||e.s).join(' → ')}</div>`;
+  if(outE.length)html+=`<div class="row"><span class="l">➡ 后置</span> ${outE.map(e=>nm[e.t]?.title||e.t).join(' → ')}</div>`;
+  // complete button
+  const canComplete=canOp(n)&&n.status!=='completed'&&(n.compRule!=='count'||n.compCount<(n.compTarget||Infinity));
+  if(canComplete){
+    html+=`</div><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:10px;display:flex;gap:8px;flex-wrap:wrap;width:100%">
+      <button onclick="markComplete('${n.id}')" style="padding:7px 20px;border:none;border-radius:6px;background:#10B981;color:#fff;font-size:13px;font-weight:600;cursor:pointer">✅ 标记完成</button>
+      <button onclick="toast('⏰ 已发送催促通知','w')" style="padding:7px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;font-size:12px;cursor:pointer">⏰ 催促</button>
+      <button onclick="toast('🔗 链接已复制','i')" style="padding:7px 16px;border:1px solid #ddd;border-radius:6px;background:#fff;font-size:12px;cursor:pointer">🔗 复制链接</button>
+    </div>`;
+  }else if(!canOp(n)){
+    html+=`</div><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:10px;width:100%">
+      <span style="color:#94a3b8;font-size:13px">🔒 你的角色无权操作此节点（仅限 ${n.allowedOps?.map(r=>ROLES[r]?.emoji).join('')||'无'}）</span>
+    </div>`;
+  }else{
+    html+=`</div><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:10px;width:100%">
+      <span style="color:#059669;font-size:13px">✅ 此节点已完成</span>
+    </div>`;
+  }
+  html+='</div>';
+  DB.innerHTML=html;
+  D.classList.add('open');document.getElementById('backdrop').classList.add('show');
+}
+function hideDetail(){D.classList.remove('open');document.getElementById('backdrop').classList.remove('show');selId=null}
+document.getElementById('d-close').onclick=hideDetail;document.getElementById('backdrop').onclick=hideDetail;
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideDetail()});
+
+/* ========== CLAIM PANEL ========== */
+function renderClaim(){
+  const el=document.getElementById('role-list');
+  el.innerHTML='';
+  Object.values(ROLES).forEach(r=>{
+    const cl=claimed.includes(r.id),pe=pending.includes(r.id);
+    const btn=document.createElement('button');
+    btn.className='role-btn-sm';btn.style.background=r.btnCls;
+    btn.disabled=cl||pe||r.policy==='delegated';
+    btn.textContent=cl?'✅ 已认领':pe?'⏳ 审批中':r.btn;
+    const d=document.createElement('div');d.className='role-item';
+    d.innerHTML=`<span>${r.emoji} ${r.name}</span>`;
+    d.appendChild(btn);
+    el.appendChild(d);
+    if(!btn.disabled)btn.onclick=()=>handleClaim(r.id);
+    if(r.policy==='delegated'&&cl){btn.disabled=true;btn.textContent='✅ 已认领';}
+    // update sim buttons
+    document.getElementById('btn-approve').disabled=pending.length===0;
+    document.getElementById('btn-delegate').disabled=claimed.includes('leader');
+  });
+}
+function handleClaim(id){
+  const r=ROLES[id];if(!r)return;
+  if(r.policy==='free'){claimed.push(id);toast(`✅ 已认领「${r.name}」`,'s');}
+  else if(r.policy==='approval'){pending.push(id);toast(`📩 已申请「${r.name}」，等待审批`,'w');}
+  render();renderClaim();updateStats();
+}
+function approvePending(){
+  if(!pending.length){toast('无待审批项','w');return;}
+  const pid=pending.shift();claimed.push(pid);
+  toast(`✅ 「${ROLES[pid]?.name}」认领已批准`,'s');
+  render();renderClaim();updateStats();
+}
+function delegateLeader(){
+  if(claimed.includes('leader')){toast('负责人已认领','i');return;}
+  claimed.push('leader');toast(`🔴 管理员已委派你为负责人`,'s');
+  render();renderClaim();updateStats();
+}
+function resetAll(){
+  claimed=[];pending=[];
+  render();renderClaim();updateStats();toast('⟳ 已重置所有认领','i');
+}
+
+/* ========== TOAST ========== */
+function toast(msg,type='i'){
+  const el=document.createElement('div');el.className=`toast ${type}`;el.textContent=msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(()=>el.remove(),2500);
+}
+
+/* ========== EXPORT ========== */
+function exportJSON(){
+  const data={
+    mission:'提交班级汇总材料',
+    exportedAt:new Date().toISOString(),
+    roles:Object.values(ROLES).map(r=>({id:r.id,name:r.name,policy:r.policy})),
+    nodes:NODES.map(n=>({
+      id:n.id,title:n.title,role:n.role,status:n.status,
+      compRule:n.compRule,compTarget:n.compTarget,compCount:n.compCount,
+      allowedOps:n.allowedOps,hasSub:n.hasSub,
+      deps:{in:EDGES.filter(e=>e.t===n.id).map(e=>e.s),out:EDGES.filter(e=>e.s===n.id).map(e=>e.t)}
+    })),
+    edges:EDGES.map(e=>({source:e.s,target:e.t,label:e.l})),
+    stats:{
+      claimedRoles:claimed,
+      totalNodes:NODES.length,
+      completedNodes:NODES.filter(n=>n.status==='completed'||(n.compRule==='count'&&n.compCount>=n.compTarget)).length,
+      completionByRole:Object.fromEntries(Object.keys(ROLES).map(r=>{
+        const rn=NODES.filter(n=>n.role===r);
+        return [r,{total:rn.length,done:rn.filter(n=>n.status==='completed'||(n.compRule==='count'&&n.compCount>=n.compTarget)).length}];
+      }))
+    }
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='mission-export.json';a.click();
+  toast('📥 JSON 已下载','s');
+}
+
+/* ========== REMIND ========== */
+function simulateRemind(){
+  const idleNodes=NODES.filter(n=>n.status==='in-progress'||n.status==='blocked');
+  if(!idleNodes.length){toast('所有节点已完成，无需提醒','i');return;}
+  const targets=idleNodes.map(n=>`「${n.title}」(${ROLES[n.role]?.name||''})`).join('、');
+  toast(`⏰ 已发送提醒给: ${targets}`,'w');
+}
+
+/* ========== ZOOM ========== */
+const zoomFn=d3.zoom().scaleExtent([0.2,3]).on('zoom',ev=>c.attr('transform',ev.transform));
+svg.call(zoomFn);
+function fitView(){
+  const rect=document.getElementById('graph-area').getBoundingClientRect();
+  const bw=g.graph().width||600,bh=g.graph().height||500,pad=40;
+  const sc=Math.min((rect.width-pad*2)/bw,(rect.height-pad*2)/bh,1.4);
+  const tx=(rect.width-bw*sc)/2,ty=(rect.height-bh*sc)/2;
+  svg.transition().duration(200).call(zoomFn.transform,d3.zoomIdentity.translate(tx,ty).scale(sc));
+}
+
+/* ========== BIND ========== */
+document.getElementById('btn-export').onclick=exportJSON;
+document.getElementById('btn-approve').onclick=approvePending;
+document.getElementById('btn-delegate').onclick=delegateLeader;
+document.getElementById('btn-remind').onclick=simulateRemind;
+
+/* ========== INIT ========== */
+render();renderClaim();
+setTimeout(fitView,100);window.addEventListener('resize',fitView);
+toast('💡 ① 认领角色 → ② 点击节点 → ③ 点"标记完成"','i');
+toast('📊 分支 DAG: n1→n2a+n2b→n3→n4→n5','i');
+</script>
+</body>
+</html>

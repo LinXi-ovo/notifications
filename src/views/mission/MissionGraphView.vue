@@ -46,25 +46,51 @@
     </div>
 
     <!-- 🧪 调试工具栏 -->
-    <div v-if="debugMode" class="flex items-center gap-2 px-4 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-700/30 text-xs shrink-0">
+    <div v-if="debugMode" class="flex items-center gap-2 px-4 py-1.5 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-700/30 text-xs shrink-0 flex-wrap">
       <span class="font-medium text-yellow-700 dark:text-yellow-400">🧪 调试</span>
       <span class="text-gray-400 dark:text-gray-500">|</span>
+
+      <!-- 任务流预设 -->
+      <span class="text-yellow-600 dark:text-yellow-500 font-medium">📋 流程</span>
       <button
-        v-for="p in presets"
+        v-for="p in flowPresets"
         :key="p.name"
         class="px-2 py-0.5 rounded bg-yellow-100 dark:bg-yellow-800/30 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-700/40 transition-colors"
         @click="loadPreset(p.fn)"
         :title="p.description"
       >
-        ➕ {{ p.name }}
+        ➕ {{ p.shortName || p.name }}
       </button>
+
       <span class="text-gray-400 dark:text-gray-500">|</span>
+
+      <!-- 权限模型预设 -->
+      <span class="text-yellow-600 dark:text-yellow-500 font-medium">🔐 权限</span>
+      <button
+        v-for="p in permPresets"
+        :key="p.name"
+        class="px-2 py-0.5 rounded bg-purple-100 dark:bg-purple-800/30 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-700/40 transition-colors"
+        @click="loadPreset(p.fn)"
+        :title="p.description"
+      >
+        ➕ {{ p.shortName || p.name }}
+      </button>
+
+      <span class="text-gray-400 dark:text-gray-500">|</span>
+
+      <!-- 诊断工具 -->
+      <button
+        class="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-800/30 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-700/40 transition-colors"
+        @click="showPermChecker = true"
+      >
+        🔍 权限诊断
+      </button>
       <button
         class="px-2 py-0.5 rounded bg-yellow-100 dark:bg-yellow-800/30 text-yellow-700 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-700/40 transition-colors"
         @click="showJsonViewer = true"
         :disabled="!mission?.nodes?.length"
       >
-        📄 查看 JSON
+        📄 JSON
       </button>
     </div>
 
@@ -100,6 +126,7 @@
           :roles="mission.roles"
           :selected-node-id="selectedNodeId"
           :selected-edge-id="selectedEdgeId"
+          :node-lock-map="nodeLockMap"
           @select-node="onSelectNode"
           @dblclick-node="onDblclickNode"
           @select-edge="selectedEdgeId = $event"
@@ -206,6 +233,37 @@
           <div v-if="!mission.roles.length" class="text-sm text-gray-400 text-center py-4">暂无角色</div>
         </div>
 
+        <!-- 待审批列表 -->
+        <div v-if="pendingClaims.length" class="mb-4">
+          <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">⏳ 待审批 ({{ pendingClaims.length }})</h3>
+          <div v-for="(claim, idx) in pendingClaims" :key="idx" class="flex items-center justify-between px-3 py-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg mb-1">
+            <div class="text-xs">
+              <span class="font-medium text-gray-700 dark:text-gray-200">{{ claim.userId }}</span>
+              <span class="text-gray-400 ml-1">申请认领</span>
+              <span class="font-medium text-gray-600 dark:text-gray-300 ml-1">{{ getRoleName(claim.roleId) }}</span>
+            </div>
+            <div class="flex gap-1">
+              <button class="px-2 py-0.5 text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded hover:bg-green-200" @click="approveClaim(claim.roleId, claim.userId)">✅ 通过</button>
+              <button class="px-2 py-0.5 text-xs bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded hover:bg-red-200" @click="rejectClaim(claim.roleId, claim.userId)">❌ 拒绝</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 委派管理（针对 delegated 类型角色） -->
+        <div v-if="delegatableRoles.length" class="mb-4">
+          <h3 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">🔑 委派管理</h3>
+          <div v-for="r in delegatableRoles" :key="r.id" class="flex items-center justify-between px-3 py-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg mb-1">
+            <div class="text-xs">
+              <span class="font-medium text-gray-700 dark:text-gray-200">{{ r.emoji }} {{ r.name }}</span>
+              <span class="text-gray-400 ml-1">当前 {{ assignmentCount(r.id) }}/{{ r.maxAssignees }} 人</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <input v-model="delegateUserId" type="text" class="w-24 px-2 py-0.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none" placeholder="用户名" />
+              <button class="px-2 py-0.5 text-xs bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded hover:bg-indigo-200" @click="delegateRole(r.id)">委派</button>
+            </div>
+          </div>
+        </div>
+
         <hr class="border-gray-200 dark:border-gray-600 mb-4" />
 
         <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">添加角色</h3>
@@ -279,25 +337,34 @@
           </div>
         </div>
 
-        <!-- 角色认领 -->
-        <div class="mb-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+        <!-- 角色认领 + 权限信息 -->
+        <div class="mb-3 pt-2 border-t border-gray-100 dark:border-gray-700 space-y-1">
           <div class="flex items-center justify-between">
-            <span class="text-sm font-medium text-gray-600 dark:text-gray-300">👤 {{ getRoleName(selectedNode.assignedRole) }}</span>
+            <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
+              👤 {{ getRoleName(selectedNode.assignedRole) }}
+              <span v-if="nodeLockMap[selectedNode.id]" class="ml-1 text-xs text-red-500">🔒 锁定</span>
+              <span v-else class="ml-1 text-xs text-green-500">🟢 可操作</span>
+            </span>
             <button
-              v-if="!hasClaimedRole(selectedNode.assignedRole)"
+              v-if="!hasClaimedRole(selectedNode.assignedRole) && claimPolicyForRole(selectedNode.assignedRole) !== 'delegated'"
               class="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded hover:bg-blue-200 transition-colors"
               @click="claimCurrentRole"
             >
-              认领此角色
+              认领此角色 ({{ claimPolicyLabel(selectedNode.assignedRole) }})
             </button>
-            <span v-else class="text-xs text-green-600 dark:text-green-400">✅ 已认领</span>
+            <span v-else-if="hasClaimedRole(selectedNode.assignedRole)" class="text-xs text-green-600 dark:text-green-400">✅ 已认领</span>
+            <span v-else class="text-xs text-gray-400">🔒 管理员委派</span>
+          </div>
+          <div v-if="hasClaimedRole(selectedNode.assignedRole)" class="text-xs text-gray-400">
+            你的角色: {{ userRoleNames.join(', ') }}
           </div>
         </div>
 
-        <!-- 操作按钮 -->
+        <!-- 操作按钮（权限感知） -->
         <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+          <!-- 状态转换按钮 -->
           <button
-            v-for="t in availableTransitions"
+            v-for="t in permissionedTransitions"
             :key="t.to"
             class="px-3 py-1.5 text-sm rounded-lg transition-colors font-medium"
             :class="transitionButtonClass(t.to)"
@@ -305,8 +372,13 @@
           >
             {{ t.label }}
           </button>
+          <!-- 无可用操作提示 -->
+          <span v-if="!permissionedTransitions.length && nodeLockMap[selectedNode.id]" class="text-xs text-gray-400 italic">
+            当前角色无权操作此节点
+          </span>
+          <!-- 标记我已填写（count/all 模式下额外按钮） -->
           <button
-            v-if="selectedNode.status !== 'completed' && selectedNode.completionRule !== 'single' && hasClaimedRole(selectedNode.assignedRole)"
+            v-if="selectedNode.status === 'in-progress' && selectedNode.completionRule !== 'single' && hasClaimedRole(selectedNode.assignedRole)"
             class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg transition-colors font-medium"
             @click="markNodeComplete"
           >
@@ -337,6 +409,72 @@
         </div>
       </div>
     </div>
+
+    <!-- 🔍 权限诊断对话框 -->
+    <div v-if="showPermChecker" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showPermChecker = false">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 shrink-0">
+          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">🔍 权限诊断</h2>
+          <button class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="showPermChecker = false">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div class="flex-1 overflow-auto p-4 space-y-3 text-xs">
+          <p class="text-gray-600 dark:text-gray-300">
+            当前用户: <strong>{{ userStore.username || '未登录' }}</strong>
+            <span v-if="userStore.username === 'admin'" class="ml-2 text-blue-600 font-semibold">👑 管理员</span>
+          </p>
+          <p class="text-gray-600 dark:text-gray-300">
+            已认领角色: <span v-if="userRoleNames.length">{{ userRoleNames.join(', ') }}</span>
+            <span v-else class="text-gray-400">无</span>
+          </p>
+
+          <table class="w-full border-collapse">
+            <thead>
+              <tr class="bg-gray-100 dark:bg-gray-700/50">
+                <th class="px-2 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium">节点</th>
+                <th class="px-2 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium">状态</th>
+                <th class="px-2 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium">负责人角色</th>
+                <th class="px-2 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium">可操作?</th>
+                <th class="px-2 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium">可用转换</th>
+                <th class="px-2 py-1.5 text-left text-gray-600 dark:text-gray-300 font-medium">原因</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="n in mission.nodes" :key="n.id" class="border-b border-gray-100 dark:border-gray-700">
+                <td class="px-2 py-1.5 text-gray-800 dark:text-gray-200 font-medium">{{ n.title }}</td>
+                <td class="px-2 py-1.5">
+                  <StatusBadge :status="n.status" :size="'sm'" />
+                </td>
+                <td class="px-2 py-1.5">
+                  <span class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    {{ getRoleName(n.assignedRole) }}
+                  </span>
+                </td>
+                <td class="px-2 py-1.5">
+                  <span v-if="!nodeLockMap[n.id]" class="text-green-600">✅ 是</span>
+                  <span v-else class="text-red-500">❌ 否</span>
+                </td>
+                <td class="px-2 py-1.5 text-gray-600 dark:text-gray-300">
+                  {{ permissionTransitionsForNode(n.id).map(t => t.label).join(', ') || '—' }}
+                </td>
+                <td class="px-2 py-1.5 text-gray-400 max-w-[200px] truncate" :title="permissionReason(n.id)">
+                  {{ permissionReason(n.id) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="text-gray-500 dark:text-gray-400 mt-2">
+            <p>💡 管理员 (admin) 可以操作所有节点。admin 的认领操作不会受角色限制。</p>
+            <p>💡 节点的 allowedOperators 和 allowedUsers 是白名单，空 = 不限制。</p>
+          </div>
+        </div>
+        <div class="flex justify-end px-5 py-3 border-t border-gray-200 dark:border-gray-700 shrink-0">
+          <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors" @click="showPermChecker = false">关闭</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -358,12 +496,22 @@ const userStore = useUserStore()
 
 // 调试模式
 const debugMode = ref(localStorage.getItem('mermaid-debug') === 'true')
-const presets = ALL_PRESETS
 const showJsonViewer = ref(false)
+const showPermChecker = ref(false)
 const prettyJson = computed(() => {
   if (!missionStore.currentMission) return '{}'
   return JSON.stringify(missionStore.currentMission, null, 2)
 })
+
+// 按类别分组预设
+const flowPresets = computed(() => ALL_PRESETS.filter(p => p.category === 'flow').map(p => ({
+  ...p,
+  shortName: p.name.replace(/^[^\s]+\s/, '')
+})))
+const permPresets = computed(() => ALL_PRESETS.filter(p => p.category === 'perm').map(p => ({
+  ...p,
+  shortName: p.name.replace(/^[^\s]+\s/, '')
+})))
 
 const canvasRef = ref(null)
 const selectedNodeId = ref(null)
@@ -385,6 +533,7 @@ const newEdgeLabel = ref('')
 // 角色管理
 const showAddRole = ref(false)
 const newRole = ref({ name: '', emoji: '👤', color: '#6B7280', claimType: 'free', password: '' })
+const delegateUserId = ref('')
 
 const mission = computed(() => missionStore.currentMission || { nodes: [], edges: [], roles: [] })
 const progress = computed(() => missionStore.progress)
@@ -485,28 +634,38 @@ const completionTargetDisplay = computed(() => {
   return '全员'
 })
 
-// 状态转换
-const availableTransitions = computed(() => {
-  if (!selectedNode.value) return []
-  const status = selectedNode.value.status
-  const transitions = {
-    'todo': [{ to: 'in-progress', label: '▶️ 开始执行' }],
-    'in-progress': [
-      { to: 'completed', label: '✅ 标记完成' },
-      { to: 'blocked', label: '⛔ 标记阻塞' }
-    ],
-    'completed': [
-      { to: 'in-progress', label: '🔄 重新打开' }
-    ],
-    'blocked': [
-      { to: 'in-progress', label: '🔄 解除阻塞' },
-      { to: 'cancelled', label: '🗑️ 取消' }
-    ],
-    'cancelled': [
-      { to: 'todo', label: '🔄 恢复' }
-    ]
+// ── 权限感知的状态 ──
+
+/** 节点锁定映射（nodeId → boolean） */
+const nodeLockMap = computed(() => {
+  if (!missionStore.currentMission || !userStore.username) return {}
+  const map = {}
+  for (const n of missionStore.currentMission.nodes) {
+    const result = missionStore.checkNodeOperation(userStore.username, n.id)
+    map[n.id] = !result.canOperate
   }
-  return transitions[status] || []
+  return map
+})
+
+/** 当前用户已认领的角色名称列表 */
+const userRoleNames = computed(() => {
+  if (!missionStore.currentMission || !userStore.username) return []
+  const assignments = missionStore.getUserAssignments(userStore.username)
+  return assignments.map(a => {
+    const role = missionStore.currentMission.roles.find(r => r.id === a.roleId)
+    return role ? `${role.emoji} ${role.name}` : a.roleId
+  })
+})
+
+/** 权限感知的状态转换（从 store 获取） */
+const permissionedTransitions = computed(() => {
+  if (!selectedNode.value || !userStore.username) return []
+  const transitions = missionStore.getAllowedTransitions(userStore.username, selectedNode.value.id)
+  // 补充 emoji 前缀
+  return transitions.map(t => ({
+    ...t,
+    label: t.label || (t.to === 'completed' ? '✅ 标记完成' : t.to === 'in-progress' ? '▶️ 开始执行' : `➡️ ${t.to}`)
+  }))
 })
 
 function transitionButtonClass(to) {
@@ -516,7 +675,13 @@ function transitionButtonClass(to) {
 }
 
 function changeStatus(to) {
-  if (!selectedNode.value) return
+  if (!selectedNode.value || !userStore.username) return
+  // 先用 permissionedTransitions 过滤，但再检查一次
+  const allowed = missionStore.checkStatusTransition(userStore.username, selectedNode.value.id, to)
+  if (!allowed.allowed) {
+    alert('❌ ' + allowed.reason)
+    return
+  }
   missionStore.changeNodeStatus(selectedNode.value.id, to)
 }
 
@@ -546,17 +711,48 @@ function hasClaimedRole(roleId) {
   )
 }
 
+function claimPolicyForRole(roleId) {
+  if (!missionStore.currentMission) return 'free'
+  const role = missionStore.currentMission.roles.find(r => r.id === roleId)
+  return role?.claimPolicy?.type || 'free'
+}
+
+function claimPolicyLabel(roleId) {
+  const labels = { free: '自由', approval: '审核', password: '口令', delegated: '委派' }
+  return labels[claimPolicyForRole(roleId)] || '自由'
+}
+
 function claimCurrentRole() {
   if (!selectedNode.value || !userStore.username) return
-  const result = missionStore.claimRole(selectedNode.value.assignedRole, userStore.username)
+  const roleId = selectedNode.value.assignedRole
+  const policy = claimPolicyForRole(roleId)
+
+  if (policy === 'password') {
+    const pwd = prompt('请输入认领口令：')
+    if (!pwd) return
+    const result = missionStore.claimRoleWithPassword(roleId, userStore.username, pwd)
+    if (result.success) {
+      alert('✅ 认领成功！')
+    } else {
+      alert('❌ ' + result.reason)
+    }
+    return
+  }
+
+  if (policy === 'delegated') {
+    alert('该角色只能由管理员委派，无法自荐认领')
+    return
+  }
+
+  const result = missionStore.claimRole(roleId, userStore.username)
   if (result.success) {
     if (result.pending) {
-      alert('已提交认领申请，等待审核')
+      alert('✅ 已提交认领申请，等待管理员审核')
     } else {
-      alert('认领成功！')
+      alert('✅ 认领成功！')
     }
   } else {
-    alert(result.reason)
+    alert('❌ ' + result.reason)
   }
 }
 
@@ -565,6 +761,65 @@ function markNodeComplete() {
   const userName = userStore.username
   missionStore.markComplete(selectedNode.value.id, userStore.username, userName)
   alert('已标记完成！')
+}
+
+// ── 权限诊断辅助 ──
+function permissionTransitionsForNode(nodeId) {
+  if (!userStore.username) return []
+  return missionStore.getAllowedTransitions(userStore.username, nodeId)
+}
+
+function permissionReason(nodeId) {
+  if (!userStore.username || !missionStore.currentMission) return '未登录'
+  const result = missionStore.checkNodeOperation(userStore.username, nodeId)
+  return result.reason || (result.canOperate ? '允许操作' : '无权限')
+}
+
+// ── 审批管理 ──
+const pendingClaims = computed(() => {
+  if (!missionStore.currentMission) return []
+  return missionStore.getPendingClaims()
+})
+
+function approveClaim(roleId, userId) {
+  if (!missionStore.currentMission) return
+  // 找到对应的 assignment 索引
+  const idx = missionStore.currentMission.assignments.findIndex(
+    a => a.roleId === roleId && a.userId === userId && a.status === 'pending'
+  )
+  if (idx === -1) return
+  missionStore.approveClaim(idx, userStore.username || 'admin')
+  alert('✅ 已通过 ' + userId + ' 的认领申请')
+}
+
+function rejectClaim(roleId, userId) {
+  if (!missionStore.currentMission) return
+  const idx = missionStore.currentMission.assignments.findIndex(
+    a => a.roleId === roleId && a.userId === userId && a.status === 'pending'
+  )
+  if (idx === -1) return
+  missionStore.rejectClaim(idx)
+  alert('已拒绝 ' + userId + ' 的认领申请')
+}
+
+// ── 委派管理 ──
+const delegatableRoles = computed(() => {
+  if (!missionStore.currentMission) return []
+  return missionStore.currentMission.roles.filter(r => r.claimPolicy?.type === 'delegated')
+})
+
+function delegateRole(roleId) {
+  if (!delegateUserId.value.trim()) {
+    alert('请输入要委派的用户名')
+    return
+  }
+  const result = missionStore.delegateRole(roleId, delegateUserId.value.trim(), userStore.username || 'admin')
+  if (result.success) {
+    alert(`✅ 已委派 ${delegateUserId.value.trim()} 为 ${getRoleName(roleId)}`)
+    delegateUserId.value = ''
+  } else {
+    alert('❌ ' + result.reason)
+  }
 }
 
 // ── 调试模式：加载预设（覆盖当前任务，不创建新条目） ──
