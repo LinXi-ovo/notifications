@@ -71,8 +71,19 @@
         <!-- 分割线 -->
         <hr class="border-gray-200 mb-6" />
 
-        <!-- 正文内容（HTML 渲染） -->
-        <div ref="contentRef" class="prose prose-sm max-w-none text-gray-800 leading-relaxed [&_img]:cursor-pointer [&_img]:hover:opacity-90 [&_img]:transition-opacity [&_a]:text-blue-600 [&_a]:underline [&_a]:hover:text-blue-800" v-html="safeContent"></div>
+        <!-- 调试：HTML 源码切换 -->
+        <button
+          v-if="debugMode"
+          type="button"
+          class="mb-2 text-xs text-gray-400 hover:text-gray-600 bg-transparent border border-gray-200 rounded px-2 py-0.5 cursor-pointer"
+          @click="showSource = !showSource"
+        >
+          {{ showSource ? '👁️ 预览' : '🔧 查看 HTML 源码' }}
+        </button>
+
+        <!-- 正文内容（HTML 渲染 / 源码） -->
+        <div v-show="!showSource" ref="contentRef" class="prose prose-sm max-w-none text-gray-800 leading-relaxed [&_img]:cursor-pointer [&_img]:hover:opacity-90 [&_img]:transition-opacity [&_a]:text-blue-600 [&_a]:underline [&_a]:hover:text-blue-800" v-html="safeContent"></div>
+        <pre v-show="showSource" class="w-full p-4 bg-gray-50 border border-gray-200 rounded text-xs font-mono whitespace-pre-wrap overflow-x-auto">{{ safeContent }}</pre>
 
         <!-- 图片放大 -->
         <Lightbox :visible="lightbox.show" :src="lightbox.src" :alt="lightbox.alt" @close="lightbox.show = false" />
@@ -108,6 +119,8 @@ const isFav = ref(false)
 const contentRef = ref(null)
 const lightbox = ref({ show: false, src: '', alt: '' })
 const pdfPreview = ref({ show: false, url: '', filename: '' })
+const debugMode = ref(localStorage.getItem('mermaid-debug') === 'true')
+const showSource = ref(false)
 
 const priorityLabel = computed(() => PRIORITY_LABEL[notification.value?.priority]?.label || '')
 const priorityBadgeClass = computed(() => {
