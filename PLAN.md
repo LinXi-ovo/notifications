@@ -17,29 +17,29 @@
 - 原生中文，文档虽一般但够用
 - 社区活跃，Vue 3 官方支持
 
-### Phase 1：基础替换
+### Phase 1：基础替换 ✅
 
 **目标**：装包 → 新编辑器能跑起来 → 展示基本富文本功能
 
-- [ ] 卸载 @tiptap/* 全家桶（需要 --legacy-peer-deps）
-- [ ] 安装 @wangeditor/editor + @wangeditor/editor-for-vue@next
-- [ ] 新建 `src/components/WgEditor.vue`（替代 RichEditor.vue）
-- [ ] 基本工具栏 + 编辑器区域
-- [ ] v-model 双向绑定（modelValue → update:modelValue）
-- [ ] HTML 源码模式切换（与现有行为一致）
-- [ ] 删除 `src/components/RichEditor/` 整个目录
+- [x] 卸载 @tiptap/* 全家桶（需要 --legacy-peer-deps）
+- [x] 安装 @wangeditor/editor + @wangeditor/editor-for-vue@next
+- [x] 新建 `src/components/WgEditor.vue`（替代 RichEditor.vue）
+- [x] 基本工具栏 + 编辑器区域
+- [x] v-model 双向绑定（modelValue → update:modelValue）
+- [x] HTML 源码模式切换（与现有行为一致）
+- [x] 删除 `src/components/RichEditor/` 整个目录
 
 ### Phase 2：功能迁移
 
 **目标**：所有现有功能在 wangEditor 上完整复现
 
-- [ ] **图片上传** → wangEditor `customUpload` → 接腾讯云 COS（含压缩）
-- [ ] **音频嵌入** → 自定义工具栏按钮 → 文件选择 → COS 上传 → 插 `<audio>`
-- [ ] **视频嵌入** → wangEditor 内建 `insertVideo`（改用 COS 上传）
-- [ ] **文件附件（PDF等）** → 自定义工具栏按钮 → COS 上传 → 插链接
-- [ ] **Mermaid 流程图** → 自定义菜单（prompt 输代码）→ `dangerouslyInsertHtml()` 插 `<div data-mermaid="">`
-- [ ] **粘贴自动识别 Mermaid** → `customPaste` 事件检测 + 自动插入
-- [ ] **图片粘贴/拖入** → 自动上传 COS
+- [x] **图片上传** → wangEditor `customUpload` → 接腾讯云 COS（含压缩）
+- [x] **音频嵌入** → 自定义工具栏按钮 🔊 → 文件选择 → COS 上传 → 插 `<audio>`
+- [ ] **视频嵌入** → wangEditor 内建 `insertVideo`，但需要适配 COS 上传
+- [x] **文件附件（PDF等）** → 自定义工具栏按钮 📎 → COS 上传 → 插链接
+- [x] **Mermaid 流程图** → 自定义元素（parseHtml/render/elemToHtml）+ 自定义菜单
+- [x] **粘贴自动识别 Mermaid** → `customPaste` 事件检测 + 自动插入
+- [x] **图片粘贴** → 自动上传 COS
 
 ### Phase 3：集成与清理
 

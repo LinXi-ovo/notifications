@@ -47,8 +47,9 @@ import { ref, shallowRef, watch, onBeforeUnmount, nextTick } from 'vue'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import '@wangeditor/editor/dist/css/style.css'
 
-// ── 自定义菜单（副作用：全局注册） ──
+// ── 自定义菜单 & 元素类型（副作用：全局注册） ──
 import './WgEditor/custom-menus.js'
+import './WgEditor/mermaid-plugin.js'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
