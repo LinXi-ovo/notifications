@@ -13,6 +13,8 @@
       "command": "node",
       "args": [
         "node_modules/@playwright/mcp/cli.js",
+        "--browser=chromium",
+        "--browser-channel=msedge",
         "--headless"
       ]
     }

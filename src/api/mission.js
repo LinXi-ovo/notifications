@@ -14,7 +14,7 @@
 import Bmob from './bmob'
 
 const TABLE_MISSION = 'Mission'
-const TABLE_ASSIGNMENT = 'MissionAssignment'
+const TABLE_ASSIGNMENT = 'MissionAssignmen'
 const STORAGE_KEY_IDMAP = 'missions:idmap'
 
 // ── ID 映射 ──
@@ -284,9 +284,9 @@ export async function getUserMissions(userId) {
   } catch (e) {
     // Bmob 返回 code 101 表示表不存在，静默忽略
     if (e.code === 101) {
-      console.warn('MissionAssignment 表不存在，跳过任务加载')
+      console.warn('MissionAssignmen 表不存在，跳过任务加载')
     } else {
-      console.warn('查询 MissionAssignment 失败:', e.error || JSON.stringify(e))
+      console.warn('查询 MissionAssignmen 失败:', e.error || JSON.stringify(e))
     }
     return []
   }

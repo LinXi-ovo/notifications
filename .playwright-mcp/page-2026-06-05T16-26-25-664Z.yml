@@ -1,0 +1,50 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - link "Bmob" [ref=e5] [cursor=pointer]:
+      - /url: /
+      - img [ref=e7]
+      - generic [ref=e9]: Bmob
+    - generic [ref=e10]:
+      - heading "让开发 变得简单" [level=2] [ref=e11]:
+        - text: 让开发
+        - text: 变得简单
+      - paragraph [ref=e12]: Bmob 后端云为你提供完整的 Serverless 后端能力，5 分钟即可上线应用，专注产品创新。
+      - list [ref=e13]:
+        - listitem [ref=e14]:
+          - img [ref=e16]
+          - generic [ref=e18]: 免费开始，按用量付费
+        - listitem [ref=e19]:
+          - img [ref=e21]
+          - generic [ref=e23]: 云数据库 / 云函数 / 短信 / AI 大模型一体化
+        - listitem [ref=e24]:
+          - img [ref=e26]
+          - generic [ref=e28]: 50W+ 开发者的信赖之选
+    - generic [ref=e29]: © 2012-2026 元素（深圳）软件有限公司
+  - generic [ref=e31]:
+    - heading "欢迎回来" [level=1] [ref=e32]
+    - paragraph [ref=e33]: 登录你的 Bmob 账号，继续构建你的产品。
+    - generic [ref=e35]:
+      - generic [ref=e38]:
+        - generic:
+          - img
+        - textbox "电子邮箱 / 手机号" [ref=e40]
+      - generic [ref=e43]:
+        - generic:
+          - img
+        - textbox "密码" [ref=e45]
+      - generic [ref=e46]:
+        - generic [ref=e47] [cursor=pointer]:
+          - generic [ref=e48]:
+            - checkbox "自动登录"
+          - generic [ref=e50]: 自动登录
+        - link "忘记密码？" [ref=e51] [cursor=pointer]:
+          - /url: /site/ForgetPassword
+      - button "登录" [ref=e52] [cursor=pointer]:
+        - generic [ref=e53]: 登录
+      - button "微信扫码登录更安全" [ref=e54] [cursor=pointer]:
+        - img [ref=e55]
+        - text: 微信扫码登录更安全
+    - generic [ref=e60]:
+      - text: 还没有账号？
+      - link "立即注册" [ref=e61] [cursor=pointer]:
+        - /url: /register
