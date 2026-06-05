@@ -1,150 +1,121 @@
-# 编辑器数据分离策略 📋
+# 编辑器数据分离方案
 
-> 解决 wangEditor 不支持自定义元素渲染的问题
-> 方案：显示层与数据层分离，类似 Obsidian `[[wikilink]]` 模式
+## 背景
 
-## 问题
+wangEditor 基于 slate.js 内容模型，只保留其原生支持的 HTML 元素。
+自定义元素（如 `<div data-mermaid>`）在编辑器中要么不可见，要么需要复杂的自定义渲染插件。
 
-wangEditor 基于 slate.js，只支持它认识的 HTML 元素。
-`<div data-mermaid>` 之类的自定义元素会导致：
-- 编辑器内不可见（空白）
-- 尝试注册自定义元素 → snabbdom VNode 兼容问题 → 白屏
-- 字符串替换方案 → 数据丢失风险
+先后尝试了三种方案：
 
-## 方案：双链式数据分离
+| 方案 | 结果 |
+|------|------|
+| 注册自定义 slate 元素 + snabbdom VNode 渲染 | snabbdom 版本冲突 → 白屏 |
+| 字符串替换 div ↔ p 标签 | 编辑器内可见，但保存时数据可能丢失 |
+| 自定义元素 parseHtml + elemToHtml + children 文本 | 编辑器内可见，但渲染依赖 wangEditor 的 slate 模型 |
 
-### 核心思路
+**更根本的解法：不让 wangEditor 接触它不认识的内容。**
 
-```
-┌─────────────────────────────────────────────┐
-│  编辑器内（显示层）                           │
-│  📊 [Mermaid: graph TD]                      │  ← 纯文本，wangEditor 原生支持
-│  🔊 [音频: 说明录音.mp3]                      │  ← 同上
-│  📎 [文件: 考场分布图.pdf]                    │  ← 同上
-├─────────────────────────────────────────────┤
-│  隐藏数据区（数据层）                          │
-│  mermaidMap = {                              │
-│    'mermaid-001': 'graph TD\n  A[开始]...',   │
-│    'mermaid-002': 'sequenceDiagram\n  ...'    │
-│  }                                           │
-├─────────────────────────────────────────────┤
-│  保存时合并                                  │
-│  [Mermaid: mermaid-001] → <div data-mermaid="graph TD..."> │
-└─────────────────────────────────────────────┘
-```
+## 方案
 
-### 三步流程
-
-#### ① 加载（Bmob → 编辑器）
+编辑器中只放纯文本 Token，原始数据放在独立的数据结构中，保存时重新合并。
 
 ```
-Bmob 内容:     <div data-mermaid="CODE"></div>
-                ↓ 解析器提取
-显示层:        📊 [Mermaid] graph TD
-数据层:        { 'mermaid-001': 'CODE' }
-                ↓ 只将显示层传给 wangEditor
-编辑器看到:    📊 [Mermaid] graph TD  (纯文本段落)
+┌─ 编辑器 (wangEditor) ─────────────────────┐
+│  这是一段普通文本。                         │
+│  📊 [Mermaid] graph TD                    │  ← 纯文本 Token
+│  这是另一段文本。                           │
+├────────────────────────────────────────────┤
+│  数据层 (Map)                              │
+│  mermaid_abc123 → "graph TD\n  A[开始]..." │  ← 原始 Mermaid 代码
+│  mermaid_def456 → "sequenceDiagram\n  ..." │
+├────────────────────────────────────────────┤
+│  渲染器 (详情页 / 预览)                     │
+│  Token → 查找 Map → mermaid.render() → SVG │
+└────────────────────────────────────────────┘
 ```
 
-#### ② 编辑（用户交互）
+### 三个核心操作
+
+#### 1. 解析（HTML → 编辑器内容）
 
 ```
-用户看到:      📊 [Mermaid] graph TD
-                ↓ 点击/双击
-弹出对话框:    (Mermaid 代码编辑器)
-                ↓ 用户修改代码
-数据层更新:    { 'mermaid-001': '新代码' }
-                ↓ 关闭对话框
-编辑器显示:    📊 [Mermaid] graph TD  (不变)
+输入:  <div data-mermaid="graph TD\n  A→B"></div><p>普通文本</p>
+执行:  扫描 → 提取代码 → 分配 ID → 存入 Map → 替换为 Token
+输出:  📊 [Mermaid] graph TD<p>普通文本</p>
+      Map: { mermaid_abc123: "graph TD\n  A→B" }
 ```
 
-#### ③ 保存（编辑器 → Bmob）
+#### 2. 编辑（用户交互）
+
+- 用户点击 Token `📊 [Mermaid] graph TD` 时，系统识别出它是 Token
+- 弹出 MermaidEditor 对话框，从 Map 取出当前代码供编辑
+- 用户修改代码 → Map 更新 → 对话框关闭
+- 编辑器中 Token 文字不变（但下次解析会用新代码）
+
+#### 3. 合并（编辑器内容 → HTML）
 
 ```
-wangEditor 输出: 📊 [Mermaid] graph TD
-                 ↓ 合并器
-Bmob 内容:       <div data-mermaid="CODE"></div>
+输入:  📊 [Mermaid] graph TD<p>普通文本</p>
+      Map: { mermaid_abc123: "graph TD\n  A→B" }
+执行:  扫描 Token → 查找 Map → 替换为原始 HTML
+输出:  <div data-mermaid="graph TD\n  A→B"></div><p>普通文本</p>
 ```
 
-### 名词定义
+### Token 设计
 
-| 概念 | 说明 | 示例 |
-|------|------|------|
-| **占位符** | 编辑器内可见的纯文本标记 | `📊 [Mermaid] graph TD` |
-| **数据 ID** | 唯一标识，关联数据层 | `mermaid-001` |
-| **数据层** | 存储不可渲染的原始代码 | `Map<ID, 原始代码>` |
-| **合并器** | 占位符 → 原始 HTML | 将 `[Mermaid: ID]` 替换为 `<div data-mermaid>` |
-| **解析器** | 原始 HTML → 占位符 | 将 `<div data-mermaid>` 替换为 `[Mermaid: ID]` |
-| **编辑器** | 只显示占位符 | wangEditor |
+```
+格式:  📊 [Mermaid] <第一行代码摘要>
+ID:    mermaid_<8位随机字符>     (存储在 data-mermaid-id 属性中)
+摘要:  代码第一行，截取前 40 字符，用于编辑器内识别
+```
 
-### 数据类型扩展
+Token 在编辑器中是纯文本段落，wangEditor 完全原生支持。
+用户不可在编辑器中直接修改 Token 内容（修改了也只是改了显示文本，不影响实际数据）。
 
-除了 Mermaid，所有 wangEditor 不原生支持的内容类型都用此方案：
+### 数据流向完整图
 
-| 类型 | 占位符 | 数据层 | 存储格式 |
-|------|--------|--------|----------|
-| Mermaid 流程图 | `📊 [Mermaid] 第一行` | Mermaid 代码 | `<div data-mermaid>` |
-| 音频 | `🔊 [音频] 文件名.mp3` | COS URL | `<p><audio src="">` |
-| 文件附件 | `📎 [文件] 文件名.pdf` | COS URL | `<p><a href="">📎</a></p>` |
+```
+                       解析器 (parse)
+Bmob  ──→  <div data-mermaid="CODE">  ──→  📊 [Mermaid] firstLine  ──→  wangEditor
+  ↑                                                                    ↓
+  │                            合并器 (merge)                          │
+  └────  <div data-mermaid="CODE">  ←────  📊 [Mermaid] firstLine  ←──┘
+                                              ↑ 用户点击 → 编辑对话框
+                                              │ Map 中的代码更新
+                                              └── 独立 UI，不影响编辑器
+```
 
-> 注：音频/文件目前 wangEditor 自定义菜单已能正常工作（通过 `dangerouslyInsertHtml`），暂不需要迁移到此方案。仅 Mermaid 需要。
+## 当前 mermaid-plugin.js 的状态
 
-## 实施步骤
+当前已注册了 `parseElemsHtml` + `elemToHtml`，编辑器内通过 children 文本显示首行代码。这个方案能工作，但：
 
-### Phase 1：核心机制
+- 依赖 wangEditor 的 slate 元素模型（可能随版本升级变化）
+- parseElemsHtml 只能处理 `<div data-mermaid>`，不能同时处理其他自定义类型
+- 数据耦合在编辑器中，无法独立管理
 
-- [ ] 实现 `parseContent(html)` 解析器
-  - 扫描 `<div data-mermaid="CODE">` → 分配 UUID → 存入 mermaidMap
-  - 替换为 `📊 [Mermaid] 第一行代码` 占位符文本
-  - 返回纯文本 HTML（只含 wangEditor 认识的元素）
-  
-- [ ] 实现 `mergeContent(html, dataMap)` 合并器
-  - 扫描文本中的 `📊 [Mermaid]` 模式 → 从 mermaidMap 查代码
-  - 替换回 `<div data-mermaid="CODE">`
-  - 返回完整 HTML
+数据分离方案可以逐步替换它，两套可以共存，不影响现有通知。
 
-- [ ] 实现 `MermaidEditor.vue` 组件
-  - 模态框形式，包含 textarea + 语法高亮
-  - 插入/编辑/删除 Mermaid 代码
-  - 实时预览（调用 mermaid.render）
+## 实施计划
+
+### Phase 1：核心工具函数
+
+- `parseMermaid(html)` — 从 HTML 中提取 Mermaid 代码，返回 `{ html: string, map: Record<string, string> }`
+- `mergeMermaid(html, map)` — 将 Token 替换回原始 HTML
+- 单测：传入示例 HTML，验证 round-trip 无数据丢失
 
 ### Phase 2：编辑器集成
 
-- [ ] 更新 `WgEditor.vue`
-  - 加载时：`valueHtml.value = parseContent(props.modelValue)`
-  - 保存时：`emit('update:modelValue', mergeContent(editor.getHtml(), mermaidMap))`
-  - 暴露 mermaidMap 给自定义 UI
+- `WgEditor.vue` 加载时调用 `parseMermaid`，保存时调用 `mergeMermaid`
+- 自定义菜单 `📊` 改为打开 MermaidEditor 对话框（不再用 prompt）
+- MermaidEditor 对话框：textarea 编辑代码 + 实时预览 SVG + 确认/取消
 
-- [ ] 更新 `custom-menus.js` Mermaid 按钮
-  - 不再用 prompt 弹窗
-  - 打开 `MermaidEditor.vue` 对话框
-  - 插入占位符 `📊 [Mermaid] 第一行` + 更新 mermaidMap
+### Phase 3：编辑已有 Token
 
-- [ ] 占位符点击编辑
-  - 点击编辑器内的 `📊 [Mermaid] ...` 文本 → 检测到模式 → 打开 MermaidEditor
-  - 修改 mermaidMap 中的代码
+- 点击编辑器内的 `📊 [Mermaid] ...` → 检测到 Token 模式 → 打开 MermaidEditor
+- 自动定位到对应 Map 中的代码
+- 保存时更新 Map
 
-### Phase 3：清理
+### Phase 4（可选）
 
-- [ ] 删除 `mermaid-plugin.js`（不再需要自定义元素注册）
-- [ ] 全面测试（插入/编辑/保存/详情页渲染）
-- [ ] 更新 PLAN.md
-
-## 为什么这个方案更好
-
-| 对比 | 之前方案 | 新方案 |
-|------|---------|--------|
-| 编辑器可见性 | ❌ 空白 / 占位符靠 hack | ✅ 纯文本占位符，原生支持 |
-| 数据安全 | ⚠️ 字符串替换可能丢数据 | ✅ 数据层独立，不依赖编辑器 |
-| 可编辑性 | ❌ 只能 prompt 弹窗 | ✅ 专用编辑器 + 预览 |
-| 扩展性 | ❌ 每个自定义类型都要适配 | ✅ 统一模式，加类型只需增加 map |
-| 白屏风险 | ✅ 已解决 | ✅ 纯文本，零风险 |
-| 复杂度 | ⚠️ 全靠 mermaid-plugin.js 撑着 | ✅ 清晰的分离架构 |
-
-## 与 Obsidian 双链对比
-
-```
-Obsidian:    [[笔记名称]]    → 渲染时显示笔记内容
-本方案:      📊 [Mermaid ID] → 渲染时显示 SVG 图表
-                        ↑ 都通过 ID 关联数据
-```
+- 移除 `mermaid-plugin.js`（不再需要）
+- 将此模式扩展到其他 wangEditor 不支持的内容类型
