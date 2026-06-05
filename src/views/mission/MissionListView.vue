@@ -70,6 +70,36 @@
         </div>
       </div>
     </div>
+
+    <!-- 回收站 -->
+    <div v-if="missionStore.recycleBin.length" class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-bold text-gray-600 dark:text-gray-400">🗑️ 回收站</h2>
+        <button
+          class="text-xs px-3 py-1 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+          @click="emptyRecycleBin"
+        >
+          一键清空
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 dark:text-gray-500 mb-3">超过 30 天的条目会自动永久删除</p>
+      <div class="space-y-2">
+        <div
+          v-for="item in missionStore.recycleBin"
+          :key="item.id"
+          class="flex items-center justify-between bg-gray-50 dark:bg-gray-800/50 rounded-lg px-4 py-2.5 border border-gray-200 dark:border-gray-700"
+        >
+          <div>
+            <span class="text-sm text-gray-600 dark:text-gray-300">{{ item.title }}</span>
+            <span class="text-xs text-gray-400 dark:text-gray-500 ml-2">删除于 {{ formatDate(item.deletedAt) }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="text-xs px-2 py-1 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded hover:bg-blue-200 transition-colors" @click="restoreMission(item.id)">↩️ 恢复</button>
+            <button class="text-xs px-2 py-1 bg-red-100 text-red-500 dark:bg-red-900/30 dark:text-red-400 rounded hover:bg-red-200 transition-colors" @click="permanentlyDelete(item.id)">永久删除</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -115,8 +145,24 @@ function createMission() {
 }
 
 function deleteMission(id) {
-  if (confirm('确定删除此任务？此操作不可撤销。')) {
+  if (confirm('确定删除此任务？可在回收站中恢复。')) {
     missionStore.deleteMission(id)
+  }
+}
+
+function restoreMission(id) {
+  missionStore.restoreMission(id)
+}
+
+function permanentlyDelete(id) {
+  if (confirm('永久删除后将无法恢复，确定？')) {
+    missionStore.permanentlyDeleteMission(id)
+  }
+}
+
+function emptyRecycleBin() {
+  if (confirm('确定清空回收站？所有条目将被永久删除，无法恢复。')) {
+    missionStore.emptyRecycleBin()
   }
 }
 

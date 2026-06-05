@@ -567,37 +567,50 @@ function markNodeComplete() {
   alert('已标记完成！')
 }
 
-// ── 调试模式：加载预设 ──
+// ── 调试模式：加载预设（覆盖当前任务，不创建新条目） ──
 function loadPreset(presetFn) {
-  const mission = presetFn()
+  const preset = presetFn()
+
   // 当前用户认领第一个角色以便操作
-  if (userStore.username) {
-    const firstRole = mission.roles[0]
-    if (firstRole) {
-      mission.assignments.push({
-        roleId: firstRole.id,
-        userId: userStore.username,
-        assignedAt: new Date().toISOString(),
-        status: 'approved'
-      })
-    }
-  }
-  // 写入 store 和 localStorage
-  missionStore.currentMission = mission
-  missionStore._saveMission()
-  // 确保索引中有
-  if (!missionStore.index.find(i => i.id === mission.id)) {
-    missionStore.index.push({
-      id: mission.id,
-      title: mission.title,
-      status: mission.status,
-      createdAt: mission.createdAt,
-      updatedAt: mission.updatedAt
+  if (userStore.username && preset.roles[0]) {
+    preset.assignments.push({
+      roleId: preset.roles[0].id,
+      userId: userStore.username,
+      assignedAt: new Date().toISOString(),
+      status: 'approved'
     })
-    missionStore._updateIndex()
   }
-  // 跳转到新任务
-  router.push('/mission/' + mission.id)
+
+  if (missionStore.currentMission) {
+    // ✅ 覆盖当前任务：替换内容，保留 ID
+    const mission = missionStore.currentMission
+    mission.title = preset.title
+    mission.description = preset.description
+    mission.roles = preset.roles
+    mission.nodes = preset.nodes
+    mission.edges = preset.edges
+    mission.assignments = preset.assignments
+    mission.customFields = preset.customFields
+    mission.tags = preset.tags
+    mission.updatedAt = new Date().toISOString()
+    missionStore._saveMission()
+    // 刷新当前页（重新渲染画布）
+    router.go(0)
+  } else {
+    // 没有当前任务 → 创建新任务
+    missionStore.createMission(preset.title, userStore.username || 'preset')
+    const mission = missionStore.currentMission
+    mission.description = preset.description
+    mission.roles = preset.roles
+    mission.nodes = preset.nodes
+    mission.edges = preset.edges
+    mission.assignments = preset.assignments
+    mission.customFields = preset.customFields
+    mission.tags = preset.tags
+    mission.updatedAt = new Date().toISOString()
+    missionStore._saveMission()
+    router.push('/mission/' + mission.id)
+  }
 }
 
 // ── 调试模式：JSON 查看/复制/下载 ──

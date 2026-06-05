@@ -9,7 +9,9 @@ import {
 } from '@/types/mission'
 
 const STORAGE_KEY_INDEX = 'missions:index'
+const STORAGE_KEY_RECYCLE = 'missions:recycle'
 const STORAGE_KEY_PREFIX = 'mission:'
+const RECYCLE_DAYS = 30 // 回收站保留天数
 
 /** localStorage 工具 */
 function loadJSON(key, fallback = null) {
@@ -31,6 +33,8 @@ export const useMissionStore = defineStore('mission', {
   state: () => ({
     /** Mission 概要索引 [{ id, title, status, updatedAt }] */
     index: loadJSON(STORAGE_KEY_INDEX, []),
+    /** 回收站 [{ id, title, deletedAt }] */
+    recycleBin: loadJSON(STORAGE_KEY_RECYCLE, []),
     /** 当前加载的完整 Mission */
     currentMission: null,
     /** 加载状态 */
@@ -158,20 +162,88 @@ export const useMissionStore = defineStore('mission', {
       this._saveMission()
     },
 
-    /** 删除 Mission */
+    /** 软删除：Mission 移入回收站 */
     deleteMission(id) {
-      removeKey(STORAGE_KEY_PREFIX + id)
+      const entry = this.index.find(i => i.id === id)
+      if (!entry) return
+      // 从索引移除
       this.index = this.index.filter(i => i.id !== id)
       saveJSON(STORAGE_KEY_INDEX, this.index)
+      // 加入回收站
+      this.recycleBin.push({
+        id: entry.id,
+        title: entry.title,
+        deletedAt: new Date().toISOString()
+      })
+      saveJSON(STORAGE_KEY_RECYCLE, this.recycleBin)
+      // 数据保留在 localStorage（mission:{id} 不删除）
       if (this.currentMission?.id === id) {
         this.currentMission = null
       }
     },
 
-    /** 获取所有 Mission 概要 */
+    /** 永久删除：从回收站彻底移除 */
+    permanentlyDeleteMission(id) {
+      removeKey(STORAGE_KEY_PREFIX + id)
+      this.recycleBin = this.recycleBin.filter(i => i.id !== id)
+      saveJSON(STORAGE_KEY_RECYCLE, this.recycleBin)
+    },
+
+    /** 从回收站恢复到主列表 */
+    restoreMission(id) {
+      const item = this.recycleBin.find(i => i.id === id)
+      if (!item) return
+      // 从回收站移除
+      this.recycleBin = this.recycleBin.filter(i => i.id !== id)
+      saveJSON(STORAGE_KEY_RECYCLE, this.recycleBin)
+      // 恢复到索引
+      const data = loadJSON(STORAGE_KEY_PREFIX + id)
+      if (data) {
+        this.index.push({
+          id: data.id,
+          title: data.title,
+          status: data.status,
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt
+        })
+        saveJSON(STORAGE_KEY_INDEX, this.index)
+      }
+    },
+
+    /** 一键清空回收站（含确认） */
+    emptyRecycleBin() {
+      for (const item of this.recycleBin) {
+        removeKey(STORAGE_KEY_PREFIX + item.id)
+      }
+      this.recycleBin = []
+      saveJSON(STORAGE_KEY_RECYCLE, this.recycleBin)
+    },
+
+    /** 获取所有 Mission 概要（含回收站自动清理） */
     fetchIndex() {
       this.index = loadJSON(STORAGE_KEY_INDEX, [])
+      this.recycleBin = loadJSON(STORAGE_KEY_RECYCLE, [])
+      this._autoCleanRecycleBin()
       return this.index
+    },
+
+    /** 自动清理超 30 天的回收站条目 */
+    _autoCleanRecycleBin() {
+      const now = Date.now()
+      const cutoff = now - RECYCLE_DAYS * 24 * 60 * 60 * 1000
+      const before = this.recycleBin.length
+      this.recycleBin = this.recycleBin.filter(item => {
+        const deletedAt = new Date(item.deletedAt).getTime()
+        if (deletedAt < cutoff) {
+          // 永久删除数据
+          removeKey(STORAGE_KEY_PREFIX + item.id)
+          return false
+        }
+        return true
+      })
+      if (this.recycleBin.length !== before) {
+        saveJSON(STORAGE_KEY_RECYCLE, this.recycleBin)
+      }
     },
 
     // ──────────────── Node CRUD ────────────────
