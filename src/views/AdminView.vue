@@ -224,13 +224,23 @@ const needsAdminInit = computed(() => {
 
 onMounted(() => {
   store.fetchList({ pageSize: 100 }).then(() => {
+    const query = router.currentRoute.value.query
+    let shouldReplace = false
     // 处理 ?edit=xxx 参数，自动打开编辑表单
-    const editId = router.currentRoute.value.query.edit
-    if (editId) {
-      const item = store.list.find(i => i.id === editId)
+    if (query.edit) {
+      const item = store.list.find(i => i.id === query.edit)
       if (item) {
         openEdit(item)
+        shouldReplace = true
       }
+    }
+    // 处理 ?create=true 参数，自动打开新建表单
+    if (query.create === 'true') {
+      openCreate()
+      shouldReplace = true
+    }
+    if (shouldReplace) {
+      router.replace({ query: {} })
     }
   })
   loadUsers()
