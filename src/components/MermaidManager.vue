@@ -97,7 +97,7 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { getTitle, extractUsedIds } from '@/utils/mermaid-token'
+import { getTitle, extractUsedIds, autoFixMermaidQuotes } from '@/utils/mermaid-token'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -277,6 +277,19 @@ async function renderPreview() {
     api.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' })
     const { svg } = await api.render(`mm-${Date.now()}`, clean)
     if (svg.includes('error-icon') || svg.includes('error-text')) {
+      // 尝试自动修复中文引号
+      const fixed = autoFixMermaidQuotes(clean)
+      if (fixed !== clean) {
+        const { svg: fixedSvg } = await api.render(`mm-${Date.now()}`, fixed)
+        if (!fixedSvg.includes('error-icon')) {
+          editingCode.value = fixed
+          container.innerHTML = fixedSvg
+          const el = container.querySelector('svg')
+          if (el) { el.style.maxWidth = '100%'; el.style.height = 'auto' }
+          previewError.value = '⚠️ 已自动修复中文引号'
+          return
+        }
+      }
       previewError.value = 'Mermaid 语法错误'
     } else {
       container.innerHTML = svg

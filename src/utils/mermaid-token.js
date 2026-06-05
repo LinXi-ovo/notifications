@@ -37,6 +37,22 @@ export function extractUsedIds(html) {
   return ids
 }
 
+/** 自动修复 Mermaid 中文标签：为未加引号的中文内容添加双引号 */
+export function autoFixMermaidQuotes(code) {
+  // 匹配 [中文] → ["中文"]
+  let result = code.replace(/\[([^\]]*[一-鿿][^\]]*)\]/g, (match, content) => {
+    // 如果已有引号则跳过
+    if (/^"[^"]*"$/.test(content)) return match
+    return `["${content}"]`
+  })
+  // 匹配 (中文) → ("中文")，排除已有引号的
+  result = result.replace(/\(([^)]*[一-鿿][^)]*)\)/g, (match, content) => {
+    if (/^"[^"]*"$/.test(content)) return match
+    return `("${content}")`
+  })
+  return result
+}
+
 /** 解码 HTML 实体 */
 function decodeEntities(str) {
   return str
