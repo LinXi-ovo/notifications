@@ -431,26 +431,33 @@
 
           <!-- 执行模式 → 按角色权限显示 -->
           <template v-else>
-            <button
-              v-for="t in permissionedTransitions"
-              :key="t.to"
-              class="px-3 py-1.5 text-sm rounded-lg transition-colors font-medium"
-              :class="transitionButtonClass(t.to)"
-              @click="changeStatus(t.to)"
-            >
-              {{ t.label }}
-            </button>
-            <span v-if="!permissionedTransitions.length && nodeLockMap[selectedNode.id]" class="text-xs text-gray-400 italic">
-              当前角色无权操作此节点
-            </span>
-            <!-- 标记我已填写（count/all 模式下额外按钮） -->
-            <button
-              v-if="selectedNode.status === 'in-progress' && selectedNode.completionRule !== 'single' && hasClaimedRole(selectedNode.assignedRole)"
-              class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg transition-colors font-medium"
-              @click="markNodeComplete"
-            >
-              ✅ 标记我已填写
-            </button>
+            <!-- 🔒 锁定：不显示任何操作按钮 -->
+            <template v-if="nodeLockMap[selectedNode.id]">
+              <span class="text-xs text-gray-400 italic">🔒 未认领该角色，无法操作</span>
+            </template>
+            <!-- 🟢 可操作：显示权限允许的转换按钮 -->
+            <template v-else>
+              <button
+                v-for="t in permissionedTransitions"
+                :key="t.to"
+                class="px-3 py-1.5 text-sm rounded-lg transition-colors font-medium"
+                :class="transitionButtonClass(t.to)"
+                @click="changeStatus(t.to)"
+              >
+                {{ t.label }}
+              </button>
+              <span v-if="!permissionedTransitions.length" class="text-xs text-gray-400 italic">
+                当前角色无可用操作
+              </span>
+              <!-- 标记我已填写（count/all 模式下额外按钮） -->
+              <button
+                v-if="selectedNode.status === 'in-progress' && selectedNode.completionRule !== 'single' && hasClaimedRole(selectedNode.assignedRole)"
+                class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg transition-colors font-medium"
+                @click="markNodeComplete"
+              >
+                ✅ 标记我已填写
+              </button>
+            </template>
           </template>
         </div>
       </div>
