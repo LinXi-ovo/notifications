@@ -23,7 +23,6 @@ export const DEFAULT_CATEGORIES = [
   { name: '其他', value: 'other', icon: '📌', color: 'gray', sortOrder: 99 },
   { name: '测试', value: 'test', icon: '🧪', color: 'yellow', sortOrder: 0 }
 ]
-]
 
 /** 分页每页数量 */
 export const PAGE_SIZE = 20
