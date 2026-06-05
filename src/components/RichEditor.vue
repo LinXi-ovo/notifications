@@ -235,7 +235,15 @@ function insertMermaid() {
 
 function handleMermaidInsert(code) {
   showMermaidDialog.value = false
-  editor.value?.chain().focus().insertMermaid(code).run()
+  const ed = editor.value
+  if (!ed) return
+  // 直接插入 MermaidNode 能解析的 HTML，绕开命令注册
+  const html = `<div data-mermaid="${escapeAttr(code)}"></div>`
+  ed.chain().focus().insertContent(html).run()
+}
+
+function escapeAttr(str) {
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 // ── 工具栏操作 ──
