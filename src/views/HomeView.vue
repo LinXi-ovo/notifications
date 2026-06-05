@@ -76,6 +76,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
 import { useFavoriteStore } from '@/stores/favorite'
 import { getCategories } from '@/api/category'
+import { DEFAULT_CATEGORIES } from '@/utils/constants'
 import CategoryNav from '@/components/CategoryNav.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import NotificationCard from '@/components/NotificationCard.vue'
@@ -94,6 +95,13 @@ const totalPages = computed(() => Math.ceil(store.total / store.pageSize) || 1)
 onMounted(async () => {
   try {
     categories.value = await getCategories()
+    // 开启显示测试通知时，补入 test 分类（可能不在 Bmob 表中）
+    if (localStorage.getItem('show-test-notifications') === 'true') {
+      const testCat = DEFAULT_CATEGORIES.find(c => c.value === 'test')
+      if (testCat && !categories.value.some(c => c.value === 'test')) {
+        categories.value.push({ ...testCat })
+      }
+    }
   } catch (e) {
     console.error('加载分类失败:', e)
   }

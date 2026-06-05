@@ -84,6 +84,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { createNotification, updateNotification } from '@/api/notification'
 import { getCategories } from '@/api/category'
+import { DEFAULT_CATEGORIES } from '@/utils/constants'
 import { useUserStore } from '@/stores/user'
 import WgEditor from '@/components/WgEditor.vue'
 
@@ -117,6 +118,11 @@ const form = reactive({
 onMounted(async () => {
   try {
     categories.value = await getCategories()
+    // 确保 test 分类存在（允许管理员创建测试通知）
+    const testCat = DEFAULT_CATEGORIES.find(c => c.value === 'test')
+    if (testCat && !categories.value.some(c => c.value === 'test')) {
+      categories.value.push({ ...testCat })
+    }
   } catch (e) { /* ignore */ }
 
   if (props.notification) {
