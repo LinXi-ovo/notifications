@@ -33,6 +33,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **调试模式**：设置页开关，管理员可用，显示 HTML 源码、Mermaid 预设等
 - **任务 DAG**：哈斯图渲染、编辑/执行双模式、角色名→DEFAULT_PERMISSIONS 自动映射
 
+## Tauri 桌面应用
+
+项目已集成 Tauri v2 桌面壳，将现有 Vue SPA 打包为原生桌面应用（Web 版本不受影响）。
+
+| 能力 | 实现 | 说明 |
+|---|---|---|
+| 系统托盘 | `src-tauri/src/tray.rs` | 右键菜单（打开/同步/退出），关闭窗口→隐藏到托盘 |
+| SQLite 缓存 | `src-tauri/src/db.rs` | 通知/分类离线缓存，`INSERT OR REPLACE` 同步策略 |
+| Bmob 同步 | `src-tauri/src/sync.rs` | REST API 增量同步（`updatedAt > lastSyncAt`） |
+| 桌面通知 | `src-tauri/src/commands.rs:send_notification` | 基于 `tauri-plugin-notification` |
+| 开机自启 | `src-tauri/src/commands.rs:set_autostart` | 基于 `tauri-plugin-autostart` |
+| 全局快捷键 | `src-tauri/src/lib.rs` | Ctrl+Shift+N 唤出窗口 |
+| Tauri Bridge | `src/api/tauri.js` | 封装 `invoke()`，浏览器环境自动降级 |
+| Sync Store | `src/stores/sync.js` | 同步状态管理，托盘事件监听 |
+
+**Rust Commands**：`send_notification`, `sync_now`, `get_sync_status`, `get_cached_notification`, `get_cached_notifications`, `get_cached_categories`, `set_autostart`, `get_autostart`
+
+```bash
+npm run tauri:dev           # 启动 Tauri 开发模式（Vite HMR + 原生窗口）
+npm run tauri:build         # 构建生产安装包
+```
+
+架构详见 [plan/Tauri/PLAN-AI.md](plan/Tauri/PLAN-AI.md)。
+
 ## 开发命令
 
 ```bash
@@ -40,6 +64,8 @@ npm install          # 安装依赖（自动运行 postinstall → patch pdfjs-d
 npm run dev          # 启动开发服务器（Vite HMR，localhost）
 npm run build        # 构建生产版本
 npm run preview      # 预览构建结果
+npm run tauri:dev    # [Tauri] 开发模式（Vite HMR + 原生窗口）
+npm run tauri:build  # [Tauri] 构建桌面安装包
 ```
 
 **关键注意**：
@@ -99,7 +125,8 @@ src/
 │   ├── user.js             # 用户认证 + 角色管理（_User + UserRoles 表）
 │   ├── cos.js              # 腾讯云 COS 前端直传
 │   ├── file.js             # 文件注册表
-│   └── favorite.js         # 收藏 CRUD
+│   ├── favorite.js         # 收藏 CRUD
+│   └── tauri.js            # [Tauri] Bridge — invoke() 封装，浏览器降级
 ├── components/
 │   ├── WgEditor.vue/       # wangEditor V5 封装
 │   │   ├── custom-menus.js # Mermaid/音频/文件 自定义按钮
@@ -136,7 +163,8 @@ src/
 │   ├── notification.js     # notificationStore（纯 Bmob 云端）
 │   ├── mission.js          # missionStore（localStorage 优先 + Bmob 防抖双写）
 │   ├── user.js             # userStore（Bmob.User 封装）
-│   └── favorite.js         # favoriteStore（纯 Bmob 云端）
+│   ├── favorite.js         # favoriteStore（纯 Bmob 云端）
+│   └── sync.js             # [Tauri] syncStore（Bmob→SQLite 同步状态）
 ├── types/
 │   └── mission.js          # JSDoc @typedef 类型定义 + 工厂函数 + DEFAULT_PERMISSIONS
 ├── utils/
@@ -148,6 +176,18 @@ src/
 │   └── index.js            # 路由定义 + beforeEach 守卫（登录/管理员检查）
 
 # 根目录其他内容
+├── src-tauri/               # Tauri 桌面端（Rust + tauri v2）
+│   ├── src/
+│   │   ├── lib.rs           # 入口：插件注册 + 托盘 + 快捷键
+│   │   ├── main.rs          # Windows 入口
+│   │   ├── tray.rs          # 系统托盘
+│   │   ├── commands.rs      # 8 个 Tauri Commands
+│   │   ├── db.rs            # SQLite 离线缓存
+│   │   ├── sync.rs          # Bmob REST API 同步引擎
+│   │   └── notify.rs        # 桌面通知封装
+│   ├── tauri.conf.json      # 窗口配置/权限
+│   ├── capabilities/        # 权限声明
+│   └── icons/               # 应用图标
 ├── dev_tools/              # 开发辅助工具
 │   ├── patch-pdfjs.cjs     # postinstall 脚本：patch pdfjs-dist Worker
 │   ├── create-test-notification.cjs # 创建测试通知（Node 脚本）
