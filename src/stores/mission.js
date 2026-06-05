@@ -590,28 +590,27 @@ export const useMissionStore = defineStore('mission', {
       if (!role) return null
 
       // 按角色名称尝试匹配
+      // 命名约定：名称不符的 fallback 到 observer（无转换），安全第一
       const nameMap = {
-        '普通成员': 'executor',
-        '执行人': 'executor',
-        '成员': 'executor',
-        '审核员': 'reviewer',
-        '审批人': 'approver',
-        '管理员': 'admin',
-        '负责人': 'admin',
-        '观察员': 'observer',
-        '辅导员': 'approver',
-        '主管': 'reviewer',
-        '财务': 'reviewer',
-        '总经理': 'approver',
-        '班长': 'executor',
-        '组长': 'executor',
-        '发起人': 'executor'
+        // ── 基础角色 ──
+        '普通成员': 'executor', '成员': 'executor', '执行人': 'executor',
+        '班长': 'executor',     '组长': 'executor',  '发起人': 'executor',
+        '自由成员': 'executor', '口令角色': 'executor',
+        // ── 审核类 ──
+        '审核员': 'reviewer', '主管': 'reviewer', '财务': 'reviewer',
+        '需审批角色': 'reviewer', '委派角色': 'reviewer',
+        // ── 审批类 ──
+        '审批人': 'approver', '辅导员': 'approver', '总经理': 'approver',
+        // ── 管理类 ──
+        '管理员': 'admin', '负责人': 'admin',
+        // ── 只读类 ──
+        '观察员': 'observer', '⚪ 观察员': 'observer'
       }
       const key = nameMap[role.name]
       if (key && DEFAULT_PERMISSIONS[key]) return DEFAULT_PERMISSIONS[key]
 
-      // 默认返回 executor 权限
-      return DEFAULT_PERMISSIONS.executor
+      // 名称不匹配 → 最安全的默认：observer（无状态转换，只读）
+      return DEFAULT_PERMISSIONS.observer
     },
 
     /**
