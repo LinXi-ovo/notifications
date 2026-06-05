@@ -10,7 +10,8 @@
         <StatusBadge :status="mission.status" :size="'sm'" />
         <!-- 云端同步状态 -->
         <span v-if="missionStore.bmobSyncing" class="text-xs text-yellow-500 animate-pulse">⏳</span>
-        <span v-else-if="missionStore.migrated" class="text-xs text-green-500" title="已同步到云端">☁️</span>
+        <span v-else-if="missionStore.migrated" class="text-xs text-green-500 cursor-pointer hover:text-green-700" title="点击手动同步" @click="syncNow">☁️</span>
+        <span v-else class="text-xs text-gray-400 cursor-pointer hover:text-gray-600" title="点击尝试同步" @click="syncNow">💾</span>
       </div>
 
       <div class="flex items-center gap-2">
@@ -167,9 +168,12 @@
           :selected-node-id="selectedNodeId"
           :selected-edge-id="selectedEdgeId"
           :node-lock-map="nodeLockMap"
+          :edit-mode="editMode"
           @select-node="onSelectNode"
           @dblclick-node="onDblclickNode"
           @select-edge="selectedEdgeId = $event"
+          @add-node="onCanvasAddNode"
+          @update-node-position="onUpdateNodePosition"
         />
 
         <!-- 缩放控制 -->
@@ -999,6 +1003,32 @@ function onSaveCustomFields(fields) {
   showCustomFields.value = false
 }
 
+/** 画布编辑器：添加节点 */
+function onCanvasAddNode({ title, x, y }) {
+  if (!editMode.value) return
+  // 如果没有角色，无法添加节点
+  if (!mission.value.roles.length) {
+    alert('请先添加角色')
+    return
+  }
+  // 使用第一个角色作为默认
+  const defaultRole = mission.value.roles[0].id
+  missionStore.addNode(title, defaultRole, {
+    completionRule: 'single',
+    completionTarget: 1,
+    position: { x, y }
+  })
+}
+
+/** 画布编辑器：更新节点位置 */
+function onUpdateNodePosition({ nodeId, x, y }) {
+  const node = mission.value.nodes.find(n => n.id === nodeId)
+  if (node) {
+    node.position = { x, y }
+    missionStore._saveMission()
+  }
+}
+
 // ── 权限诊断辅助 ──
 function permissionTransitionsForNode(nodeId) {
   if (!userStore.username) return []
@@ -1058,7 +1088,20 @@ function delegateRole(roleId) {
   }
 }
 
-// ── 管理员绕过开关 ──
+/** 手动同步到 Bmob */
+async function syncNow() {
+  if (!missionStore.migrated) {
+    await missionStore.migrateLocalToBmob()
+    if (missionStore.error) {
+      alert('迁移失败: ' + missionStore.error)
+      return
+    }
+    alert('✅ 已迁移到云端')
+  } else {
+    await missionStore._saveToBmob()
+    alert('✅ 已同步到云端')
+  }
+}
 function toggleAdminBypass() {
   missionStore.setAdminBypass(!missionStore.adminBypass)
 }

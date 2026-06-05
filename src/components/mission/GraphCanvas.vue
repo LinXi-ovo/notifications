@@ -7,6 +7,7 @@
     @mousemove="onPanMove"
     @mouseup="onPanEnd"
     @mouseleave="onPanEnd"
+    @contextmenu.prevent="onContextMenu"
   >
     <!-- 缩放/平移层 -->
     <div
@@ -16,12 +17,14 @@
         width: canvasWidth + 'px',
         height: canvasHeight + 'px',
       }"
+      @click="onCanvasClick"
     >
       <!-- SVG 边 -->
       <svg
-        class="absolute top-0 left-0 pointer-events-none"
+        class="absolute top-0 left-0"
         :width="canvasWidth"
         :height="canvasHeight"
+        :class="editMode ? 'pointer-events-auto' : 'pointer-events-none'"
       >
         <defs>
           <marker
@@ -80,8 +83,9 @@
       <div
         v-for="node in layoutNodes"
         :key="node.id"
-        class="absolute"
+        class="absolute node-wrapper"
         :style="{ left: node._x + 'px', top: node._y + 'px' }"
+        @mousedown.stop="editMode ? onNodeDragStart($event, node.id) : null"
       >
         <NodeCard
           :node="node"
@@ -92,6 +96,7 @@
           :is-selected="selectedNodeId === node.id"
           @select="$emit('selectNode', node.id)"
           @dblclick="$emit('dblclickNode', node.id)"
+          @contextmenu.stop="$emit('nodeContextMenu', node.id, $event)"
         />
       </div>
 
@@ -104,6 +109,38 @@
           <p class="text-4xl mb-2">📋</p>
           <p>暂无节点，请先添加任务节点</p>
         </div>
+      </div>
+    </div>
+
+    <!-- 右键上下文菜单 -->
+    <div
+      v-if="contextMenu.visible"
+      class="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px]"
+      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
+      @click.stop
+    >
+      <button
+        v-for="item in contextMenu.items"
+        :key="item.label"
+        class="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        @click="item.action(); contextMenu.visible = false"
+      >
+        {{ item.label }}
+      </button>
+    </div>
+
+    <!-- 添加节点浮动按钮（编辑模式） -->
+    <div
+      v-if="editMode && showAddNodeButton"
+      class="fixed z-40 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 rounded-xl shadow-lg p-4 w-64"
+      :style="{ left: addNodePos.x + 'px', top: addNodePos.y + 'px' }"
+    >
+      <p class="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">在此位置添加节点</p>
+      <input v-model="addNodeTitle" type="text" class="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500 mb-2" placeholder="节点标题"
+        @keyup.enter="confirmAddNode" @keyup.escape="showAddNodeButton = false" />
+      <div class="flex justify-end gap-1">
+        <button class="text-xs px-2 py-1 text-gray-500 hover:text-gray-700" @click="showAddNodeButton = false">取消</button>
+        <button class="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700" :disabled="!addNodeTitle.trim()" @click="confirmAddNode">添加</button>
       </div>
     </div>
   </div>
@@ -121,10 +158,16 @@ const props = defineProps({
   selectedNodeId: { type: String, default: null },
   selectedEdgeId: { type: String, default: null },
   /** Map<nodeId, boolean> — 节点锁定状态 */
-  nodeLockMap: { type: Object, default: () => ({}) }
+  nodeLockMap: { type: Object, default: () => ({}) },
+  /** 编辑模式（启用可视编辑） */
+  editMode: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['selectNode', 'dblclickNode', 'selectEdge', 'update:selectedEdgeId'])
+const emit = defineEmits([
+  'selectNode', 'dblclickNode', 'selectEdge', 'update:selectedEdgeId',
+  'addNode', 'addEdge', 'removeNode',
+  'updateNodePosition', 'nodeContextMenu'
+])
 
 // ── 缩放/平移状态 ──
 const zoom = ref(1)
@@ -316,6 +359,133 @@ function fitToScreen() {
 function selectEdge(edgeId) {
   emit('update:selectedEdgeId', selectedEdgeId.value === edgeId ? null : edgeId)
   emit('selectEdge', edgeId)
+}
+
+// ── 编辑器模式：上下文菜单 ──
+const contextMenu = ref({ visible: false, x: 0, y: 0, items: [], nodeId: null })
+
+function onContextMenu(e) {
+  if (!props.editMode) return
+  // 检查是否点击了节点
+  const nodeEl = e.target.closest('.node-card')
+  if (nodeEl) return // 节点右键由 NodeCard 的 @contextmenu 处理
+  // 空白区域右键
+  const pos = screenToCanvas(e.clientX, e.clientY)
+  contextMenu.value = {
+    visible: true,
+    x: e.clientX,
+    y: e.clientY,
+    items: [
+      { label: '＋ 在此添加节点', action: () => showAddNodeAt(pos.x, pos.y) }
+    ],
+    nodeId: null
+  }
+}
+
+/** 屏幕坐标 → 画布坐标 */
+function screenToCanvas(clientX, clientY) {
+  const rect = containerRef.value?.getBoundingClientRect()
+  if (!rect) return { x: 0, y: 0 }
+  const x = (clientX - rect.left - panX.value) / zoom.value
+  const y = (clientY - rect.top - panY.value) / zoom.value
+  return { x, y }
+}
+
+// ── 编辑器模式：点击画布添加节点 ──
+const showAddNodeButton = ref(false)
+const addNodePos = ref({ x: 0, y: 0 })
+const addNodeTitle = ref('')
+
+function onCanvasClick(e) {
+  // 关闭上下文菜单
+  if (contextMenu.value.visible) {
+    contextMenu.value.visible = false
+    return
+  }
+  // 编辑模式：双击？或者是空白区域单击 + 已有节点的编辑模式
+  // 实际上由 onContextMenu 处理，这里只关弹出
+}
+
+function showAddNodeAt(canvasX, canvasY) {
+  // 对齐到网格
+  const gridSize = 30
+  const x = Math.round(canvasX / gridSize) * gridSize
+  const y = Math.round(canvasY / gridSize) * gridSize
+
+  // 转为屏幕坐标
+  const rect = containerRef.value?.getBoundingClientRect()
+  if (rect) {
+    addNodePos.value = {
+      x: rect.left + x * zoom.value + panX.value,
+      y: rect.top + y * zoom.value + panY.value
+    }
+  } else {
+    addNodePos.value = { x: canvasX, y: canvasY }
+  }
+  showAddNodeButton.value = true
+  addNodeTitle.value = ''
+  nextTick(() => {
+    // 聚焦输入框
+    const input = containerRef.value?.querySelector('input')
+    input?.focus()
+  })
+}
+
+function confirmAddNode() {
+  if (!addNodeTitle.value.trim()) return
+  const pos = screenToCanvas(addNodePos.value.x, addNodePos.value.y)
+  emit('addNode', { title: addNodeTitle.value.trim(), x: Math.round(pos.x), y: Math.round(pos.y) })
+  showAddNodeButton.value = false
+  addNodeTitle.value = ''
+}
+
+// ── 编辑器模式：拖拽节点 ──
+let draggingNodeId = null
+let dragStartX = 0
+let dragStartY = 0
+let dragNodeOrigX = 0
+let dragNodeOrigY = 0
+
+function onNodeDragStart(e, nodeId) {
+  if (!props.editMode) return
+  const node = layoutNodes.value.find(n => n.id === nodeId)
+  if (!node) return
+  draggingNodeId = nodeId
+  dragStartX = e.clientX
+  dragStartY = e.clientY
+  dragNodeOrigX = node._x
+  dragNodeOrigY = node._y
+
+  document.addEventListener('mousemove', onNodeDragMove)
+  document.addEventListener('mouseup', onNodeDragEnd)
+}
+
+function onNodeDragMove(e) {
+  if (!draggingNodeId) return
+  const dx = (e.clientX - dragStartX) / zoom.value
+  const dy = (e.clientY - dragStartY) / zoom.value
+
+  const node = layoutNodes.value.find(n => n.id === draggingNodeId)
+  if (node) {
+    node._x = dragNodeOrigX + dx
+    node._y = dragNodeOrigY + dy
+  }
+}
+
+function onNodeDragEnd() {
+  if (draggingNodeId) {
+    const node = layoutNodes.value.find(n => n.id === draggingNodeId)
+    if (node) {
+      // 对齐网格
+      const gridSize = 20
+      node._x = Math.round(node._x / gridSize) * gridSize
+      node._y = Math.round(node._y / gridSize) * gridSize
+      emit('updateNodePosition', { nodeId: draggingNodeId, x: node._x, y: node._y })
+    }
+    draggingNodeId = null
+  }
+  document.removeEventListener('mousemove', onNodeDragMove)
+  document.removeEventListener('mouseup', onNodeDragEnd)
 }
 
 defineExpose({ zoomIn, zoomOut, fitToScreen })
