@@ -59,7 +59,7 @@ function removeBmobId(missionId) {
  */
 export async function fetchMissionIndex() {
   const q = Bmob.Query(TABLE_MISSION)
-  q.addWhere('deletedAt', '==', null)
+  q.equalTo('deletedAt', '==', null)
   q.order('-updatedAt')
   q.limit(100)
   const results = await q.find()
@@ -123,7 +123,13 @@ export async function createMission(mission) {
   q.set('pendingSync', false)
 
   if (mission.createdBy) {
-    q.set('createdBy', mission.createdBy)
+    // createdBy 必须是 Bmob Pointer（_User 表的 objectId）
+    // 如果是 object 且有 objectId → 构造 Pointer
+    // 如果是字符串（用户名）→ 跳过，Bmob Pointer 不接受字符串
+    if (typeof mission.createdBy === 'object' && mission.createdBy.objectId) {
+      q.set('createdBy', Bmob.Pointer('_User', mission.createdBy.objectId))
+    }
+    // 其他情况（包括字符串用户名）不设置 createdBy，避免 400
   }
 
   const result = await q.save()

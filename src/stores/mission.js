@@ -179,7 +179,7 @@ export const useMissionStore = defineStore('mission', {
             this.currentMission._bmobObjectId = result._bmobObjectId
           }
         } catch (e) {
-          console.warn('Bmob 创建失败（数据已保存到本地）:', e.message)
+          console.warn('Bmob 创建失败（数据已保存到本地）:', e?.error || e?.message || '(无错误详情)')
         }
       }
 
@@ -1130,12 +1130,15 @@ export const useMissionStore = defineStore('mission', {
               console.log('✅ 任务已自动创建到 Bmob:', this.currentMission.id)
               return
             }
+            // 创建返回了空结果
+            this.bmobLoadError = '同步到云端失败：Bmob 创建返回空，请检查 createdBy 是否为有效 Pointer'
           } catch (createErr) {
-            this.bmobLoadError = '同步到云端失败（创建失败）: ' + createErr.message
-            return
+            const msg = createErr?.error || createErr?.message || JSON.stringify(createErr)
+            this.bmobLoadError = '同步到云端失败（创建失败）: ' + msg
           }
+          return
         }
-        this.bmobLoadError = '同步到云端失败: ' + e.message
+        this.bmobLoadError = '同步到云端失败: ' + (e?.error || e?.message || JSON.stringify(e))
         console.warn('Bmob 保存失败:', e.message)
       } finally {
         this.bmobSyncing = false
