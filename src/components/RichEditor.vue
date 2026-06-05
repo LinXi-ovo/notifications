@@ -82,13 +82,17 @@ const editor = useEditor({
 })
 
 // 外部内容变化同步到编辑器
+// 用 contentVersion 防止循环：onUpdate → emit → v-model → watch → setContent
+let contentVersion = 0
 watch(() => props.modelValue, (val) => {
   if (!editor.value || showSource.value) return
-  const current = editor.value.getHTML()
   const incoming = val || ''
-  if (incoming !== current && incoming !== sourceContent.value) {
-    editor.value.commands.setContent(incoming, false)
-  }
+  if (!incoming) return
+  const current = editor.value.getHTML()
+  if (incoming === current) return // 已经是这个内容了
+  if (incoming === sourceContent.value) return // 源码模式
+  contentVersion++
+  editor.value.commands.setContent(incoming, false)
 })
 
 onBeforeUnmount(() => {

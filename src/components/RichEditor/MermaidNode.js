@@ -24,7 +24,8 @@ export const MermaidNode = Node.create({
   },
 
   renderHTML({ node, HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { class: 'mermaid-wrapper' }), 0]
+    // atom: true 的节点没有内容插槽，不加 0
+    return ['div', mergeAttributes(HTMLAttributes, { class: 'mermaid-wrapper' })]
   },
 
   addNodeView() {
