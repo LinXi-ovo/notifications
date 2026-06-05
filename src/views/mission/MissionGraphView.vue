@@ -382,29 +382,33 @@
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
               👤 {{ getRoleName(selectedNode.assignedRole) }}
-              <span v-if="nodeLockMap[selectedNode.id]" class="ml-1 text-xs text-red-500">🔒 锁定</span>
-              <span v-else class="ml-1 text-xs text-green-500">🟢 可操作</span>
+              <span v-if="hasClaimedRole(selectedNode.assignedRole)" class="ml-1 text-xs text-green-500">✅ 已认领</span>
+              <span v-else-if="hasPendingClaimForRole(selectedNode.assignedRole)" class="ml-1 text-xs text-orange-500">⏳ 审核中</span>
+              <span v-else-if="claimPolicyForRole(selectedNode.assignedRole) === 'delegated'" class="ml-1 text-xs text-gray-400">🔒 委派制</span>
+              <span v-else class="ml-1 text-xs text-gray-400">未认领</span>
             </span>
             <button
-              v-if="!hasClaimedRole(selectedNode.assignedRole) && claimPolicyForRole(selectedNode.assignedRole) !== 'delegated'"
+              v-if="!hasClaimedRole(selectedNode.assignedRole) && !hasPendingClaimForRole(selectedNode.assignedRole) && claimPolicyForRole(selectedNode.assignedRole) !== 'delegated'"
               class="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded hover:bg-blue-200 transition-colors"
               @click="claimCurrentRole"
             >
-              认领此角色 ({{ claimPolicyLabel(selectedNode.assignedRole) }})
+              认领此角色
             </button>
+            <span v-else-if="hasPendingClaimForRole(selectedNode.assignedRole)" class="text-xs text-orange-500 dark:text-orange-400">⏳ 等待管理员审核</span>
             <span v-else-if="hasClaimedRole(selectedNode.assignedRole)" class="text-xs text-green-600 dark:text-green-400">✅ 已认领</span>
-            <span v-else class="text-xs text-gray-400">🔒 管理员委派</span>
+            <span v-else class="text-xs text-gray-400">🔒 仅管理员可委派</span>
           </div>
           <div v-if="hasClaimedRole(selectedNode.assignedRole)" class="text-xs text-gray-400">
             你的角色: {{ userRoleNames.join(', ') }}
           </div>
         </div>
 
-        <!-- 节点权限提示 -->
-        <div class="flex items-center gap-2 text-xs">
-          <span v-if="editMode" class="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300 font-medium">📝 编辑模式</span>
-          <span v-else-if="nodeLockMap[selectedNode.id]" class="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-500 font-medium">🔒 执行模式 · 锁定</span>
-          <span v-else class="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600 font-medium">▶️ 执行模式 · 可操作</span>
+        <!-- 节点权限提示（执行模式） -->
+        <div v-if="!editMode" class="flex items-center gap-2 text-xs">
+          <span v-if="hasClaimedRole(selectedNode.assignedRole) && !nodeLockMap[selectedNode.id]" class="px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-600 font-medium">🟢 可操作</span>
+          <span v-else-if="hasClaimedRole(selectedNode.assignedRole) && nodeLockMap[selectedNode.id]" class="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-500 font-medium">🔒 角色无权限</span>
+          <span v-else-if="hasPendingClaimForRole(selectedNode.assignedRole)" class="px-1.5 py-0.5 rounded bg-orange-100 dark:bg-orange-900/30 text-orange-500 font-medium">⏳ 认领审核中</span>
+          <span v-else class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-400 font-medium">🔒 请先认领角色</span>
         </div>
 
         <!-- 操作按钮 -->
@@ -801,6 +805,14 @@ function hasClaimedRole(roleId) {
   )
 }
 
+function hasPendingClaimForRole(roleId) {
+  const username = userStore.username
+  if (!username) return false
+  return !!missionStore.currentMission?.assignments.find(
+    a => a.roleId === roleId && a.userId === username && a.status === 'pending'
+  )
+}
+
 function claimPolicyForRole(roleId) {
   if (!missionStore.currentMission) return 'free'
   const role = missionStore.currentMission.roles.find(r => r.id === roleId)
@@ -815,6 +827,10 @@ function claimPolicyLabel(roleId) {
 function claimCurrentRole() {
   if (!selectedNode.value || !userStore.username) return
   const roleId = selectedNode.value.assignedRole
+  if (hasPendingClaimForRole(roleId)) {
+    alert('⏳ 已提交过认领申请，请等待管理员审核')
+    return
+  }
   const policy = claimPolicyForRole(roleId)
 
   if (policy === 'password') {

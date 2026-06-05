@@ -648,14 +648,15 @@ export const useMissionStore = defineStore('mission', {
         return { canOperate: false, reason: '该节点仅限特定用户操作', roleIds: userRoleIds }
       }
 
-      // Step 2c: 检查是否至少有一个角色认领了 assignedRole
-      const hasAssignedRole = userRoleIds.includes(node.assignedRole) || _isAdmin
-      if (!hasAssignedRole) {
-        // 但如果在 allowedOperators 中有角色，则不要求 assignedRole 匹配
-        const hasAnyRoleForNode = node.allowedOperators.length === 0 || node.allowedOperators.some(rId => userRoleIds.includes(rId))
-        if (!hasAnyRoleForNode && !_isAdmin) {
-          return { canOperate: false, reason: '未认领该节点所需的角色', roleIds: userRoleIds }
-        }
+      // Step 2c: 必须至少认领了一个允许操作该节点的角色
+      //   - 如果 allowedOperators 有值 → 匹配其中的角色
+      //   - 如果 allowedOperators 为空 → 匹配 assignedRole
+      const matchingRoles = node.allowedOperators.length > 0
+        ? node.allowedOperators
+        : [node.assignedRole]
+      const hasMatchingRole = matchingRoles.some(rId => userRoleIds.includes(rId))
+      if (!hasMatchingRole && !_isAdmin) {
+        return { canOperate: false, reason: '未认领该节点所需的角色，请先认领', roleIds: userRoleIds }
       }
 
       if (_isAdmin) return { canOperate: true, reason: '管理员权限', roleIds: userRoleIds }
