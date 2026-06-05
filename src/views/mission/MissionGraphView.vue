@@ -8,6 +8,9 @@
         </button>
         <h1 class="text-lg font-semibold text-gray-800 dark:text-gray-100">{{ mission.title }}</h1>
         <StatusBadge :status="mission.status" :size="'sm'" />
+        <!-- 云端同步状态 -->
+        <span v-if="missionStore.bmobSyncing" class="text-xs text-yellow-500 animate-pulse">⏳</span>
+        <span v-else-if="missionStore.migrated" class="text-xs text-green-500" title="已同步到云端">☁️</span>
       </div>
 
       <div class="flex items-center gap-2">

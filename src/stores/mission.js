@@ -1,12 +1,32 @@
 import { defineStore } from 'pinia'
 import {
-  createMission,
+  createMission as createMissionObj,
   createTaskNode,
   createEdge,
   createRole,
   DEFAULT_PERMISSIONS,
   shortId
 } from '@/types/mission'
+import {
+  fetchMissionIndex,
+  fetchMission,
+  createMission as createMissionBmob,
+  saveMission as saveMissionBmob,
+  softDeleteMission,
+  hardDeleteMission,
+  fetchAssignments,
+  syncAssignments,
+  checkBmobOnline
+} from '@/api/mission'
+
+/** 简单防抖 */
+function debounce(fn, delay) {
+  let timer = null
+  return function (...args) {
+    clearTimeout(timer)
+    timer = setTimeout(() => fn.apply(this, args), delay)
+  }
+}
 
 const STORAGE_KEY_INDEX = 'missions:index'
 const STORAGE_KEY_RECYCLE = 'missions:recycle'
@@ -43,7 +63,15 @@ export const useMissionStore = defineStore('mission', {
     /** 错误信息 */
     error: null,
     /** 管理员权限绕过开关（调试用，持久化） */
-    adminBypass: loadJSON(STORAGE_KEY_ADMIN_BYPASS, false)
+    adminBypass: loadJSON(STORAGE_KEY_ADMIN_BYPASS, false),
+    /** Bmob 在线状态 */
+    online: navigator.onLine !== false,
+    /** Bmob 同步中 */
+    bmobSyncing: false,
+    /** 标记已迁移（localStorage → Bmob） */
+    migrated: loadJSON('missions:migrated', false),
+    /** Bmob 加载错误（用于 UI 离线提示） */
+    bmobLoadError: null
   }),
 
   getters: {
@@ -91,7 +119,7 @@ export const useMissionStore = defineStore('mission', {
   actions: {
     // ──────────────── 持久化 ────────────────
 
-    /** 保存当前 Mission 到 localStorage */
+    /** 保存当前 Mission 到 localStorage + 触发 Bmob 同步 */
     _saveMission() {
       if (!this.currentMission) return
       saveJSON(STORAGE_KEY_PREFIX + this.currentMission.id, this.currentMission)
@@ -103,7 +131,15 @@ export const useMissionStore = defineStore('mission', {
         entry.updatedAt = this.currentMission.updatedAt
       }
       saveJSON(STORAGE_KEY_INDEX, this.index)
+
+      // 触发 Bmob 防抖同步
+      this._triggerBmobSync()
     },
+
+    /** 防抖触发 Bmob 同步 */
+    _triggerBmobSync: debounce(function () {
+      this._saveToBmob()
+    }, 800),
 
     /** 更新索引 */
     _updateIndex() {
@@ -112,14 +148,15 @@ export const useMissionStore = defineStore('mission', {
 
     // ──────────────── Mission CRUD ────────────────
 
-    /** 创建新 Mission（含默认角色） */
-    createMission(title, createdBy) {
-      const mission = createMission(title, createdBy)
+    /** 创建新 Mission（含默认角色 + Bmob 同步） */
+    async createMission(title, createdBy) {
+      const mission = createMissionObj(title, createdBy)
       // 添加默认角色
       mission.roles.push(
         createRole('普通成员', '#3B82F6', '🟢', { type: 'free' }),
         createRole('管理员', '#EF4444', '🔴', { type: 'free' })
       )
+
       // 写入索引
       this.index.push({
         id: mission.id,
@@ -129,17 +166,65 @@ export const useMissionStore = defineStore('mission', {
         updatedAt: mission.updatedAt
       })
       saveJSON(STORAGE_KEY_INDEX, this.index)
-      // 保存完整数据
+
+      // 保存完整数据到 localStorage
       this.currentMission = mission
       this._saveMission()
+
+      // 同步到 Bmob（如果已迁移）
+      if (this.migrated) {
+        try {
+          const result = await createMissionBmob(mission)
+          if (result && result._bmobObjectId) {
+            this.currentMission._bmobObjectId = result._bmobObjectId
+          }
+        } catch (e) {
+          console.warn('Bmob 创建失败（数据已保存到本地）:', e.message)
+        }
+      }
+
       return mission
     },
 
-    /** 加载 Mission */
-    loadMission(id) {
+    /** 加载 Mission（Bmob 优先 → localStorage 兜底） */
+    async loadMission(id) {
       this.loading = true
       this.error = null
+      this.bmobLoadError = null
       try {
+        // 优先从 Bmob 加载（已迁移后）
+        if (this.migrated) {
+          try {
+            const bmobData = await fetchMission(id)
+            if (bmobData) {
+              // 加载认领数据
+              if (bmobData._bmobObjectId) {
+                try {
+                  const assignments = await fetchAssignments(bmobData._bmobObjectId)
+                  bmobData.assignments = assignments.map(a => ({
+                    roleId: a.roleId,
+                    userId: a.userId,
+                    assignedAt: a.assignedAt,
+                    status: a.status,
+                    approvedBy: a.approvedBy || '',
+                    approvedAt: a.approvedAt || ''
+                  }))
+                } catch (e) {
+                  console.warn('加载认领数据失败:', e.message)
+                }
+              }
+              // 写回 localStorage 作为缓存
+              saveJSON(STORAGE_KEY_PREFIX + id, bmobData)
+              this.currentMission = bmobData
+              return bmobData
+            }
+          } catch (e) {
+            this.bmobLoadError = '云端加载失败，使用本地缓存'
+            console.warn('Bmob 加载失败，使用本地缓存:', e.message)
+          }
+        }
+
+        // 兜底：从 localStorage 加载
         const data = loadJSON(STORAGE_KEY_PREFIX + id)
         if (!data) {
           this.error = '任务不存在'
@@ -165,8 +250,8 @@ export const useMissionStore = defineStore('mission', {
       this._saveMission()
     },
 
-    /** 软删除：Mission 移入回收站 */
-    deleteMission(id) {
+    /** 软删除：Mission 移入回收站（同步 Bmob） */
+    async deleteMission(id) {
       const entry = this.index.find(i => i.id === id)
       if (!entry) return
       // 从索引移除
@@ -183,17 +268,25 @@ export const useMissionStore = defineStore('mission', {
       if (this.currentMission?.id === id) {
         this.currentMission = null
       }
+      // Bmob 软删除
+      if (this.migrated) {
+        try { await softDeleteMission(id) } catch (e) { console.warn('Bmob 软删除失败:', e.message) }
+      }
     },
 
-    /** 永久删除：从回收站彻底移除 */
-    permanentlyDeleteMission(id) {
+    /** 永久删除：从回收站彻底移除（同步 Bmob） */
+    async permanentlyDeleteMission(id) {
       removeKey(STORAGE_KEY_PREFIX + id)
       this.recycleBin = this.recycleBin.filter(i => i.id !== id)
       saveJSON(STORAGE_KEY_RECYCLE, this.recycleBin)
+      // Bmob 永久删除
+      if (this.migrated) {
+        try { await hardDeleteMission(id) } catch (e) { console.warn('Bmob 永久删除失败:', e.message) }
+      }
     },
 
     /** 从回收站恢复到主列表 */
-    restoreMission(id) {
+    async restoreMission(id) {
       const item = this.recycleBin.find(i => i.id === id)
       if (!item) return
       // 从回收站移除
@@ -211,6 +304,10 @@ export const useMissionStore = defineStore('mission', {
         })
         saveJSON(STORAGE_KEY_INDEX, this.index)
       }
+      // Bmob 恢复（清除 deletedAt）
+      if (this.migrated) {
+        try { await saveMissionBmob(id, { deletedAt: null }) } catch (e) { console.warn('Bmob 恢复失败:', e.message) }
+      }
     },
 
     /** 一键清空回收站（含确认） */
@@ -223,10 +320,34 @@ export const useMissionStore = defineStore('mission', {
     },
 
     /** 获取所有 Mission 概要（含回收站自动清理） */
-    fetchIndex() {
+    async fetchIndex() {
       this.index = loadJSON(STORAGE_KEY_INDEX, [])
       this.recycleBin = loadJSON(STORAGE_KEY_RECYCLE, [])
       this._autoCleanRecycleBin()
+
+      // 尝试从 Bmob 加载（已迁移后）
+      if (this.migrated) {
+        try {
+          const bmobIndex = await fetchMissionIndex()
+          if (bmobIndex && bmobIndex.length > 0) {
+            // 合并: Bmob 数据为主，补充本地回收站状态
+            this.index = bmobIndex.map(item => ({
+              id: item.id || item.objectId,
+              title: item.title || '',
+              status: item.status || 'active',
+              createdAt: item.createdAt,
+              updatedAt: item.updatedAt,
+              _progress: item._progress || 0,
+              _bmobObjectId: item._bmobObjectId
+            }))
+            // 缓存到 localStorage
+            saveJSON(STORAGE_KEY_INDEX, this.index)
+          }
+        } catch (e) {
+          console.warn('Bmob 索引加载失败，使用本地缓存:', e.message)
+        }
+      }
+
       return this.index
     },
 
@@ -430,7 +551,7 @@ export const useMissionStore = defineStore('mission', {
     // ──────────────── 角色认领 ────────────────
 
     /** 认领角色 */
-    claimRole(roleId, userId) {
+    async claimRole(roleId, userId) {
       if (!this.currentMission) return { success: false, reason: '没有加载任务' }
       const role = this.currentMission.roles.find(r => r.id === roleId)
       if (!role) return { success: false, reason: '角色不存在' }
@@ -457,6 +578,7 @@ export const useMissionStore = defineStore('mission', {
         })
         this.currentMission.updatedAt = now
         this._saveMission()
+        this._syncAssignmentsToBmob()
         return { success: true }
       }
 
@@ -474,6 +596,7 @@ export const useMissionStore = defineStore('mission', {
         })
         this.currentMission.updatedAt = now
         this._saveMission()
+        this._syncAssignmentsToBmob()
         return { success: true, pending: true }
       }
 
@@ -485,7 +608,7 @@ export const useMissionStore = defineStore('mission', {
     },
 
     /** 口令认领 */
-    claimRoleWithPassword(roleId, userId, password) {
+    async claimRoleWithPassword(roleId, userId, password) {
       if (!this.currentMission) return { success: false, reason: '没有加载任务' }
       const role = this.currentMission.roles.find(r => r.id === roleId)
       if (!role) return { success: false, reason: '角色不存在' }
@@ -505,11 +628,12 @@ export const useMissionStore = defineStore('mission', {
       })
       this.currentMission.updatedAt = now
       this._saveMission()
+      this._syncAssignmentsToBmob()
       return { success: true }
     },
 
     /** 审批认领 */
-    approveClaim(assignmentIndex, approvedBy) {
+    async approveClaim(assignmentIndex, approvedBy) {
       if (!this.currentMission) return false
       const assignment = this.currentMission.assignments[assignmentIndex]
       if (!assignment || assignment.status !== 'pending') return false
@@ -518,22 +642,24 @@ export const useMissionStore = defineStore('mission', {
       assignment.approvedAt = new Date().toISOString()
       this.currentMission.updatedAt = new Date().toISOString()
       this._saveMission()
+      this._syncAssignmentsToBmob()
       return true
     },
 
     /** 拒绝认领 */
-    rejectClaim(assignmentIndex) {
+    async rejectClaim(assignmentIndex) {
       if (!this.currentMission) return false
       const assignment = this.currentMission.assignments[assignmentIndex]
       if (!assignment || assignment.status !== 'pending') return false
       assignment.status = 'rejected'
       this.currentMission.updatedAt = new Date().toISOString()
       this._saveMission()
+      this._syncAssignmentsToBmob()
       return true
     },
 
     /** 委派角色（delegated） */
-    delegateRole(roleId, userId, delegatedBy) {
+    async delegateRole(roleId, userId, delegatedBy) {
       if (!this.currentMission) return { success: false, reason: '没有加载任务' }
       const now = new Date().toISOString()
       this.currentMission.assignments.push({
@@ -546,6 +672,7 @@ export const useMissionStore = defineStore('mission', {
       })
       this.currentMission.updatedAt = now
       this._saveMission()
+      this._syncAssignmentsToBmob()
       return { success: true }
     },
 
@@ -954,6 +1081,135 @@ export const useMissionStore = defineStore('mission', {
     setAdminBypass(val) {
       this.adminBypass = !!val
       saveJSON(STORAGE_KEY_ADMIN_BYPASS, this.adminBypass)
+    },
+
+    // ──────────────── Bmob 同步 ────────────────
+
+    /** 检查 Bmob 在线状态（静默） */
+    async _checkOnline() {
+      try {
+        this.online = await checkBmobOnline()
+      } catch {
+        this.online = false
+      }
+    },
+
+    /** 防抖保存到 Bmob（由 _saveMission 触发） */
+    _bmbSaveDebounced: null,
+
+    /** 保存当前 Mission 到 Bmob */
+    async _saveToBmob() {
+      if (!this.currentMission || !this.currentMission.id) return
+      if (!this.migrated) return // 未迁移完成前不同步
+
+      this.bmobSyncing = true
+      try {
+        const layoutData = JSON.stringify({
+          nodes: this.currentMission.nodes,
+          edges: this.currentMission.edges,
+          roles: this.currentMission.roles,
+          customFields: this.currentMission.customFields || [],
+          reminders: this.currentMission.reminders || []
+        })
+
+        await saveMissionBmob(this.currentMission.id, {
+          title: this.currentMission.title,
+          description: this.currentMission.description,
+          status: this.currentMission.status,
+          tags: this.currentMission.tags,
+          version: '4.0',
+          layoutData
+        })
+      } catch (e) {
+        this.bmobLoadError = '同步到云端失败: ' + e.message
+        console.warn('Bmob 保存失败:', e.message)
+      } finally {
+        this.bmobSyncing = false
+      }
+    },
+
+    /** 同步认领数据到 Bmob */
+    async _syncAssignmentsToBmob() {
+      if (!this.currentMission || !this.currentMission._bmobObjectId) return
+      if (!this.migrated) return
+
+      try {
+        await syncAssignments(this.currentMission._bmobObjectId, this.currentMission.assignments)
+      } catch (e) {
+        console.warn('Bmob 认领同步失败:', e.message)
+      }
+    },
+
+    /** 从 Bmob 加载认领数据并合并到 currentMission */
+    async _loadAssignmentsFromBmob() {
+      if (!this.currentMission || !this.currentMission._bmobObjectId) return
+      try {
+        const assignments = await fetchAssignments(this.currentMission._bmobObjectId)
+        this.currentMission.assignments = assignments.map(a => ({
+          roleId: a.roleId,
+          userId: a.userId,
+          assignedAt: a.assignedAt,
+          status: a.status,
+          approvedBy: a.approvedBy || '',
+          approvedAt: a.approvedAt || ''
+        }))
+      } catch (e) {
+        console.warn('Bmob 认领加载失败:', e.message)
+      }
+    },
+
+    // ──────────────── localStorage → Bmob 迁移 ────────────────
+
+    /** 迁移所有 localStorage 任务到 Bmob */
+    async migrateLocalToBmob() {
+      if (this.migrated) return
+      this.loading = true
+      this.error = null
+
+      try {
+        // 1. 检查网络
+        const online = await checkBmobOnline()
+        if (!online) {
+          this.error = 'Bmob 不可用，无法迁移。请稍后再试。'
+          return
+        }
+
+        // 2. 迁移索引中的每个任务
+        const localIndex = loadJSON(STORAGE_KEY_INDEX, [])
+        let migratedCount = 0
+
+        for (const entry of localIndex) {
+          const data = loadJSON(STORAGE_KEY_PREFIX + entry.id)
+          if (!data) continue
+
+          try {
+            // 检查 Bmob 中是否已存在
+            const existing = await fetchMission(entry.id)
+            if (existing) {
+              migratedCount++
+              continue
+            }
+
+            // 创建到 Bmob
+            await createMissionBmob(data)
+            migratedCount++
+          } catch (e) {
+            console.warn(`迁移任务 ${entry.id} 失败:`, e.message)
+          }
+        }
+
+        // 3. 标记迁移完成
+        this.migrated = true
+        saveJSON('missions:migrated', true)
+
+        if (migratedCount > 0) {
+          console.log(`✅ 迁移完成: ${migratedCount} 个任务已同步到 Bmob`)
+        }
+      } catch (e) {
+        this.error = '迁移失败: ' + e.message
+      } finally {
+        this.loading = false
+      }
     }
   }
 })

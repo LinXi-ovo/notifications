@@ -1,8 +1,20 @@
 <template>
   <div class="max-w-4xl mx-auto p-4 sm:p-6">
     <!-- 头部 -->
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">📋 任务系统</h1>
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-gray-100">📋 任务系统</h1>
+        <!-- 同步状态 -->
+        <span v-if="missionStore.migrated" class="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+          ☁️ 云端
+        </span>
+        <span v-else-if="migrating" class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400">
+          ⏳ 同步中…
+        </span>
+        <span v-else class="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+          💾 本地
+        </span>
+      </div>
       <button
         class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
         @click="showCreateModal = true"
@@ -10,6 +22,7 @@
         ＋ 新建任务
       </button>
     </div>
+    <p v-if="missionStore.bmobLoadError" class="text-xs text-orange-500 mb-4">⚠️ {{ missionStore.bmobLoadError }}</p>
 
     <!-- 创建模态框 -->
     <div v-if="showCreateModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showCreateModal = false">
@@ -154,6 +167,7 @@ const userStore = useUserStore()
 const showCreateModal = ref(false)
 const newMissionTitle = ref('')
 const loading = ref(false)
+const migrating = ref(false)
 
 // AI 导入
 const showAiImport = ref(false)
@@ -212,14 +226,21 @@ const missions = computed(() => {
   })
 })
 
-onMounted(() => {
-  missionStore.fetchIndex()
+onMounted(async () => {
+  // 如果尚未迁移到 Bmob，尝试迁移
+  if (!missionStore.migrated) {
+    migrating.value = true
+    await missionStore.migrateLocalToBmob()
+    migrating.value = false
+  }
+  // 加载索引（Bmob 优先 → localStorage 兜底）
+  await missionStore.fetchIndex()
 })
 
-function createMission() {
+async function createMission() {
   if (!newMissionTitle.value.trim()) return
   const username = userStore.username || 'anonymous'
-  missionStore.createMission(newMissionTitle.value.trim(), username)
+  await missionStore.createMission(newMissionTitle.value.trim(), username)
   newMissionTitle.value = ''
   showCreateModal.value = false
 }
