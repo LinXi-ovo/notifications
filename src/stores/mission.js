@@ -673,24 +673,31 @@ export const useMissionStore = defineStore('mission', {
       if (!this.currentMission) return []
 
       const _isAdmin = userId === 'admin' && this.adminBypass
+      const node = this.currentMission.nodes.find(n => n.id === nodeId)
+      if (!node) return []
+
       if (_isAdmin) {
-        // 管理员：返回所有可能的转换
-        const node = this.currentMission.nodes.find(n => n.id === nodeId)
-        if (!node) return []
+        // 管理员（绕过）：返回所有可能的转换
         return this._getAllPossibleTransitions(node.status)
       }
 
       const userRoleIds = this._getUserRoleIds(userId)
       if (!userRoleIds.length) return []
 
-      const node = this.currentMission.nodes.find(n => n.id === nodeId)
-      if (!node) return []
+      // 只筛选被允许操作该节点的角色
+      //   - allowedOperators 有值 → 只取其中的角色
+      //   - allowedOperators 为空 → 只取 assignedRole
+      const allowedRoles = node.allowedOperators.length > 0
+        ? node.allowedOperators
+        : [node.assignedRole]
+      const matchingRoleIds = userRoleIds.filter(rId => allowedRoles.includes(rId))
+      if (!matchingRoleIds.length) return []
 
-      // 收集用户所有角色的允许转换
+      // 收集匹配角色的允许转换
       const allowedTransitions = []
       const seen = new Set()
 
-      for (const roleId of userRoleIds) {
+      for (const roleId of matchingRoleIds) {
         const perm = this._getRolePermissions(roleId)
         if (!perm || !perm.transitions) continue
 
