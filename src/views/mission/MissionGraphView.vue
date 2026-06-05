@@ -11,6 +11,12 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="showAddRole = true">
+          👥 角色
+        </button>
+        <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="showAddEdge = true">
+          ↔️ 连线
+        </button>
         <button class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors" @click="exportMission">
           📥 导出
         </button>
@@ -156,6 +162,52 @@
       </div>
     </div>
 
+    <!-- 添加角色对话框 -->
+    <div v-if="showAddRole" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showAddRole = false">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+        <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">角色管理</h2>
+
+        <!-- 现有角色列表 -->
+        <div class="mb-4 space-y-2">
+          <div v-for="r in mission.roles" :key="r.id" class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div class="flex items-center gap-2">
+              <span>{{ r.emoji }}</span>
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ r.name }}</span>
+              <span class="text-xs text-gray-400">{{ r.claimPolicy.type === 'free' ? '自由认领' : r.claimPolicy.type === 'approval' ? '审核认领' : r.claimPolicy.type === 'password' ? '口令认领' : '委派' }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-400 tabular-nums">{{ assignmentCount(r.id) }}人</span>
+              <button class="text-xs text-red-400 hover:text-red-600" @click="removeRole(r.id)">删除</button>
+            </div>
+          </div>
+          <div v-if="!mission.roles.length" class="text-sm text-gray-400 text-center py-4">暂无角色</div>
+        </div>
+
+        <hr class="border-gray-200 dark:border-gray-600 mb-4" />
+
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">添加角色</h3>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <input v-model="newRole.name" type="text" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="角色名称（如：班长）" />
+          <input v-model="newRole.emoji" type="text" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="👨‍🎓" />
+          <input v-model="newRole.color" type="text" class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="#F59E0B" />
+          <select v-model="newRole.claimType" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+            <option value="free">自由认领</option>
+            <option value="approval">审核认领</option>
+            <option value="password">口令认领</option>
+            <option value="delegated">管理员委派</option>
+          </select>
+          <input v-if="newRole.claimType === 'password'" v-model="newRole.password" type="text" class="col-span-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" placeholder="认领口令" />
+        </div>
+        <div class="flex justify-end">
+          <button class="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50" :disabled="!newRole.name.trim()" @click="addRole">添加角色</button>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+          <button class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" @click="showAddRole = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 节点详情面板 -->
     <div v-if="selectedNode" class="fixed inset-x-0 bottom-0 z-40 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-2xl rounded-t-2xl max-h-[60vh] overflow-y-auto transition-transform" @click.self="selectedNodeId = null">
       <div class="max-w-4xl mx-auto p-4">
@@ -204,6 +256,21 @@
           </div>
         </div>
 
+        <!-- 角色认领 -->
+        <div class="mb-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-600 dark:text-gray-300">👤 {{ getRoleName(selectedNode.assignedRole) }}</span>
+            <button
+              v-if="!hasClaimedRole(selectedNode.assignedRole)"
+              class="text-xs px-2 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded hover:bg-blue-200 transition-colors"
+              @click="claimCurrentRole"
+            >
+              认领此角色
+            </button>
+            <span v-else class="text-xs text-green-600 dark:text-green-400">✅ 已认领</span>
+          </div>
+        </div>
+
         <!-- 操作按钮 -->
         <div class="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
           <button
@@ -214,6 +281,13 @@
             @click="changeStatus(t.to)"
           >
             {{ t.label }}
+          </button>
+          <button
+            v-if="selectedNode.status !== 'completed' && selectedNode.completionRule !== 'single' && hasClaimedRole(selectedNode.assignedRole)"
+            class="px-3 py-1.5 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg transition-colors font-medium"
+            @click="markNodeComplete"
+          >
+            ✅ 标记我已填写
           </button>
           <button class="px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" @click="deleteSelectedNode">
             删除节点
@@ -254,6 +328,10 @@ const showAddEdge = ref(false)
 const newEdgeSource = ref('')
 const newEdgeTarget = ref('')
 const newEdgeLabel = ref('')
+
+// 角色管理
+const showAddRole = ref(false)
+const newRole = ref({ name: '', emoji: '👤', color: '#6B7280', claimType: 'free', password: '' })
 
 const mission = computed(() => missionStore.currentMission || { nodes: [], edges: [], roles: [] })
 const progress = computed(() => missionStore.progress)
@@ -387,5 +465,52 @@ function transitionButtonClass(to) {
 function changeStatus(to) {
   if (!selectedNode.value) return
   missionStore.changeNodeStatus(selectedNode.value.id, to)
+}
+
+// ── 角色管理 ──
+function addRole() {
+  if (!newRole.value.name.trim()) return
+  missionStore.addRole(
+    newRole.value.name.trim(),
+    newRole.value.color,
+    newRole.value.emoji,
+    { type: newRole.value.claimType, password: newRole.value.claimType === 'password' ? newRole.value.password : null }
+  )
+  newRole.value = { name: '', emoji: '👤', color: '#6B7280', claimType: 'free', password: '' }
+}
+
+function removeRole(roleId) {
+  if (confirm('确定删除此角色？')) {
+    missionStore.removeRole(roleId)
+  }
+}
+
+function hasClaimedRole(roleId) {
+  const username = userStore.username
+  if (!username) return false
+  return !!missionStore.currentMission?.assignments.find(
+    a => a.roleId === roleId && a.userId === username && a.status === 'approved'
+  )
+}
+
+function claimCurrentRole() {
+  if (!selectedNode.value || !userStore.username) return
+  const result = missionStore.claimRole(selectedNode.value.assignedRole, userStore.username)
+  if (result.success) {
+    if (result.pending) {
+      alert('已提交认领申请，等待审核')
+    } else {
+      alert('认领成功！')
+    }
+  } else {
+    alert(result.reason)
+  }
+}
+
+function markNodeComplete() {
+  if (!selectedNode.value || !userStore.username) return
+  const userName = userStore.username
+  missionStore.markComplete(selectedNode.value.id, userStore.username, userName)
+  alert('已标记完成！')
 }
 </script>
