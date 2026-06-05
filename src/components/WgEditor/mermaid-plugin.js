@@ -1,21 +1,40 @@
 /**
  * wangEditor Mermaid 自定义元素
  *
- * 只注册 parseHtml 和 elemToHtml，让 wangEditor 能识别和保留
- * `<div data-mermaid>`，但编辑器内用默认的 fallback 渲染
- * （显示为不可编辑的占位块）。
- * SVG 渲染只发生在详情页和管理后台预览。
+ * parseHtml / render / elemToHtml 三件套注册。
+ * 编辑器内显示为带样式的占位块，SVG 渲染交给详情页。
  */
 import { Boot } from '@wangeditor/editor'
+import { h } from 'snabbdom'
 
 // ── HTML → Slate 元素 ──
 function parseMermaidHtml(domElem) {
   const code = domElem.getAttribute('data-mermaid') || ''
-  return {
-    type: 'mermaid',
-    code,
-    children: [{ text: '' }], // void 元素必须有 children
-  }
+  return { type: 'mermaid', code, children: [{ text: '' }] }
+}
+
+// ── 编辑器内渲染（占位符） ──
+function renderMermaid(elem, children, editor) {
+  const code = elem.code || ''
+  const firstLine = (code.split('\n')[0] || '').trim() || 'Mermaid'
+
+  return h('div', {
+    style: {
+      padding: '8px 12px',
+      margin: '8px 0',
+      background: '#f8f9fa',
+      border: '1px dashed #d0d5dd',
+      borderRadius: '6px',
+      color: '#667085',
+      fontSize: '13px',
+      fontFamily: 'monospace',
+      cursor: 'default',
+    },
+    attrs: {
+      'data-mermaid': code,
+      'contenteditable': 'false',
+    },
+  }, `📊 ${firstLine}`)
 }
 
 // ── Slate 元素 → HTML ──
@@ -30,10 +49,9 @@ function mermaidToHtml(elem) {
 }
 
 // ── 注册 ──
-// 注意：不注册 renderElems，wangEditor 会用默认 fallback 渲染
-// 编辑器内显示为不可编辑的空占位块，不影响其他内容
 try {
   Boot.registerModule({
+    renderElems: [{ type: 'mermaid', renderElem: renderMermaid }],
     elemsToHtml: [{ type: 'mermaid', elemToHtml: mermaidToHtml }],
     parseElemsHtml: [{ selector: 'div[data-mermaid]', parseElemHtml: parseMermaidHtml }],
   })
