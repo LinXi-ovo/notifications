@@ -31,13 +31,6 @@
 
     <!-- 隐藏的文件输入 -->
     <input ref="fileInput" type="file" class="hidden" @change="onFileSelected" />
-
-    <!-- Mermaid 对话框 -->
-    <MermaidDialog
-      :visible="showMermaidDialog"
-      @close="showMermaidDialog = false"
-      @insert="handleMermaidInsert"
-    />
   </div>
 </template>
 
@@ -51,7 +44,6 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 import Toolbar from './RichEditor/Toolbar.vue'
 import { MermaidNode } from './RichEditor/MermaidNode.js'
-import MermaidDialog from './RichEditor/MermaidDialog.vue'
 import { uploadFile } from '@/api/cos'
 
 const props = defineProps({
@@ -63,7 +55,6 @@ const fileInput = ref(null)
 const showSource = ref(false)
 const sourceContent = ref('')
 const focused = ref(false)
-const showMermaidDialog = ref(false)
 let pendingType = 'image'
 
 // ── 编辑器 ──
@@ -128,6 +119,16 @@ function handlePaste(e) {
       const file = item.getAsFile()
       if (file) doUpload(file, 'file')
       return
+    }
+  }
+  // 检测粘贴 Mermaid 代码：取纯文本检测关键词
+  const text = e.clipboardData?.getData('text/plain')
+  if (text && isMermaidCode(text)) {
+    e.preventDefault()
+    const ed = editor.value
+    if (ed) {
+      const html = `<div data-mermaid="${escapeAttr(text.trim())}"></div>`
+      ed.chain().focus().insertContent(html).run()
     }
   }
 }
@@ -228,22 +229,24 @@ function handleInsertLink() {
   alert('💡 选中文字后按 Ctrl+V 粘贴链接地址，浏览器会自动生成超链接。\n\n也可以直接输入链接文本，编辑器会自动识别。')
 }
 
-// ── 插入 Mermaid 流程图 ──
-function insertMermaid() {
-  showMermaidDialog.value = true
-}
+// ── Mermaid 流程图 ──
+const MERMAID_KEYWORDS = ['graph ', 'sequenceDiagram', 'gantt', 'classDiagram', 'pie ', 'mindmap', 'flowchart ', 'stateDiagram', 'erDiagram', 'journey ', 'gitgraph', 'timeline', 'quadrantChart', 'sankey', 'xychart', 'block', 'c4Diagram']
 
-function handleMermaidInsert(code) {
-  showMermaidDialog.value = false
+function insertMermaid() {
   const ed = editor.value
   if (!ed) return
-  // 直接插入 MermaidNode 能解析的 HTML，绕开命令注册
-  const html = `<div data-mermaid="${escapeAttr(code)}"></div>`
-  ed.chain().focus().insertContent(html).run()
+  const code = `graph TD\n  A[开始] --> B[结束]`
+  ed.chain().focus().insertContent(`<div data-mermaid="${escapeAttr(code)}"></div>`).run()
 }
 
 function escapeAttr(str) {
   return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// 检测粘贴文本是否为 Mermaid 代码
+function isMermaidCode(text) {
+  const firstLine = text.trim().split('\n')[0]
+  return MERMAID_KEYWORDS.some(kw => firstLine.startsWith(kw))
 }
 
 // ── 工具栏操作 ──
