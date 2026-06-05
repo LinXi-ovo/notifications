@@ -60,7 +60,7 @@
 
           <!-- 通知列表 -->
           <div v-if="!showForm" class="space-y-2">
-            <div v-for="item in store.list" :key="item.id" class="bg-white rounded-lg border p-4 flex items-start justify-between gap-4">
+            <div v-for="item in store.list" :key="item.id" class="bg-white rounded-lg border p-4 flex items-start justify-between gap-4 cursor-pointer hover:shadow-md transition-shadow" @click="previewItem = item">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="text-xs px-1.5 py-0.5 rounded" :class="typeClass(item.type)">{{ typeIcon(item.type) }} {{ item.type }}</span>
@@ -69,13 +69,43 @@
                 <p class="text-sm font-medium text-gray-800 mt-1 truncate m-0">{{ item.title }}</p>
                 <p class="text-xs text-gray-400 mt-1 m-0">{{ formatDate(item.createdAt) }}</p>
               </div>
-              <div class="flex gap-1 shrink-0">
+              <div class="flex gap-1 shrink-0" @click.stop>
                 <button class="px-2 py-1 text-xs text-blue-500 bg-blue-50 rounded hover:bg-blue-100 cursor-pointer border-none" @click="openEdit(item)">编辑</button>
                 <button class="px-2 py-1 text-xs text-red-500 bg-red-50 rounded hover:bg-red-100 cursor-pointer border-none" @click="trashItem(item)">🗑️</button>
               </div>
             </div>
             <div v-if="store.list.length === 0" class="text-center py-12 text-gray-400">
               <p>还没有通知</p>
+            </div>
+          </div>
+
+          <!-- 预览弹窗 -->
+          <div v-if="previewItem" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="previewItem = null">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col">
+              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-bold text-gray-800 m-0 truncate pr-4">{{ previewItem.title }}</h3>
+                <button class="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer text-xl shrink-0" @click="previewItem = null">✕</button>
+              </div>
+              <div class="px-6 py-4 overflow-y-auto space-y-4 flex-1">
+                <div class="flex items-center gap-3 text-xs text-gray-500">
+                  <span class="px-2 py-0.5 rounded" :class="typeClass(previewItem.type)">{{ typeIcon(previewItem.type) }} {{ previewItem.type || '未分类' }}</span>
+                  <span v-if="previewItem.priority > 0">⭐ 置顶</span>
+                  <span>{{ formatDate(previewItem.createdAt) }}</span>
+                  <span v-if="previewItem.sourceGroup">📢 {{ previewItem.sourceGroup }}</span>
+                  <span v-if="previewItem.sourcePerson">👤 {{ previewItem.sourcePerson }}</span>
+                </div>
+                <div class="prose prose-sm max-w-none [&_a]:text-blue-600 [&_a]:underline" v-html="previewItem.content"></div>
+                <div v-if="previewItem.tags?.length" class="flex gap-1 flex-wrap">
+                  <span v-for="t in previewItem.tags" :key="t" class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded">#{{ t }}</span>
+                </div>
+                <div v-if="previewItem.originalLink" class="text-sm">
+                  <a :href="previewItem.originalLink" target="_blank" class="text-blue-500 no-underline">🔗 原文链接</a>
+                </div>
+              </div>
+              <div class="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+                <button class="px-3 py-1.5 text-sm text-blue-500 bg-blue-50 rounded hover:bg-blue-100 cursor-pointer border-none" @click="openEdit(previewItem); previewItem = null">编辑</button>
+                <button class="px-3 py-1.5 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer" @click="previewItem = null">关闭</button>
+              </div>
             </div>
           </div>
         </div>
@@ -167,6 +197,7 @@ const store = useNotificationStore()
 
 const showForm = ref(false)
 const editingNotification = ref(null)
+const previewItem = ref(null)
 const users = ref([])
 const showUserManager = ref(false)
 const activeTab = ref('notifications')
