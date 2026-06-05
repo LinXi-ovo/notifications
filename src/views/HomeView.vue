@@ -9,6 +9,45 @@
     />
 
     <main class="max-w-4xl mx-auto px-4 py-4">
+      <!-- 我的任务概览 -->
+      <div v-if="userStore.isLoggedIn && userTasks.length" class="mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold text-gray-600 dark:text-gray-300">
+            📋 我的任务
+            <span class="text-xs font-normal text-gray-400 ml-1">({{ userTasks.length }})</span>
+          </h2>
+          <router-link to="/missions" class="text-xs text-blue-500 hover:text-blue-700 no-underline">
+            查看全部 →
+          </router-link>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <router-link
+            v-for="item in userTasks"
+            :key="item.id"
+            :to="'/mission/' + item.id"
+            class="block bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow no-underline"
+          >
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{{ item.title }}</h3>
+              <span class="text-xs px-2 py-0.5 rounded-full font-medium" :class="item.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+                {{ item.status === 'active' ? '进行中' : '已归档' }}
+              </span>
+            </div>
+            <!-- 进度 -->
+            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                <div class="bg-blue-500 rounded-full h-full transition-all" :style="{ width: (item._progress || 0) + '%' }"></div>
+              </div>
+              <span class="tabular-nums">{{ item._progress || 0 }}%</span>
+            </div>
+            <!-- 下一个待操作节点 -->
+            <div v-if="item._nextActionableNode" class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+              待操作: <span class="font-medium text-blue-500">{{ item._nextActionableNode }}</span>
+            </div>
+          </router-link>
+        </div>
+      </div>
+
       <!-- 搜索栏 -->
       <div class="mb-4">
         <SearchBar v-model="searchQuery" @update:model-value="handleSearch" />
@@ -76,6 +115,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { useUserStore } from '@/stores/user'
 import { useFavoriteStore } from '@/stores/favorite'
 import { getCategories } from '@/api/category'
+import { getUserMissions } from '@/api/mission'
 import { DEFAULT_CATEGORIES } from '@/utils/constants'
 import CategoryNav from '@/components/CategoryNav.vue'
 import SearchBar from '@/components/SearchBar.vue'
@@ -89,6 +129,7 @@ const categories = ref([])
 const currentType = ref(null)
 const searchQuery = ref('')
 const searchTimeout = ref(null)
+const userTasks = ref([])
 
 const totalPages = computed(() => Math.ceil(store.total / store.pageSize) || 1)
 
@@ -108,6 +149,7 @@ onMounted(async () => {
   store.fetchList()
   if (userStore.isLoggedIn) {
     favStore.refresh()
+    loadUserTasks()
   }
 })
 
@@ -126,5 +168,38 @@ function handleSearch(query) {
 
 function handleToggleFavorite(id) {
   favStore.toggle(id)
+}
+
+/** 加载用户参与的任务 */
+async function loadUserTasks() {
+  if (!userStore.username) return
+  try {
+    const missions = await getUserMissions(userStore.username)
+    if (!missions || !missions.length) return
+    userTasks.value = missions.map(m => {
+      // 计算进度
+      const total = m.nodes?.length || 0
+      const done = m.nodes?.filter(n => n.status === 'completed').length || 0
+      const pct = total ? Math.round((done / total) * 100) : 0
+
+      // 找下一个待操作节点
+      let nextNode = null
+      if (m.nodes && userStore.username) {
+        // 找第一个非完成的节点，按 position 排序
+        const nodes = [...m.nodes].sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x)
+        nextNode = nodes.find(n => n.status !== 'completed' && n.status !== 'cancelled')
+      }
+
+      return {
+        id: m.id,
+        title: m.title,
+        status: m.status,
+        _progress: pct,
+        _nextActionableNode: nextNode?.title || null
+      }
+    })
+  } catch (e) {
+    console.warn('加载用户任务失败:', e.message)
+  }
 }
 </script>
