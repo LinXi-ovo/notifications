@@ -10,6 +10,10 @@
 
 ---
 
+**🔗 Bmob 后台**：[bmobapp.com/app/list](https://www.bmobapp.com/app/list)（数据管理、用户管理、ACL 配置）
+
+---
+
 ## 功能
 
 - 📰 **通知浏览**：按分类查看、搜索、筛选通知
