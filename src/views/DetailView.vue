@@ -73,7 +73,7 @@
 
         <!-- 调试：HTML 源码切换 -->
         <button
-          v-if="debugMode"
+          v-if="isDebugMode()"
           type="button"
           class="mb-2 text-xs text-gray-400 hover:text-gray-600 bg-transparent border border-gray-200 rounded px-2 py-0.5 cursor-pointer"
           @click="showSource = !showSource"
@@ -119,8 +119,11 @@ const isFav = ref(false)
 const contentRef = ref(null)
 const lightbox = ref({ show: false, src: '', alt: '' })
 const pdfPreview = ref({ show: false, url: '', filename: '' })
-const debugMode = ref(localStorage.getItem('mermaid-debug') === 'true')
 const showSource = ref(false)
+// 调试模式直接从 localStorage 读，确保与设置页同步
+function isDebugMode() {
+  return localStorage.getItem('mermaid-debug') === 'true'
+}
 
 const priorityLabel = computed(() => PRIORITY_LABEL[notification.value?.priority]?.label || '')
 const priorityBadgeClass = computed(() => {
