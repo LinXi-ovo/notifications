@@ -12,78 +12,93 @@
         <!-- Tab 切换 -->
         <div class="flex border-b border-gray-200 -mx-6 px-6">
           <button
-            class="px-4 py-2 text-sm border-b-2 -mb-px cursor-pointer bg-transparent"
-            :class="ocrTab ? 'border-transparent text-gray-400 hover:text-gray-600' : 'border-blue-500 text-blue-600 font-medium'"
-            @click="ocrTab = false"
-          >🤖 AI 生成</button>
+            class="px-4 py-2 text-sm border-b-2 -mb-px cursor-pointer bg-transparent transition-colors"
+            :class="activeTab === 'text' ? 'border-blue-500 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'"
+            @click="activeTab = 'text'"
+          >📝 文本</button>
           <button
-            class="px-4 py-2 text-sm border-b-2 -mb-px cursor-pointer bg-transparent"
-            :class="ocrTab ? 'border-blue-500 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'"
-            @click="ocrTab = true"
-          >📷 OCR 结果</button>
+            class="px-4 py-2 text-sm border-b-2 -mb-px cursor-pointer bg-transparent transition-colors"
+            :class="activeTab === 'image' ? 'border-blue-500 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'"
+            @click="activeTab = 'image'"
+          >🖼️ 图片</button>
+          <button
+            class="px-4 py-2 text-sm border-b-2 -mb-px cursor-pointer bg-transparent transition-colors"
+            :class="activeTab === 'ocr' ? 'border-blue-500 text-blue-600 font-medium' : 'border-transparent text-gray-400 hover:text-gray-600'"
+            @click="activeTab = 'ocr'"
+          >📷 OCR</button>
         </div>
 
-        <!-- Tab: AI 生成 -->
-        <template v-if="!ocrTab">
-          <!-- 输入原始内容 -->
-        <div>
-          <label class="block text-sm text-gray-600 mb-1">粘贴原始内容（微信消息、原文链接、截图文字等）</label>
-          <textarea
-            v-model="rawInput"
-            class="w-full px-3 py-2 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
-            rows="8"
-            placeholder="例如：&#10;各位同学好，&#10;2025-2026学年综合素质测评工作现已启动，请各位同学在6月15日前登录教务系统提交申请。&#10;附件：综测评分细则.pdf&#10;来源：年级群 · 辅导员李老师"
-          ></textarea>
-        </div>
-
-        <!-- 分类提示 -->
-        <div v-if="categories.length" class="text-xs text-gray-400">
-          可识别的分类：{{ categories.map(c => c.icon + c.name).join('、') }}
-        </div>
-
-        <!-- 生成结果预览 -->
-        <div v-if="result" class="space-y-3 bg-gray-50 rounded-lg p-4 border">
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="text-xs text-gray-500">标题</label>
-              <p class="text-sm font-medium text-gray-800">{{ result.title }}</p>
-            </div>
-            <div>
-              <label class="text-xs text-gray-500">分类</label>
-              <p class="text-sm">{{ result.type ? (typeLabel(result.type) || result.type) : '未识别' }}</p>
-            </div>
-            <div>
-              <label class="text-xs text-gray-500">来源群组</label>
-              <p class="text-sm text-gray-600">{{ result.sourceGroup || '—' }}</p>
-            </div>
-            <div>
-              <label class="text-xs text-gray-500">发布人</label>
-              <p class="text-sm text-gray-600">{{ result.sourcePerson || '—' }}</p>
-            </div>
-            <div>
-              <label class="text-xs text-gray-500">优先级</label>
-              <p class="text-sm">{{ result.priority > 0 ? priorityLabel(result.priority) : '普通' }}</p>
-            </div>
-            <div>
-              <label class="text-xs text-gray-500">标签</label>
-              <p class="text-sm text-gray-600">{{ result.tags?.length ? result.tags.join(', ') : '—' }}</p>
-            </div>
-          </div>
+        <!-- ════════ Tab: 文本 ════════ -->
+        <template v-if="activeTab === 'text'">
           <div>
-            <label class="text-xs text-gray-500">正文内容</label>
-            <div class="text-sm text-gray-700 mt-1 p-3 bg-white rounded border" v-html="result.content"></div>
+            <label class="block text-sm text-gray-600 mb-1">粘贴原始内容</label>
+            <textarea
+              v-model="rawInput"
+              class="w-full px-3 py-2 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+              rows="8"
+              placeholder="例如：&#10;各位同学好，&#10;2025-2026学年综合素质测评工作现已启动...&#10;来源：年级群 · 辅导员李老师"
+            ></textarea>
           </div>
-          <div v-if="result.originalLink" class="text-xs text-blue-500">
-            🔗 {{ result.originalLink }}
-          </div>
-        </div>
 
-        <!-- 错误 -->
-        <div v-if="error" class="text-sm text-red-500 bg-red-50 rounded p-3">{{ error }}</div>
+          <div v-if="categories.length" class="text-xs text-gray-400">
+            可识别的分类：{{ categories.map(c => c.icon + c.name).join('、') }}
+          </div>
+
+          <!-- 提供商/模型信息 -->
+          <div class="flex items-center gap-2 text-xs text-gray-400">
+            <span>🤖 {{ providerName }}</span>
+            <span>·</span>
+            <span>模型: {{ currentModel }}</span>
+            <span v-if="!apiReady" class="text-orange-500">⚠️ API 未配置</span>
+          </div>
         </template>
 
-        <!-- Tab: OCR 结果 -->
-        <template v-if="ocrTab">
+        <!-- ════════ Tab: 图片 ════════ -->
+        <template v-if="activeTab === 'image'">
+          <div
+            class="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors"
+            :class="dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'"
+            @dragover.prevent="dragOver = true"
+            @dragleave.prevent="dragOver = false"
+            @drop.prevent="handleDrop"
+            @click="triggerFileInput"
+          >
+            <div v-if="!imagePreview" class="space-y-2">
+              <div class="text-4xl">🖼️</div>
+              <p class="text-sm text-gray-500 m-0">拖拽图片到此处，或点击上传</p>
+              <p class="text-xs text-gray-400 m-0">支持截图粘贴（Ctrl+V）、PNG/JPG/WebP</p>
+            </div>
+            <div v-else class="space-y-2">
+              <img :src="imagePreview" class="max-h-64 mx-auto rounded shadow-sm" />
+              <p class="text-xs text-gray-400 m-0">点击重新选择 / 拖拽替换</p>
+            </div>
+          </div>
+          <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" @change="handleFileSelect" />
+
+          <!-- 图片已上传 -->
+          <div v-if="uploadedImageUrl" class="flex items-center gap-2 text-xs text-green-600 bg-green-50 rounded px-3 py-2">
+            ✅ 图片已上传
+            <a :href="uploadedImageUrl" target="_blank" class="text-blue-500 ml-1">查看</a>
+          </div>
+
+          <div v-if="!imageVisionSupported" class="text-xs text-yellow-600 bg-yellow-50 rounded p-3">
+            ⚠️ 当前 AI 提供商（{{ providerName }}）不支持图片理解。
+            <button class="text-blue-500 underline bg-transparent border-none cursor-pointer" @click="switchToOpenAI">切换到 OpenAI</button>
+          </div>
+
+          <div v-if="imageExtractedText" class="space-y-2">
+            <label class="text-xs text-gray-500">图片提取的文字</label>
+            <textarea
+              v-model="imageExtractedText"
+              class="w-full px-3 py-2 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+              rows="6"
+            ></textarea>
+            <p class="text-xs text-gray-400">可编辑修整后，点击「🚀 生成通知」从提取的文本生成</p>
+          </div>
+        </template>
+
+        <!-- ════════ Tab: OCR ════════ -->
+        <template v-if="activeTab === 'ocr'">
           <div>
             <label class="block text-sm text-gray-600 mb-1">把豆包生成的文本粘贴到这里</label>
             <textarea
@@ -94,56 +109,76 @@
               @input="extractTitleFromOcr"
             ></textarea>
           </div>
-
-          <!-- 自动提取的标题 -->
           <div v-if="ocrTitle" class="flex items-center gap-2 text-sm bg-blue-50 rounded px-3 py-2 border border-blue-100">
             <span class="text-xs text-blue-500 shrink-0">自动提取标题</span>
             <span class="text-blue-700">{{ ocrTitle }}</span>
           </div>
-
-          <div v-if="!ocrRaw.trim()" class="text-xs text-gray-400 text-center py-8">
-            粘贴豆包输出后，点「📥 填入编辑器」→ 标题自动填入、正文进入编辑器，<br>
-            \{\{图片: xxx\}\} 占位符原样保留，手动替换即可
-          </div>
         </template>
+
+        <!-- ════════ 生成结果预览 ════════ -->
+        <div v-if="result" class="space-y-3 bg-gray-50 rounded-lg p-4 border">
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="text-xs text-gray-500">标题</label><p class="text-sm font-medium text-gray-800">{{ result.title }}</p></div>
+            <div><label class="text-xs text-gray-500">分类</label><p class="text-sm">{{ result.type ? (typeLabel(result.type) || result.type) : '未识别' }}</p></div>
+            <div><label class="text-xs text-gray-500">来源群组</label><p class="text-sm text-gray-600">{{ result.sourceGroup || '—' }}</p></div>
+            <div><label class="text-xs text-gray-500">发布人</label><p class="text-sm text-gray-600">{{ result.sourcePerson || '—' }}</p></div>
+            <div><label class="text-xs text-gray-500">优先级</label><p class="text-sm">{{ result.priority > 0 ? priorityLabel(result.priority) : '普通' }}</p></div>
+            <div><label class="text-xs text-gray-500">标签</label><p class="text-sm text-gray-600">{{ result.tags?.length ? result.tags.join(', ') : '—' }}</p></div>
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">正文内容</label>
+            <div class="text-sm text-gray-700 mt-1 p-3 bg-white rounded border" v-html="result.content"></div>
+          </div>
+          <div v-if="result.originalLink" class="text-xs text-blue-500">🔗 {{ result.originalLink }}</div>
+        </div>
+
+        <!-- 错误 -->
+        <div v-if="error" class="text-sm text-red-500 bg-red-50 rounded p-3">{{ error }}</div>
       </div>
 
       <!-- 底部 -->
       <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-lg">
         <span class="text-xs text-gray-400">{{ result ? '✅ 已生成，可点击"填入表单"' : '' }}</span>
         <div class="flex gap-2">
+          <button class="px-4 py-2 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer" @click="close">取消</button>
+
+          <!-- OCR tab: 填入编辑器 -->
           <button
-            class="px-4 py-2 text-sm text-gray-500 bg-white border rounded hover:bg-gray-50 cursor-pointer"
-            @click="close"
-          >
-            取消
-          </button>
-          <!-- OCR tab 按钮 -->
-          <button
-            v-if="ocrTab"
-            class="px-4 py-2 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed"
+            v-if="activeTab === 'ocr'"
+            class="px-4 py-2 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 cursor-pointer border-none disabled:opacity-50"
             :disabled="!ocrRaw.trim()"
             @click="applyOcr"
-          >
-            📥 填入编辑器
-          </button>
-          <!-- AI 生成 tab 按钮 -->
+          >📥 填入编辑器</button>
+
+          <!-- 图片 tab: 先提取文字，再生成 -->
+          <template v-else-if="activeTab === 'image'">
+            <button
+              v-if="uploadedImageUrl && !imageExtractedText"
+              class="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer border-none disabled:opacity-50"
+              :disabled="!apiReady || processingImage"
+              @click="extractImageText"
+            >{{ processingImage ? '⏳ 提取中...' : '🔍 提取图片文字' }}</button>
+            <button
+              v-if="imageExtractedText"
+              class="px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600 cursor-pointer border-none disabled:opacity-50"
+              :disabled="!apiReady || generating"
+              @click="generateFromExtractedText"
+            >{{ generating ? '⏳ 生成中...' : '🚀 生成通知' }}</button>
+          </template>
+
+          <!-- 文本 tab: AI 生成 -->
           <template v-else>
             <button
               v-if="result"
               class="px-4 py-2 text-sm bg-green-500 text-white rounded hover:bg-green-600 cursor-pointer border-none"
               @click="apply"
-            >
-              📋 填入表单
-            </button>
+            >📋 填入表单</button>
             <button
               v-else
-              class="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed"
-              :disabled="generating || !rawInput.trim()"
-              @click="generate"
-            >
-              {{ generating ? '⏳ 生成中...' : '🚀 AI 生成' }}
-            </button>
+              class="px-4 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer border-none disabled:opacity-50"
+              :disabled="!apiReady || generating || !rawInput.trim()"
+              @click="generateFromText"
+            >{{ generating ? '⏳ 生成中...' : '🚀 AI 生成' }}</button>
           </template>
         </div>
       </div>
@@ -152,7 +187,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { PROVIDERS, getAiConfig, generateNotification, understandImage } from '@/api/ai'
+import { uploadFile } from '@/api/cos'
 
 const props = defineProps({
   categories: { type: Array, default: () => [] }
@@ -160,18 +197,162 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'apply'])
 
+// ── AI 配置 ──
+const aiCfg = ref(getAiConfig())
+const providerName = computed(() => {
+  const p = PROVIDERS[aiCfg.value.provider]
+  return p?.name || aiCfg.value.provider
+})
+const currentModel = computed(() => {
+  return aiCfg.value.model || PROVIDERS[aiCfg.value.provider]?.defaultModel || '默认'
+})
+const apiReady = computed(() => !!aiCfg.value.apiKey)
+const imageVisionSupported = computed(() => PROVIDERS[aiCfg.value.provider]?.supportsVision)
+
+const activeTab = ref('text')
+
 const rawInput = ref('')
 const generating = ref(false)
 const error = ref('')
 const result = ref(null)
 
-// OCR tab
-const ocrTab = ref(false)
+// ── 图片 ──
+const fileInput = ref(null)
+const dragOver = ref(false)
+const imagePreview = ref('')
+const uploadedImageUrl = ref('')
+const processingImage = ref(false)
+const imageExtractedText = ref('')
+
+function triggerFileInput() { fileInput.value?.click() }
+
+function handleFileSelect(e) {
+  const file = e.target.files?.[0]
+  if (file) handleImageFile(file)
+}
+
+function handleDrop(e) {
+  dragOver.value = false
+  const file = e.dataTransfer?.files?.[0]
+  if (file && file.type.startsWith('image/')) {
+    handleImageFile(file)
+  }
+}
+
+async function handleImageFile(file) {
+  // 本地预览
+  const reader = new FileReader()
+  reader.onload = (e) => { imagePreview.value = e.target.result }
+  reader.readAsDataURL(file)
+
+  // 上传 COS
+  try {
+    uploadedImageUrl.value = await uploadFile(file)
+    imageExtractedText.value = ''
+  } catch (e) {
+    error.value = '图片上传失败: ' + (e.message || e)
+  }
+}
+
+/** 切换到 OpenAI */
+async function switchToOpenAI() {
+  aiCfg.value.provider = 'openai'
+  aiCfg.value.model = ''
+  const { VITE_OPENAI_API_KEY } = import.meta.env
+  if (VITE_OPENAI_API_KEY && !aiCfg.value.apiKey) {
+    aiCfg.value.apiKey = VITE_OPENAI_API_KEY
+  }
+  // 保存到 localStorage
+  const mod = await import('@/api/ai')
+  mod.saveAiConfig({ ...aiCfg.value })
+}
+
+/** 提取图片文字 */
+async function extractImageText() {
+  if (!uploadedImageUrl.value) return
+  processingImage.value = true
+  error.value = ''
+  try {
+    const text = await understandImage(uploadedImageUrl.value, '保留原文格式，不要概括', aiCfg.value)
+    imageExtractedText.value = text
+  } catch (e) {
+    error.value = '图片文字提取失败: ' + (e.message || e)
+  } finally {
+    processingImage.value = false
+  }
+}
+
+/** 从提取的图片文字生成通知 */
+async function generateFromExtractedText() {
+  rawInput.value = imageExtractedText.value
+  await generateFromText()
+}
+
+// ── 文本生成 ──
+async function generateFromText() {
+  if (!rawInput.value.trim() || generating.value) return
+  if (!apiReady.value) {
+    error.value = '未配置 API Key，请在设置页配置 AI 模型'
+    return
+  }
+
+  generating.value = true
+  error.value = ''
+  result.value = null
+
+  try {
+    const res = await generateNotification(rawInput.value, props.categories, aiCfg.value)
+    result.value = res
+  } catch (e) {
+    error.value = '生成失败: ' + (e.message || e)
+  } finally {
+    generating.value = false
+  }
+}
+
+// ── OCR ──
 const ocrRaw = ref('')
 const ocrTitle = ref('')
 
-const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY
+function extractTitleFromOcr() {
+  const text = ocrRaw.value.trim()
+  if (!text) { ocrTitle.value = ''; return }
+  const firstLine = text.split('\n').find(l => l.trim().length > 0)
+  ocrTitle.value = firstLine ? firstLine.replace(/^[\s📢📣⭐🔴🚨⚠️✅📋📌📍🎯🎉💡]+/, '').trim() : ''
+}
 
+function applyOcr() {
+  const text = ocrRaw.value.trim()
+  if (!text) return
+  const lines = text.split('\n')
+  const title = ocrTitle.value
+
+  let sourceGroup = ''
+  let sourcePerson = ''
+  let deadline = ''
+  const bodyLines = lines.slice(1).filter(l => {
+    const line = l.trim()
+    if (/^来源[：:]\s*/.test(line)) { sourceGroup = line.replace(/^来源[：:]\s*/, ''); return false }
+    if (/^发布人[：:]\s*/.test(line)) { sourcePerson = line.replace(/^发布人[：:]\s*/, ''); return false }
+    if (/^截止日期[：:]\s*/.test(line)) { deadline = parseDeadline(line.replace(/^截止日期[：:]\s*/, '')); return false }
+    return true
+  }).join('\n').trim()
+
+  emit('apply', {
+    title,
+    content: textToHtml(bodyLines || text),
+    deadline,
+    type: '',
+    sourceGroup,
+    sourcePerson,
+    priority: 0,
+    tags: [],
+    originalLink: ''
+  })
+  close()
+}
+
+// ── 辅助 ──
 const catMap = computed(() => {
   const map = {}
   props.categories.forEach(c => { map[c.value] = c })
@@ -188,185 +369,30 @@ function priorityLabel(p) {
   return map[p] || ''
 }
 
-async function generate() {
-  if (!rawInput.value.trim() || generating.value) return
-  if (!apiKey) {
-    error.value = '未配置 DeepSeek API Key，请在 .env 中设置 VITE_DEEPSEEK_API_KEY'
-    return
-  }
-
-  generating.value = true
-  error.value = ''
-  result.value = null
-
-  const catInfo = props.categories.map(c => `${c.name}(${c.value})`).join('、')
-
-  const prompt = `你是一个大学通知整理助手。将以下原始内容整理为一条结构化通知，只返回 JSON 格式（不要其他文字）：
-
-{
-  "title": "通知标题",
-  "content": "<p>格式化后的HTML正文，段落用&lt;/p&gt;&lt;p&gt;分隔</p>",
-  "type": "分类标识（从以下选择：${catInfo}）",
-  "sourceGroup": "来源群组",
-  "sourcePerson": "发布人",
-  "originalLink": "原文链接（如果有URL则提取）",
-  "priority": 0,
-  "tags": ["标签1", "标签2"],
-  "mermaid": [
-    { "title": "图标题", "code": "graph TD\\n  A[\"开始\"] --> B[\"结束\"]" }
-  ]
-}
-
-优先级：0=普通, 1=置顶, 2=重要, 3=紧急。根据内容判断。
-
-mermaid 说明：
-- 如果内容有流程/步骤/时间线/决策分支，生成 Mermaid 代码
-- title 为图表标题，code 为纯 Mermaid 代码（无 \`\`\` 标记）
-- 中文标签必须用双引号包裹：A["开始"]
-- 不需要时留空数组 []
-
-原始内容：
-${rawInput.value}`
-
-  try {
-    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      })
-    })
-
-    const data = await response.json()
-
-    if (data.error) {
-      error.value = 'API 错误: ' + (data.error.message || JSON.stringify(data.error))
-      return
-    }
-
-    const text = data.choices?.[0]?.message?.content || ''
-    // 提取 JSON
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      error.value = 'AI 返回格式异常，请重试'
-      console.error('Raw response:', text)
-      return
-    }
-
-    result.value = JSON.parse(jsonMatch[0])
-
-    // 处理 Mermaid 代码：生成 Token 并注入到正文
-    if (result.value.mermaid?.length) {
-      const mermaidMap = {}
-      let content = result.value.content || ''
-
-      result.value.mermaid.forEach((item, i) => {
-        if (!item.code) return
-        const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
-        mermaidMap[id] = { code: item.code, title: item.title || '' }
-        // 在正文末尾追加 Token
-        content += `\n\n<p>[[!${id}]]</p>`
-      })
-
-      result.value.content = content
-      result.value._mermaidMap = mermaidMap
-    }
-  } catch (e) {
-    error.value = '请求失败: ' + (e.message || e)
-  } finally {
-    generating.value = false
-  }
-}
-
-// ── OCR tab ──
-function extractTitleFromOcr() {
-  const text = ocrRaw.value.trim()
-  if (!text) { ocrTitle.value = ''; return }
-  // 取第一行非空文本，去掉开头的 emoji 和特殊字符
-  const firstLine = text.split('\n').find(l => l.trim().length > 0)
-  ocrTitle.value = firstLine ? firstLine.replace(/^[\s📢📣⭐🔴🚨⚠️✅📋📌📍🎯🎉💡]+/, '').trim() : ''
-}
-
-function applyOcr() {
-  const text = ocrRaw.value.trim()
-  if (!text) return
-
-  const lines = text.split('\n')
-  const title = ocrTitle.value
-
-  // 提取元数据行（来源/发布人/截止日期），从正文中剔除
-  let sourceGroup = ''
-  let sourcePerson = ''
-  let deadline = ''
-  const bodyLines = lines.slice(1).filter(l => {
-    const line = l.trim()
-    if (/^来源[：:]\s*/.test(line)) { sourceGroup = line.replace(/^来源[：:]\s*/, ''); return false }
-    if (/^发布人[：:]\s*/.test(line)) { sourcePerson = line.replace(/^发布人[：:]\s*/, ''); return false }
-    if (/^截止日期[：:]\s*/.test(line)) { deadline = parseDeadline(line.replace(/^截止日期[：:]\s*/, '')); return false }
-    return true
-  }).join('\n').trim()
-
-  const contentHtml = textToHtml(bodyLines || text)
-
-  emit('apply', {
-    title,
-    content: contentHtml,
-    deadline,
-    type: '',
-    sourceGroup,
-    sourcePerson,
-    priority: 0,
-    tags: [],
-    originalLink: ''
-  })
-  close()
-}
-
 function parseDeadline(str) {
-  // 尝试解析各种中文日期格式
-  // YYYY年MM月DD日 → ISO
   const match1 = str.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/)
-  if (match1) {
-    const d = new Date(+match1[1], +match1[2] - 1, +match1[3])
-    return d.toISOString().slice(0, 10)
-  }
-  // YYYY-MM-DD
+  if (match1) { const d = new Date(+match1[1], +match1[2] - 1, +match1[3]); return d.toISOString().slice(0, 10) }
   const match2 = str.match(/(\d{4})-(\d{1,2})-(\d{1,2})/)
   if (match2) return str
-  // MM月DD日 → 推测为今年
   const match3 = str.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日?/)
-  if (match3) {
-    const d = new Date(new Date().getFullYear(), +match3[1] - 1, +match3[2])
-    return d.toISOString().slice(0, 10)
-  }
-  // 无法解析则原样保留
+  if (match3) { const d = new Date(new Date().getFullYear(), +match3[1] - 1, +match3[2]); return d.toISOString().slice(0, 10) }
   return str
 }
 
 function textToHtml(text) {
-  // 分割段落（连续空行隔开的段落分别包 <p>）
   const paragraphs = text.split(/\n\s*\n/).filter(Boolean)
   if (paragraphs.length === 0) return `<p>${escapeHtml(text)}</p>`
   return paragraphs.map(p => `<p>${escapeHtml(p.trim())}</p>`).join('\n')
 }
 
 function escapeHtml(str) {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>')
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
 }
 
 function apply() {
   if (result.value) {
     const data = { ...result.value }
-    delete data._mermaidMap // 不 emit 这个临时字段
+    delete data._mermaidMap
     emit('apply', {
       ...data,
       mermaidMap: result.value._mermaidMap || {},
@@ -378,4 +404,29 @@ function apply() {
 function close() {
   emit('close')
 }
+
+// ── 粘贴事件（全局） ──
+function onPaste(e) {
+  if (activeTab.value !== 'image') return
+  const items = e.clipboardData?.items
+  if (!items) return
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) handleImageFile(file)
+      break
+    }
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('paste', onPaste)
+  // 加载最新的 AI 配置
+  const cfg = getAiConfig()
+  aiCfg.value = cfg
+})
+
+onUnmounted(() => {
+  document.removeEventListener('paste', onPaste)
+})
 </script>
