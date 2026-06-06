@@ -77,6 +77,16 @@ npm run ws-api:build    # 构建 WS API 为独立 EXE
 - `.env` 必须从 `.env.example` 复制并填写后才可运行
 - 路径别名 `@` → `src/`，在 `import` 中可用（如 `@/api/bmob`）
 
+## 开发工具
+
+### 点击定位源码（vite-plugin-vue-inspector）
+开发模式下，按住 **`Ctrl+Shift`** 并点击页面上任意 DOM 元素，VS Code 会自动打开并跳转到对应的 `.vue` 模板行号。即使是被 `v-for` / `v-if` 动态渲染的元素也能精确定位。
+
+- 启用/禁用：点击页面右下角的 🧐 按钮
+- 快捷键：`Ctrl+Shift`（Win/Linux）或 `Cmd+Shift`（macOS）
+- 原理：插件自动注入 `data-v-inspector` 属性，点击时通过 `vscode://file/...` 协议唤起编辑器
+- 配置：`vite.config.js` → `VueInspector()` 插件
+
 ## 环境变量
 
 复制 `.env.example` → `.env`：
