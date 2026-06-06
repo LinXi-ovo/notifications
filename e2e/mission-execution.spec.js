@@ -29,7 +29,7 @@ test.describe('任务系统 — 执行模式', () => {
 
     await expect(page.locator('button:has-text("添加节点")')).not.toBeVisible()
     await expect(page.locator('button:has-text("连线")')).not.toBeVisible()
-    await expect(page.locator('button:has-text("字段")')).not.toBeVisible()
+    await expect(page.locator('button:has-text("📋 字段")')).not.toBeVisible()
     // 角色按钮、导出、统计、提醒仍应可见
     await expect(page.locator('button:has-text("角色")').first()).toBeVisible()
   })
@@ -54,7 +54,8 @@ test.describe('任务系统 — 执行模式', () => {
     const roleSelect = page.locator('select[class*="w-full"]').first()
     const roleOptions = await roleSelect.locator('option').all()
     if (roleOptions.length > 1) {
-      await roleSelect.selectOption(roleOptions[1].getAttribute('value') || '')
+      const val = await roleOptions[1].getAttribute('value')
+      if (val) await roleSelect.selectOption(val)
     }
     await page.click('button:has-text("添加")', { force: true })
     await page.waitForTimeout(1000)

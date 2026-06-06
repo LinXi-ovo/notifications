@@ -30,7 +30,7 @@ test.describe('任务图页面 — 编辑模式', () => {
   })
 
   test('页面应正确渲染', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('E2E 图测试')
+    await expect(page.locator('h1').first()).toContainText('E2E 图测试')
     await expect(page.locator('button:has-text("编辑模式")')).toBeVisible()
     await expect(page.locator('button:has-text("执行模式")')).not.toBeVisible()
     await expect(page.locator('button:has-text("添加节点")')).toBeVisible()
@@ -105,8 +105,10 @@ test.describe('任务图页面 — 编辑模式', () => {
     const targetOptions = await targetSelect.locator('option').all()
 
     if (sourceOptions.length > 1 && targetOptions.length > 1) {
-      await sourceSelect.selectOption(sourceOptions[1].getAttribute('value') || '')
-      await targetSelect.selectOption(targetOptions[1].getAttribute('value') || '')
+      const srcVal = await sourceOptions[1].getAttribute('value')
+      const tgtVal = await targetOptions[1].getAttribute('value')
+      if (srcVal) await sourceSelect.selectOption(srcVal)
+      if (tgtVal) await targetSelect.selectOption(tgtVal)
       await page.click('button:has-text("添加")', { force: true })
       await page.waitForTimeout(500)
     }
