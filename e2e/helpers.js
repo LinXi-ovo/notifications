@@ -112,10 +112,17 @@ export async function createMission(page, title = 'E2E 测试任务') {
 }
 
 /**
- * 进入任务的图页面
+ * 进入任务的图页面并切换到编辑模式
+ * 测试环境禁用 Bmob 同步加速加载（纯 localStorage）
  */
 export async function goToMissionGraph(page, missionId) {
+  await page.evaluate(() => {
+    localStorage.setItem('missions:migrated', 'false')
+  })
   await page.goto(`/#/mission/${missionId}`)
+  // 页面默认在「执行模式」，大多数测试需要编辑模式 → 切换
+  await page.waitForSelector('text=执行模式', { timeout: 15000 })
+  await page.click('text=执行模式')
   await page.waitForSelector('text=编辑模式')
 }
 

@@ -124,7 +124,7 @@ test.describe('任务列表页', () => {
     // 关闭模态框后刷新页面看列表
     await page.waitForTimeout(500)
     await page.reload()
-    await expect(page.locator('text=AI 导入任务')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('text=AI 导入任务').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('删除任务应进入回收站', async ({ page }) => {

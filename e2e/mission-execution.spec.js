@@ -23,7 +23,7 @@ test.describe('任务系统 — 执行模式', () => {
   })
 
   test('切换到执行模式后 CRUD 按钮应隐藏', async ({ page }) => {
-    // 点击模式切换
+    // goToMissionGraph 已切换到编辑模式，这里再切到执行模式
     await page.click('button:has-text("编辑模式")')
     await page.waitForTimeout(300)
 
@@ -35,11 +35,7 @@ test.describe('任务系统 — 执行模式', () => {
   })
 
   test('执行模式下应允许角色认领', async ({ page }) => {
-    // 先添加角色
-    await page.click('button:has-text("编辑模式")')
-    await page.waitForTimeout(300)
-
-    // 在编辑模式下创建一个简单任务结构
+    // goToMissionGraph 已在编辑模式，直接在编辑模式创建任务结构
     // 先加角色
     await page.click('button:has-text("角色")')
     await page.waitForTimeout(300)
