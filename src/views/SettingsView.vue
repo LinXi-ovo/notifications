@@ -66,6 +66,10 @@
                 to="/lab/mock-notification"
                 class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-purple-50 text-purple-600 rounded-lg border border-purple-200 no-underline hover:bg-purple-100 cursor-pointer"
               >📄 模拟通知 · PDF 预览测试</router-link>
+              <router-link
+                to="/admin"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-yellow-50 text-yellow-600 rounded-lg border border-yellow-200 no-underline hover:bg-yellow-100 cursor-pointer"
+              >🧪 测试数据管理</router-link>
               <a
                 href="/lab/pdf-viewer.html"
                 target="_blank"

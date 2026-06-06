@@ -65,6 +65,39 @@
             </div>
           </div>
 
+          <!-- 🧪 调试模式：测试数据管理 -->
+          <div v-if="!showForm && isDebugMode" class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="font-medium text-yellow-700">🧪 测试数据</span>
+              <span class="text-xs text-yellow-600">调试模式 · 共 {{ testNotificationCount }} 条测试通知</span>
+              <button
+                class="px-3 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 cursor-pointer border-none disabled:opacity-50"
+                :disabled="genLoading"
+                @click="generateTestData"
+              >
+                {{ genLoading ? '⏳ 生成中...' : '⚡ 一键生成测试通知' }}
+              </button>
+              <button
+                v-if="testNotificationCount > 0"
+                class="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 cursor-pointer border-none"
+                @click="deleteAllTestNotifications"
+              >
+                🗑️ 删除全部测试通知 ({{ testNotificationCount }})
+              </button>
+            </div>
+            <!-- 生成进度 -->
+            <div v-if="genProgress.total > 0" class="mt-2">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-yellow-200 rounded-full h-1.5">
+                  <div class="bg-yellow-500 rounded-full h-full transition-all" :style="{ width: (genProgress.current / genProgress.total * 100) + '%' }"></div>
+                </div>
+                <span class="text-xs text-yellow-700 tabular-nums">{{ genProgress.current }}/{{ genProgress.total }}</span>
+              </div>
+              <p v-if="genProgress.lastTitle" class="text-xs text-yellow-600 mt-1">{{ genProgress.lastTitle }}</p>
+            </div>
+            <p v-if="genResultMsg" class="text-xs mt-1" :class="genResultMsg.includes('成功') ? 'text-green-600' : 'text-red-600'">{{ genResultMsg }}</p>
+          </div>
+
           <!-- 通知列表 -->
           <div v-if="!showForm" class="space-y-2">
             <div v-for="item in store.list" :key="item.id" class="bg-white rounded-lg border p-4 flex items-start justify-between gap-4 cursor-pointer hover:shadow-md transition-shadow" @click="previewItem = item">
@@ -203,6 +236,8 @@ import { getAllUsers, setUserRole } from '@/api/user'
 import NotificationForm from '@/components/NotificationForm.vue'
 import AiGenerator from '@/components/AiGenerator.vue'
 import KnowledgeManager from '@/components/KnowledgeManager.vue'
+import { createNotification } from '@/api/notification'
+import { TEST_PRESETS, PRESET_COUNT } from '@/utils/test-presets'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -217,6 +252,96 @@ const activeTab = ref('notifications')
 const showAiGenerator = ref(false)
 const categories = ref([])
 const trashItems = ref([])
+
+// ── 测试通知管理 ──
+const genLoading = ref(false)
+const genProgress = ref({ current: 0, total: 0, lastTitle: '' })
+const genResultMsg = ref('')
+const testNotificationCount = ref(0)
+
+/** 是否开启调试模式 */
+const isDebugMode = computed(() => localStorage.getItem('mermaid-debug') === 'true')
+
+/** 计算测试通知数量 */
+async function refreshTestCount() {
+  try {
+    const { getNotifications } = await import('@/api/notification')
+    const result = await getNotifications({ pageSize: 1, showTest: true })
+    // 计数只能通过 type=test 来，但从 API 的 showTest 开关并不能直接获取
+    // 用更简单的方式：获取全部然后前端过滤
+    const all = await getNotifications({ pageSize: 200, showTest: true })
+    testNotificationCount.value = all.data.filter(n => n.type === 'test').length
+  } catch { testNotificationCount.value = 0 }
+}
+
+/** 一键生成所有测试通知 */
+async function generateTestData() {
+  if (genLoading.value) return
+  if (!confirm(`确定生成 ${PRESET_COUNT} 条测试通知？\n\n它们将显示为「测试」类型，需要在设置页开启「显示测试通知」才可见。\n\n注意：会重复生成同名通知，建议先删除旧的测试通知。`)) return
+
+  genLoading.value = true
+  genResultMsg.value = ''
+  genProgress.value = { current: 0, total: PRESET_COUNT, lastTitle: '' }
+
+  let success = 0
+  let fail = 0
+  for (const preset of TEST_PRESETS) {
+    try {
+      await createNotification({
+        title: preset.title,
+        content: preset.content,
+        type: 'test',
+        sourceGroup: preset.sourceGroup,
+        sourcePerson: preset.sourcePerson,
+        priority: preset.priority,
+        tags: preset.tags,
+        status: 'active',
+      })
+      success++
+      genProgress.value = { current: success + fail, total: PRESET_COUNT, lastTitle: `✅ ${preset.title}` }
+    } catch (e) {
+      fail++
+      genProgress.value = { current: success + fail, total: PRESET_COUNT, lastTitle: `❌ ${preset.title}: ${e.message}` }
+    }
+  }
+
+  genLoading.value = false
+  genResultMsg.value = `✅ 生成完成：成功 ${success} 条${fail > 0 ? `，失败 ${fail} 条` : ''}`
+  await refreshTestCount()
+  fetchNotifList()
+}
+
+/** 批量删除所有测试通知 */
+async function deleteAllTestNotifications() {
+  const count = testNotificationCount.value
+  if (count === 0) { genResultMsg.value = '没有测试通知需要删除'; return }
+  if (!confirm(`确定删除全部 ${count} 条测试通知？此操作不可恢复！`)) return
+
+  // 获取所有测试通知的 objectId
+  try {
+    const { getNotifications, permanentlyDeleteNotification } = await import('@/api/notification')
+    const all = await getNotifications({ pageSize: 200, showTest: true })
+    const testItems = all.data.filter(n => n.type === 'test')
+
+    let deleted = 0
+    for (const item of testItems) {
+      try {
+        await permanentlyDeleteNotification(item.id)
+        deleted++
+        genProgress.value = { current: deleted, total: testItems.length, lastTitle: `🗑️ 已删除: ${item.title}` }
+      } catch (e) {
+        console.warn('删除失败:', item.title, e)
+      }
+    }
+
+    genResultMsg.value = `✅ 已删除 ${deleted} 条测试通知`
+    testNotificationCount.value = 0
+    fetchNotifList()
+  } catch (e) {
+    genResultMsg.value = '❌ 删除失败: ' + (e.message || e)
+  }
+}
+
 const trashCount = computed(() => trashItems.value.length)
 
 const trashByDate = computed(() => {
@@ -236,7 +361,7 @@ const needsAdminInit = computed(() => {
 })
 
 onMounted(() => {
-  store.fetchList({ pageSize: 100 }).then(() => {
+  fetchNotifList().then(() => {
     const query = router.currentRoute.value.query
     let shouldReplace = false
     // 处理 ?edit=xxx 参数，自动打开编辑表单
@@ -259,6 +384,7 @@ onMounted(() => {
   loadUsers()
   loadCategories()
   cleanExpiredTrash()
+  refreshTestCount()
 })
 
 async function loadUsers() {
@@ -331,13 +457,24 @@ function openEdit(item) {
 
 function handleSaved() {
   showForm.value = false
-  store.fetchList({ pageSize: 100 })
+  fetchNotifList()
+  refreshTestCount()
+}
+
+/** 刷新通知列表（调试模式下包含测试通知） */
+function fetchNotifList() {
+  const isDebug = localStorage.getItem('mermaid-debug') === 'true'
+  // 调试模式下强制显示测试通知，方便管理员管理
+  if (isDebug && !localStorage.getItem('show-test-notifications')) {
+    localStorage.setItem('show-test-notifications', 'true')
+  }
+  return store.fetchList({ pageSize: 100, showTest: isDebug })
 }
 
 // ── 回收站操作 ──
 function trashItem(item) {
   deleteNotification(item.id).then(() => {
-    store.fetchList({ pageSize: 100 })
+    fetchNotifList()
     loadTrash() // 刷新回收站数量
   }).catch(e => {
     alert('删除失败: ' + (e.message || e))
@@ -360,7 +497,7 @@ function openTrash() {
 function restoreItem(item) {
   restoreNotification(item.id).then(() => {
     trashItems.value = trashItems.value.filter(i => i.id !== item.id)
-    store.fetchList({ pageSize: 100 })
+    fetchNotifList()
   }).catch(e => {
     alert('恢复失败: ' + (e.message || e))
   })
