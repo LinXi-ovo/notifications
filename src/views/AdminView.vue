@@ -238,6 +238,7 @@ import AiGenerator from '@/components/AiGenerator.vue'
 import KnowledgeManager from '@/components/KnowledgeManager.vue'
 import { createNotification } from '@/api/notification'
 import { TEST_PRESETS, PRESET_COUNT } from '@/utils/test-presets'
+import { getCategoryIcon, getCategoryClass } from '@/utils/categories'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -718,12 +719,10 @@ function formatDate(dateStr) {
 }
 
 function typeIcon(type) {
-  const map = { zongce: '📊', baoyan: '🎓', course: '📚', activity: '🎉', homework: '📝', party: '🚩', consult: '💬', other: '📌', test: '🧪' }
-  return map[type] || '📌'
+  return getCategoryIcon(type)
 }
 
 function typeClass(type) {
-  const map = { zongce: 'bg-blue-50 text-blue-600', baoyan: 'bg-purple-50 text-purple-600', course: 'bg-green-50 text-green-600', activity: 'bg-orange-50 text-orange-600', homework: 'bg-red-50 text-red-600', party: 'bg-red-50 text-red-600', consult: 'bg-teal-50 text-teal-600', other: 'bg-gray-50 text-gray-600', test: 'bg-yellow-50 text-yellow-600' }
-  return map[type] || 'bg-gray-50 text-gray-600'
+  return getCategoryClass(type)
 }
 </script>

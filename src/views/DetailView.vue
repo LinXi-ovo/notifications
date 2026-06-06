@@ -109,6 +109,7 @@ import { PRIORITY_LABEL } from '@/utils/constants'
 import Lightbox from '@/components/Lightbox.vue'
 import PdfPreview from '@/components/PdfPreview.vue'
 import { renderJumpLinks } from '@/utils/jump-link'
+import { getCategoryIcon } from '@/utils/categories'
 
 const route = useRoute()
 const router = useRouter()
@@ -132,10 +133,7 @@ const priorityBadgeClass = computed(() => {
   return map[notification.value?.priority] || ''
 })
 
-const typeIcon = computed(() => {
-  const map = { zongce: '📊', baoyan: '🎓', course: '📚', activity: '🎉', homework: '📝', party: '🚩', consult: '💬', other: '📌', test: '🧪' }
-  return map[notification.value?.type] || '📌'
-})
+const typeIcon = computed(() => getCategoryIcon(notification.value?.type))
 
 const typeName = computed(() => {
   // 从 notification 的 type 字段找，暂时 fallback

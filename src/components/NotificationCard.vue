@@ -55,6 +55,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { PRIORITY_LABEL } from '@/utils/constants'
+import { getCategoryIcon } from '@/utils/categories'
 
 const props = defineProps({
   notification: { type: Object, required: true },
@@ -84,13 +85,7 @@ const priorityBorderClass = computed(() => {
   return map[priority.value] || ''
 })
 
-const typeIcon = computed(() => {
-  const map = {
-    zongce: '📊', baoyan: '🎓', course: '📚', activity: '🎉',
-    homework: '📝', party: '🚩', consult: '💬', other: '📌'
-  }
-  return map[props.notification.type] || '📌'
-})
+const typeIcon = computed(() => getCategoryIcon(props.notification?.type))
 
 function formatDate(dateStr) {
   if (!dateStr) return ''

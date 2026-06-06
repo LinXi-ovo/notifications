@@ -13,18 +13,10 @@ export const PRIORITY_LABEL = {
   3: { label: '紧急', icon: '🚨' }
 }
 
-/** 默认分类（首次启动时写入 LeanCloud） */
-export const DEFAULT_CATEGORIES = [
-  { name: '综测', value: 'zongce', icon: '📊', color: 'blue', sortOrder: 1 },
-  { name: '保研', value: 'baoyan', icon: '🎓', color: 'purple', sortOrder: 2 },
-  { name: '活动', value: 'activity', icon: '🎉', color: 'orange', sortOrder: 3 },
-  { name: '课程', value: 'course', icon: '📚', color: 'green', sortOrder: 4 },
-  { name: '作业', value: 'homework', icon: '📝', color: 'red', sortOrder: 5 },
-  { name: '党团', value: 'party', icon: '🚩', color: 'red', sortOrder: 6 },
-  { name: '咨询', value: 'consult', icon: '💬', color: 'teal', sortOrder: 7 },
-  { name: '其他', value: 'other', icon: '📌', color: 'gray', sortOrder: 99 },
-  { name: '测试', value: 'test', icon: '🧪', color: 'yellow', sortOrder: 0 }
-]
+import { CATEGORY_LIST } from './categories'
+
+/** 默认分类（首次启动时写入 Bmob） */
+export const DEFAULT_CATEGORIES = CATEGORY_LIST
 
 /** 分页每页数量 */
 export const PAGE_SIZE = 20
