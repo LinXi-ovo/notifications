@@ -98,8 +98,10 @@ const modules = [
       { type: 'feat', msg: 'Bmob 云端持久化 + 本地优先双写同步', version: 'v0.9.0' },
       { type: 'feat', msg: '任务统计视图 + 自定义字段 + 评论讨论', version: 'v0.9.0' },
       { type: 'feat', msg: '委派认领 + 密码认领 + 权限隔离', version: 'v0.9.0' },
+      { type: 'feat', msg: '调试模式一键删除未保护任务', version: 'v0.4.0' },
       { type: 'fix', msg: 'MissionAssignment 表查询优化：避免 $and 语法，处理表不存在异常', version: 'v1.0.0-beta' },
       { type: 'fix', msg: '表名对齐 Bmob 已有表（MissionAssignmen）', version: 'v1.0.0-beta' },
+      { type: 'fix', msg: 'Admin 预览层解析 [[mission:xxx]] 跳转链接', version: 'v0.4.0' },
     ]
   },
   {
@@ -110,7 +112,9 @@ const modules = [
       { type: 'feat', msg: '首页通知列表：分类导航、搜索、优先级标识', version: 'v0.8.0' },
       { type: 'feat', msg: '通知详情页：富文本渲染、Mermaid Token/Map 分离、PDF 预览、图片灯箱', version: 'v0.8.0' },
       { type: 'feat', msg: '首页任务概览模块', version: 'v1.0.0-beta' },
+      { type: 'feat', msg: '通知内容中 AI 生成的 URL 自动显示为可点击链接', version: 'v0.4.0' },
       { type: 'fix', msg: 'Recycle Bin 回收站软删除机制', version: 'v0.8.0' },
+      { type: 'fix', msg: 'PDF 预览重构：iframe + ?file= 参数模式，支持 COS 跨域', version: 'v0.4.0' },
     ]
   },
   {
@@ -120,6 +124,7 @@ const modules = [
     items: [
       { type: 'feat', msg: '通知创建/编辑（wangEditor + Mermaid 管理）', version: 'v0.8.0' },
       { type: 'feat', msg: 'DeepSeek AI 生成通知（AiGenerator）', version: 'v0.8.0' },
+      { type: 'feat', msg: 'AI 通知支持 combined 格式（通知+任务一次生成）', version: 'v0.4.0' },
       { type: 'feat', msg: '文件注册表 + 腾讯云 COS 直传', version: 'v0.8.0' },
       { type: 'feat', msg: '分类管理（CategoryManager）', version: 'v0.8.0' },
     ]
@@ -131,10 +136,13 @@ const modules = [
     items: [
       { type: 'feat', msg: '用户认证系统（登录/注册/角色）', version: 'v0.8.0' },
       { type: 'feat', msg: '用户收藏功能', version: 'v0.8.0' },
+      { type: 'feat', msg: '导航栏快捷链接下拉菜单（可管理）', version: 'v0.4.0' },
       { type: 'feat', msg: '设置页：测试通知开关、调试模式', version: 'v0.8.0' },
       { type: 'init', msg: '项目初始化：Vite + Vue 3 + Tailwind CSS 工程搭建', version: 'v0.1.0' },
       { type: 'init', msg: 'Bmob 后端云集成', version: 'v0.1.0' },
       { type: 'init', msg: '基础路由与认证守卫', version: 'v0.1.0' },
+      { type: 'feat', msg: '分类体系重构：单源配置，新增「咨询」「党团」', version: 'v0.4.0' },
+      { type: 'fix', msg: '收藏自动清理通知永久删除后的残留', version: 'v0.4.0' },
       { type: 'docs', msg: '扩展 CLAUDE.md：架构详解、Store 数据流模式、路由表', version: 'v0.9.0' },
     ]
   }
@@ -157,6 +165,13 @@ const changelog = [
     'DAG 图 / 角色权限 / 双模式',
     'Bmob 持久化 + 本地双写',
     '统计视图 / 自定义字段 / 评论',
+  ]},
+  { tag: 'v0.4.0', date: '2026-06', items: [
+    'AI 通知链接自动格式化 + combined 格式',
+    '分类单源配置 / 新增「咨询」「党团」',
+    '导航栏快捷链接',
+    '任务调试模式一键删除',
+    'PDF 预览重构',
   ]},
   { tag: 'v0.8.0', date: '2026-04', items: [
     '首页通知列表 / 分类导航 / 搜索',
