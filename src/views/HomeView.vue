@@ -150,7 +150,15 @@ onMounted(async () => {
 
   try {
     categories.value = await getCategories()
-    // 开启显示测试通知时，补入 test 分类（可能不在 Bmob 表中）
+    // 补入 DEFAULT_CATEGORIES 中有但 Bmob 表中缺失的分类（新加的党团/咨询等）
+    for (const defCat of DEFAULT_CATEGORIES) {
+      // test 分类单独受 show-test-notifications 控制，不在此处补
+      if (defCat.value === 'test') continue
+      if (!categories.value.some(c => c.value === defCat.value)) {
+        categories.value.push({ ...defCat })
+      }
+    }
+    // 测试分类：仅当开启显示时才补入
     if (localStorage.getItem('show-test-notifications') === 'true') {
       const testCat = DEFAULT_CATEGORIES.find(c => c.value === 'test')
       if (testCat && !categories.value.some(c => c.value === 'test')) {
