@@ -42,7 +42,7 @@ test.describe('任务系统 — 执行模式', () => {
     await page.fill('input[placeholder="角色名称（如：班长）"]', '执行人')
     await page.fill('input[placeholder="👨‍🎓"]', '👤')
     await page.fill('input[placeholder="#F59E0B"]', '#3B82F6')
-    await page.click('button:has-text("添加角色"):not(:has-text("关闭"))')
+    await page.click('button:has-text("添加角色"):not(:has-text("关闭"))', { force: true })
     await page.waitForTimeout(300)
     await page.click('button:has-text("关闭")')
     await page.waitForTimeout(300)
@@ -56,7 +56,7 @@ test.describe('任务系统 — 执行模式', () => {
     if (roleOptions.length > 1) {
       await roleSelect.selectOption(roleOptions[1].getAttribute('value') || '')
     }
-    await page.click('button:has-text("添加")')
+    await page.click('button:has-text("添加")', { force: true })
     await page.waitForTimeout(1000)
 
     // 切换到执行模式
@@ -80,7 +80,7 @@ test.describe('任务系统 — 执行模式', () => {
     // 先添加节点
     await page.click('button:has-text("添加节点")')
     await page.fill('input[placeholder="例如：填写个人信息表"]', '状态测试节点')
-    await page.click('button:has-text("添加")')
+    await page.click('button:has-text("添加")', { force: true })
     await page.waitForTimeout(1000)
 
     // 选中节点

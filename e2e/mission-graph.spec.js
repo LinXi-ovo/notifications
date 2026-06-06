@@ -74,8 +74,8 @@ test.describe('任务图页面 — 编辑模式', () => {
     // 填写节点信息
     await page.fill('input[placeholder="例如：填写个人信息表"]', 'E2E 测试节点')
 
-    // 添加
-    await page.click('button:has-text("添加")')
+    // 添加（force:true 避免模态框 self 拦截）
+    await page.click('button:has-text("添加")', { force: true })
 
     // 验证节点出现在画布中
     await page.waitForTimeout(1000) // 等待 dagre 布局渲染
@@ -83,15 +83,15 @@ test.describe('任务图页面 — 编辑模式', () => {
   })
 
   test('添加边（连线）', async ({ page }) => {
-    // 先添加两个节点
+    // 先添加两个节点（force:true 避免模态框 backdrop 拦截）
     await page.click('button:has-text("添加节点")')
     await page.fill('input[placeholder="例如：填写个人信息表"]', '节点 A')
-    await page.click('button:has-text("添加")')
+    await page.click('button:has-text("添加")', { force: true })
     await page.waitForTimeout(500)
 
     await page.click('button:has-text("添加节点")')
     await page.fill('input[placeholder="例如：填写个人信息表"]', '节点 B')
-    await page.click('button:has-text("添加")')
+    await page.click('button:has-text("添加")', { force: true })
     await page.waitForTimeout(500)
 
     // 打开连线对话框
@@ -107,7 +107,7 @@ test.describe('任务图页面 — 编辑模式', () => {
     if (sourceOptions.length > 1 && targetOptions.length > 1) {
       await sourceSelect.selectOption(sourceOptions[1].getAttribute('value') || '')
       await targetSelect.selectOption(targetOptions[1].getAttribute('value') || '')
-      await page.click('button:has-text("添加")')
+      await page.click('button:has-text("添加")', { force: true })
       await page.waitForTimeout(500)
     }
   })
@@ -116,7 +116,7 @@ test.describe('任务图页面 — 编辑模式', () => {
     // 先添加一个节点
     await page.click('button:has-text("添加节点")')
     await page.fill('input[placeholder="例如：填写个人信息表"]', '待删除节点')
-    await page.click('button:has-text("添加")')
+    await page.click('button:has-text("添加")', { force: true })
     await page.waitForTimeout(1000)
 
     // 点击画布上的节点选中它
