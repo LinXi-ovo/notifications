@@ -10,7 +10,10 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "postinstall": "node dev_tools/patch-pdfjs.cjs"
+    "postinstall": "node dev_tools/patch-pdfjs.cjs",
+    "ws-api": "cd ws-api && node src/index.js",
+    "ws-api:install": "cd ws-api && npm install",
+    "ws-api:build": "cd ws-api && npx pkg src/index.js --output dist/notifications-ws-api.exe --target node20-win-x64"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",

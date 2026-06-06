@@ -1,0 +1,18 @@
+{
+  "name": "notifications-ws-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WebSocket API for notifications-aggregator — enables AI agents to operate the software programmatically",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "build": "pkg src/index.js --output dist/notifications-ws-api.exe --target node20-win-x64"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  }
+}

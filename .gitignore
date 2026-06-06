@@ -26,3 +26,11 @@ dist-ssr
 
 # Reference docs (cloned repos for skill context)
 .reference/
+
+# WS API
+ws-api/node_modules/
+ws-api/dist/
+ws-api/.env
+
+# Playwright MCP cache
+.playwright-mcp/
