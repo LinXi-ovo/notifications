@@ -400,6 +400,13 @@ async function loadUsers() {
 async function loadCategories() {
   try {
     categories.value = await getCategories()
+    // 补入 DEFAULT_CATEGORIES 中 Bmob 缺失的分类
+    const { DEFAULT_CATEGORIES } = await import('@/utils/constants')
+    for (const defCat of DEFAULT_CATEGORIES) {
+      if (!categories.value.some(c => c.value === defCat.value)) {
+        categories.value.push({ ...defCat })
+      }
+    }
   } catch (e) {
     console.error('加载分类失败:', e)
   }
