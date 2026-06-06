@@ -41,6 +41,13 @@
           >
             📚 资讯管理
           </button>
+          <button
+            class="px-4 py-2 text-sm font-medium rounded-t cursor-pointer border-none transition-colors"
+            :class="activeTab === 'quick-links' ? 'bg-white text-blue-600 border border-b-white border-gray-200 -mb-px' : 'text-gray-500 hover:text-gray-700'"
+            @click="activeTab = 'quick-links'"
+          >
+            🔗 链接管理
+          </button>
         </div>
 
         <!-- ════ 通知管理标签 ════ -->
@@ -212,6 +219,68 @@
           <KnowledgeManager />
         </div>
 
+        <!-- ════ 快捷链接管理 ════ -->
+        <div v-if="activeTab === 'quick-links'">
+          <div class="mb-4 flex items-center justify-between">
+            <p class="text-sm text-gray-500 m-0">共 {{ quickLinks.length }} 个快捷链接</p>
+            <button class="px-3 py-1.5 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 cursor-pointer border-none" @click="showLinkForm = !showLinkForm">
+              {{ showLinkForm ? '✕ 取消' : '＋ 添加链接' }}
+            </button>
+          </div>
+
+          <!-- 添加/编辑表单 -->
+          <div v-if="showLinkForm" class="mb-4 p-4 bg-gray-50 rounded-lg border space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">标题</label>
+              <input v-model="linkForm.title" class="w-full px-3 py-1.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如：微助教" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">图标（可选）</label>
+              <input v-model="linkForm.icon" class="w-20 px-3 py-1.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500" placeholder="🌐" maxlength="2" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 mb-1">URL</label>
+              <input v-model="linkForm.url" class="w-full px-3 py-1.5 text-sm border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-mono" placeholder="https://..." />
+            </div>
+            <div class="flex gap-2">
+              <button class="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer border-none disabled:opacity-50" :disabled="!linkForm.title || !linkForm.url" @click="saveLink">
+                {{ editingLinkId ? '✅ 更新' : '✅ 保存' }}
+              </button>
+              <button v-if="editingLinkId" class="px-4 py-1.5 text-sm text-gray-600 bg-white border rounded-lg hover:bg-gray-50 cursor-pointer" @click="cancelEditLink">
+                取消编辑
+              </button>
+            </div>
+          </div>
+
+          <!-- 链接列表 -->
+          <div v-if="quickLinks.length === 0" class="text-center py-12 text-gray-400">
+            <p class="text-lg mb-1">🔗</p>
+            <p class="text-sm">还没有快捷链接</p>
+            <p class="text-xs mt-1">点击"添加链接"开始添加</p>
+          </div>
+          <div v-else class="space-y-2">
+            <div
+              v-for="(link, idx) in quickLinks"
+              :key="link.id"
+              class="flex items-center justify-between bg-white border rounded-lg px-4 py-3 hover:shadow-sm transition-shadow"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="text-lg shrink-0">{{ link.icon || '🔗' }}</span>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-gray-800 truncate">{{ link.title }}</p>
+                  <p class="text-xs text-gray-400 truncate">{{ link.url }}</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button class="px-2 py-1 text-xs text-blue-500 hover:bg-blue-50 rounded transition-colors cursor-pointer border-none" @click="editLink(idx)">编辑</button>
+                <button class="px-2 py-1 text-xs text-red-400 hover:bg-red-50 rounded transition-colors cursor-pointer border-none" @click="deleteLink(idx)">删除</button>
+                <button class="px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 rounded transition-colors cursor-pointer border-none" @click="moveLink(idx, -1)" :disabled="idx === 0">↑</button>
+                <button class="px-2 py-1 text-xs text-gray-400 hover:bg-gray-100 rounded transition-colors cursor-pointer border-none" @click="moveLink(idx, 1)" :disabled="idx === quickLinks.length - 1">↓</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </template>
 
       <!-- AI 生成 -->
@@ -260,6 +329,73 @@ const genLoading = ref(false)
 const genProgress = ref({ current: 0, total: 0, lastTitle: '' })
 const genResultMsg = ref('')
 const testNotificationCount = ref(0)
+
+// ── 快捷链接管理 ──
+const QUICK_LINKS_KEY = 'quick-links'
+const DEFAULT_LINKS = [
+  { id: 'ql_teachermate', title: '微助教', icon: '📝', url: 'https://v18.teachermate.cn/wechat-pro-ssr/?openid=8ec1fe760da7be8a11276e53837b7206&from=wzj' },
+]
+const showLinkForm = ref(false)
+const editingLinkId = ref(null)
+const linkForm = ref({ title: '', icon: '', url: '' })
+const quickLinks = ref(loadQuickLinks())
+
+function loadQuickLinks() {
+  try {
+    const raw = localStorage.getItem(QUICK_LINKS_KEY)
+    return raw ? JSON.parse(raw) : DEFAULT_LINKS
+  } catch { return [...DEFAULT_LINKS] }
+}
+
+function saveQuickLinks() {
+  localStorage.setItem(QUICK_LINKS_KEY, JSON.stringify(quickLinks.value))
+}
+
+function saveLink() {
+  if (!linkForm.value.title || !linkForm.value.url) return
+  if (editingLinkId.value) {
+    const idx = quickLinks.value.findIndex(l => l.id === editingLinkId.value)
+    if (idx !== -1) {
+      quickLinks.value[idx] = { ...quickLinks.value[idx], ...linkForm.value }
+    }
+  } else {
+    const id = 'ql_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+    quickLinks.value.push({ id, ...linkForm.value })
+  }
+  saveQuickLinks()
+  resetLinkForm()
+}
+
+function editLink(idx) {
+  const link = quickLinks.value[idx]
+  editingLinkId.value = link.id
+  linkForm.value = { title: link.title, icon: link.icon || '', url: link.url }
+  showLinkForm.value = true
+}
+
+function cancelEditLink() {
+  resetLinkForm()
+}
+
+function deleteLink(idx) {
+  quickLinks.value.splice(idx, 1)
+  saveQuickLinks()
+}
+
+function moveLink(idx, dir) {
+  const target = idx + dir
+  if (target < 0 || target >= quickLinks.value.length) return
+  const tmp = quickLinks.value[target]
+  quickLinks.value[target] = quickLinks.value[idx]
+  quickLinks.value[idx] = tmp
+  saveQuickLinks()
+}
+
+function resetLinkForm() {
+  showLinkForm.value = false
+  editingLinkId.value = null
+  linkForm.value = { title: '', icon: '', url: '' }
+}
 
 /** 是否开启调试模式 */
 /** 是否开启调试模式（仅管理员有效） */
