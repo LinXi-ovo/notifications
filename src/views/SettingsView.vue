@@ -92,7 +92,20 @@ const userStore = useUserStore()
 const router = useRouter()
 const isAdmin = computed(() => userStore.isAdmin)
 
-const debugMode = ref(localStorage.getItem('mermaid-debug') === 'true')
+const debugMode = ref(false)
+
+// 初始化调试模式状态（只有管理员才能开启）
+function initDebugMode() {
+  const stored = localStorage.getItem('mermaid-debug') === 'true'
+  if (stored && !isAdmin.value) {
+    localStorage.removeItem('mermaid-debug')
+    debugMode.value = false
+  } else if (stored && isAdmin.value) {
+    debugMode.value = true
+  }
+}
+initDebugMode()
+
 watch(debugMode, (v) => {
   if (!isAdmin.value) {
     debugMode.value = false

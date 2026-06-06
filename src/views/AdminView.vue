@@ -260,7 +260,8 @@ const genResultMsg = ref('')
 const testNotificationCount = ref(0)
 
 /** 是否开启调试模式 */
-const isDebugMode = computed(() => localStorage.getItem('mermaid-debug') === 'true')
+/** 是否开启调试模式（仅管理员有效） */
+const isDebugMode = computed(() => userStore.isAdmin && localStorage.getItem('mermaid-debug') === 'true')
 
 /** 计算测试通知数量 */
 async function refreshTestCount() {
@@ -463,12 +464,12 @@ function handleSaved() {
 
 /** 刷新通知列表（调试模式下包含测试通知） */
 function fetchNotifList() {
-  const isDebug = localStorage.getItem('mermaid-debug') === 'true'
+  const debugOn = userStore.isAdmin && localStorage.getItem('mermaid-debug') === 'true'
   // 调试模式下强制显示测试通知，方便管理员管理
-  if (isDebug && !localStorage.getItem('show-test-notifications')) {
+  if (debugOn && !localStorage.getItem('show-test-notifications')) {
     localStorage.setItem('show-test-notifications', 'true')
   }
-  return store.fetchList({ pageSize: 100, showTest: isDebug })
+  return store.fetchList({ pageSize: 100, showTest: debugOn })
 }
 
 // ── 回收站操作 ──
