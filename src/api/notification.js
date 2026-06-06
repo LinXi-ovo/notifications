@@ -9,9 +9,17 @@ export async function getNotifications({ type, search, page = 1, pageSize = 20, 
   // 排除已删除
   q.equalTo('deleted', '!=', true)
 
-  if (type) q.equalTo('type', '==', type)
-  // 默认过滤测试通知，除非明确要求显示
-  if (!showTest) q.equalTo('type', '!=', 'test')
+  // 分类筛选与测试通知过滤
+  // 注意：不能在 type 字段上同时调用两次 equalTo（Bmob SDK 会覆盖），
+  // 所以用 if/else 保证同一时刻只有一个 type 条件
+  if (type) {
+    // 特定分类：直接按分类过滤，测试通知由 type 值自身决定是否包含
+    q.equalTo('type', '==', type)
+  } else if (!showTest) {
+    // "全部"视图且未开启测试通知显示 → 排除 test 类型
+    q.equalTo('type', '!=', 'test')
+  }
+  // showTest=true 且 type=null（全部）→ 不添加任何 type 过滤，包含全部类型
   if (search) {
     q.equalTo('title', '==', { $regex: search })
   }
@@ -24,7 +32,11 @@ export async function getNotifications({ type, search, page = 1, pageSize = 20, 
 
   const countQ = Bmob.Query(TABLE)
   countQ.equalTo('deleted', '!=', true)
-  if (type) countQ.equalTo('type', '==', type)
+  if (type) {
+    countQ.equalTo('type', '==', type)
+  } else if (!showTest) {
+    countQ.equalTo('type', '!=', 'test')
+  }
   let total = results.length
   try { total = await countQ.count() } catch (e) { /* fallback */ }
 
