@@ -19,6 +19,7 @@ export const PROVIDERS = {
     defaultModel: 'deepseek-chat',
     defaultEndpoint: 'https://api.deepseek.com/v1/chat/completions',
     envKey: 'VITE_DEEPSEEK_API_KEY',
+    description: 'DeepSeek V4（完全兼容 OpenAI 格式，支持联网搜索）',
   },
   openai: {
     id: 'openai',
@@ -27,6 +28,25 @@ export const PROVIDERS = {
     defaultModel: 'gpt-4o-mini',
     defaultEndpoint: 'https://api.openai.com/v1/chat/completions',
     envKey: 'VITE_OPENAI_API_KEY',
+    description: 'GPT-4o / GPT-4o-mini，支持文本+视觉',
+  },
+  doubao: {
+    id: 'doubao',
+    name: '豆包',
+    supportsVision: true,
+    defaultModel: 'doubao-pro-32k',
+    defaultEndpoint: 'https://ark.cn-beijing.volces.com/api/v3/chat/completions',
+    envKey: 'VITE_DOUBAO_API_KEY',
+    description: '字节跳动豆包大模型，支持文本+视觉（需要通过推理接入点调用）',
+  },
+  custom: {
+    id: 'custom',
+    name: '自定义',
+    supportsVision: true, // 由用户自行确认
+    defaultModel: '',
+    defaultEndpoint: '',
+    envKey: '',
+    description: '任何 OpenAI 兼容的 API（如本地 ollama、AWS Bedrock、Azure OpenAI 等）',
   },
 }
 
@@ -38,9 +58,13 @@ export const DEFAULT_PROVIDER = 'deepseek'
  */
 export function getAiConfig(overrides = {}) {
   const stored = loadConfig()
+  const provider = overrides.provider || stored.provider || DEFAULT_PROVIDER
+  const info = PROVIDERS[provider]
+  // 自定义提供商：仅从 localStorage 读取，不从 .env 读
+  const envFallback = provider === 'custom' ? '' : (import.meta.env[info?.envKey] || '')
   return {
-    provider: overrides.provider || stored.provider || DEFAULT_PROVIDER,
-    apiKey: overrides.apiKey || stored.apiKey || import.meta.env[PROVIDERS[overrides.provider || stored.provider]?.envKey] || '',
+    provider,
+    apiKey: overrides.apiKey || stored.apiKey || envFallback || '',
     model: overrides.model || stored.model || '',
     endpoint: overrides.endpoint || stored.endpoint || '',
   }
@@ -282,14 +306,29 @@ function parseResult(text) {
 export function getModelList(providerId) {
   const lists = {
     deepseek: [
-      { id: 'deepseek-chat', name: 'DeepSeek V3' },
-      { id: 'deepseek-reasoner', name: 'DeepSeek R1' },
+      { id: 'deepseek-chat', name: 'DeepSeek V4（最新稳定版）' },
+      { id: 'deepseek-chat-v4', name: 'DeepSeek V4 指定版' },
+      { id: 'deepseek-reasoner', name: 'DeepSeek R1（推理模型）' },
+      { id: 'deepseek-coder', name: 'DeepSeek Coder' },
     ],
     openai: [
       { id: 'gpt-4o', name: 'GPT-4o' },
       { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
       { id: 'gpt-4o-turbo', name: 'GPT-4o Turbo' },
       { id: 'gpt-4-vision-preview', name: 'GPT-4 Vision' },
+      { id: 'o1-mini', name: 'o1 Mini' },
+      { id: 'o3-mini', name: 'o3 Mini' },
+    ],
+    doubao: [
+      { id: 'doubao-pro-32k', name: '豆包 Pro 32K' },
+      { id: 'doubao-pro-128k', name: '豆包 Pro 128K' },
+      { id: 'doubao-lite-32k', name: '豆包 Lite 32K' },
+      { id: 'doubao-lite-128k', name: '豆包 Lite 128K' },
+      { id: 'doubao-vision-pro-32k', name: '豆包视觉 Pro 32K（推荐视觉任务）' },
+      { id: 'ep-', name: '推理接入点（格式: ep-xxxx）' },
+    ],
+    custom: [
+      { id: '', name: '自定义输入模型名称' },
     ],
   }
   return lists[providerId] || []

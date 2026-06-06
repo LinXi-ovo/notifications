@@ -53,17 +53,20 @@
           <h3 class="text-sm font-semibold text-gray-700 m-0">🤖 AI 模型</h3>
           <p class="text-xs text-gray-400 m-0">用于 AI 生成通知、图片理解等功能</p>
 
-          <!-- 提供商选择 -->
-          <div class="flex gap-2">
-            <button
-              v-for="p in providerList"
-              :key="p.id"
-              class="px-3 py-1.5 text-sm rounded-lg border cursor-pointer transition-colors"
-              :class="aiConfig.provider === p.id ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
-              @click="switchProvider(p.id)"
-            >
-              {{ p.name }}
-            </button>
+          <!-- 提供商选择 + 描述 -->
+          <div>
+            <div class="flex gap-2 flex-wrap">
+              <button
+                v-for="p in providerList"
+                :key="p.id"
+                class="px-3 py-1.5 text-sm rounded-lg border cursor-pointer transition-colors"
+                :class="aiConfig.provider === p.id ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'"
+                @click="switchProvider(p.id)"
+              >
+                {{ p.name }}
+              </button>
+            </div>
+            <p v-if="providerInfo" class="text-xs text-gray-400 mt-1.5 m-0">{{ providerInfo.description }}</p>
           </div>
 
           <!-- API Key -->
@@ -72,17 +75,21 @@
             <div class="flex gap-2">
               <input
                 v-model="aiConfig.apiKey"
-                type="password"
+                :type="showKey ? 'text' : 'password'"
                 class="flex-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                :placeholder="`留空则使用 .env 中的 ${providerInfo?.envKey || '环境变量'}`"
+                :placeholder="providerInfo?.envKey ? `留空则使用 .env 中的 ${providerInfo.envKey}` : '必填（自定义提供商无环境变量）'"
               />
+              <button
+                class="px-2 py-2 text-xs text-gray-400 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer border-none shrink-0"
+                @click="showKey = !showKey"
+              >{{ showKey ? '🙈' : '👁️' }}</button>
               <button
                 class="px-3 py-2 text-xs text-gray-500 bg-gray-100 rounded hover:bg-gray-200 cursor-pointer border-none shrink-0"
                 @click="aiConfig.apiKey = ''; saveConfig()"
                 :disabled="!aiConfig.apiKey"
               >清除</button>
             </div>
-            <p v-if="hasEnvKey" class="text-xs text-green-600 mt-1">✅ 已配置环境变量密钥</p>
+            <p v-if="hasEnvKey" class="text-xs text-green-600 mt-1">✅ 已配置环境变量密钥（{{ providerInfo?.envKey }}）</p>
           </div>
 
           <!-- 模型选择 -->
@@ -93,22 +100,32 @@
               class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
               @change="saveConfig"
             >
-              <option value="">默认（{{ providerInfo?.defaultModel }}）</option>
-              <option v-for="m in modelList" :key="m.id" :value="m.id">{{ m.name }} ({{ m.id }})</option>
+              <option value="">{{ providerInfo?.defaultModel ? `默认（${providerInfo.defaultModel}）` : '请输入模型名称' }}</option>
+              <option v-for="m in modelList" :key="m.id" :value="m.id">{{ m.name }}（{{ m.id }}）</option>
             </select>
+            <!-- 自定义模型：允许手动输入 -->
+            <input
+              v-if="aiConfig.provider === 'custom'"
+              v-model="aiConfig.model"
+              type="text"
+              class="w-full mt-1 px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              placeholder="输入模型名称（如 llama3、qwen2.5 等）"
+              @change="saveConfig"
+            />
           </div>
 
-          <!-- API 端点（仅自定义时需要） -->
+          <!-- API 端点 -->
           <div>
             <label class="block text-xs text-gray-500 mb-1">
               API 端点
-              <span class="text-gray-400 font-normal">（可选，默认 {{ providerInfo?.defaultEndpoint }}）</span>
+              <span v-if="providerInfo?.defaultEndpoint && aiConfig.provider !== 'custom'" class="text-gray-400 font-normal">（可选，默认 {{ providerInfo.defaultEndpoint }}）</span>
+              <span v-else class="text-orange-500 font-normal">（必填）</span>
             </label>
             <input
               v-model="aiConfig.endpoint"
               type="text"
               class="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="自定义 API 端点 URL"
+              :placeholder="aiConfig.provider === 'custom' ? 'https://your-api.example.com/v1/chat/completions' : providerInfo?.defaultEndpoint || 'API 端点 URL'"
               @change="saveConfig"
             />
           </div>
@@ -182,6 +199,7 @@ const providerList = Object.values(PROVIDERS)
 
 // ── AI 配置 ──
 const aiConfig = reactive(getAiConfig())
+const showKey = ref(false)
 
 const providerInfo = computed(() => PROVIDERS[aiConfig.provider])
 const modelList = computed(() => getModelList(aiConfig.provider))
