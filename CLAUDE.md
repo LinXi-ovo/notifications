@@ -196,6 +196,14 @@ src/
 │   ├── create-test-notification.cjs # 创建测试通知（Node 脚本）
 │   └── create-test-mission.cjs      # 创建测试任务（Node 脚本）
 ├── mcp-servers/            # MCP 服务器
+├── e2e/                    # Playwright E2E 测试
+│   ├── playwright.config.js
+│   ├── helpers.js
+│   ├── mission-list.spec.js
+│   ├── mission-graph.spec.js
+│   ├── mission-debug.spec.js
+│   ├── mission-execution.spec.js
+│   └── mission-stats.spec.js
 │   ├── filesystem/         # 自定义文件系统 MCP Server（Node.js）
 │   └── write-file/         # 文件写入 MCP Server（Python）
 ├── ws-api/                 # WebSocket API 服务器（AI Agent 接入）

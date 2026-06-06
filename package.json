@@ -13,7 +13,10 @@
     "postinstall": "node dev_tools/patch-pdfjs.cjs",
     "ws-api": "cd ws-api && node src/index.js",
     "ws-api:install": "cd ws-api && npm install",
-    "ws-api:build": "cd ws-api && npx pkg src/index.js --output dist/notifications-ws-api.exe --target node20-win-x64"
+    "ws-api:build": "cd ws-api && npx pkg src/index.js --output dist/notifications-ws-api.exe --target node20-win-x64",
+    "test:e2e": "playwright test e2e/ --config=e2e/playwright.config.js",
+    "test:e2e:headed": "playwright test e2e/ --config=e2e/playwright.config.js --headed",
+    "test:e2e:debug": "playwright test e2e/ --config=e2e/playwright.config.js --debug"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",
