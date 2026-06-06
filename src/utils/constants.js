@@ -21,6 +21,7 @@ export const DEFAULT_CATEGORIES = [
   { name: '课程', value: 'course', icon: '📚', color: 'green', sortOrder: 4 },
   { name: '作业', value: 'homework', icon: '📝', color: 'red', sortOrder: 5 },
   { name: '党团', value: 'party', icon: '🚩', color: 'red', sortOrder: 6 },
+  { name: '咨询', value: 'consult', icon: '💬', color: 'teal', sortOrder: 7 },
   { name: '其他', value: 'other', icon: '📌', color: 'gray', sortOrder: 99 },
   { name: '测试', value: 'test', icon: '🧪', color: 'yellow', sortOrder: 0 }
 ]

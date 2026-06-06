@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@playwright/mcp": "^0.0.75",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.1.6",
     "@tauri-apps/cli": "^2.11.2",
     "@vitejs/plugin-vue": "^5.2.4",

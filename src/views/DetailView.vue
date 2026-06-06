@@ -133,7 +133,7 @@ const priorityBadgeClass = computed(() => {
 })
 
 const typeIcon = computed(() => {
-  const map = { zongce: '📊', baoyan: '🎓', course: '📚', activity: '🎉', homework: '📝', party: '🚩', other: '📌', test: '🧪' }
+  const map = { zongce: '📊', baoyan: '🎓', course: '📚', activity: '🎉', homework: '📝', party: '🚩', consult: '💬', other: '📌', test: '🧪' }
   return map[notification.value?.type] || '📌'
 })
 

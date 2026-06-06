@@ -87,7 +87,7 @@ const priorityBorderClass = computed(() => {
 const typeIcon = computed(() => {
   const map = {
     zongce: '📊', baoyan: '🎓', course: '📚', activity: '🎉',
-    homework: '📝', party: '🚩', other: '📌'
+    homework: '📝', party: '🚩', consult: '💬', other: '📌'
   }
   return map[props.notification.type] || '📌'
 })
