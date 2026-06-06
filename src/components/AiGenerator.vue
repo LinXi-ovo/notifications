@@ -3,7 +3,14 @@
     <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
       <!-- 头部 -->
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-        <h3 class="text-lg font-bold text-gray-800 m-0">🤖 AI 生成通知</h3>
+        <div class="flex items-center gap-2">
+          <h3 class="text-lg font-bold text-gray-800 m-0">🤖 AI 生成通知</h3>
+          <button
+            v-if="debugMode"
+            class="text-xs px-2 py-0.5 rounded bg-yellow-100 text-yellow-600 hover:bg-yellow-200 border-none cursor-pointer"
+            @click="showPromptEditor = !showPromptEditor"
+          >🧪 提示词</button>
+        </div>
         <button class="text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer text-xl" @click="close">✕</button>
       </div>
 
@@ -43,6 +50,12 @@
           <div v-if="categories.length" class="text-xs text-gray-400">
             可识别的分类：{{ categories.map(c => c.icon + c.name).join('、') }}
           </div>
+
+          <!-- 同时生成任务 -->
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" v-model="withMission" class="w-4 h-4 rounded border-gray-300 text-blue-500 focus:ring-blue-400" />
+            <span class="text-sm text-gray-600">📋 同时生成配套任务（DAG）</span>
+          </label>
 
           <!-- 提供商/模型信息 -->
           <div class="flex items-center gap-2 text-xs text-gray-400">
@@ -132,8 +145,45 @@
           <div v-if="result.originalLink" class="text-xs text-blue-500">🔗 {{ result.originalLink }}</div>
         </div>
 
+        <!-- 📋 配套任务预览 -->
+        <div v-if="result?._missionData" class="space-y-2 bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+          <div class="flex items-center gap-2">
+            <span class="text-sm font-semibold text-indigo-700">📋 配套任务</span>
+            <span class="text-xs text-indigo-400">（将随通知一起创建）</span>
+          </div>
+          <p class="text-sm font-medium text-indigo-800 m-0">{{ result._missionData.title }}</p>
+          <p v-if="result._missionData.description" class="text-xs text-indigo-600 m-0">{{ result._missionData.description }}</p>
+          <div class="flex flex-wrap gap-1">
+            <span v-for="r in result._missionData.roles" :key="r.id" class="text-xs px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">{{ r.emoji }} {{ r.name }}</span>
+          </div>
+          <div class="text-xs text-indigo-500">
+            {{ result._missionData.nodes?.length || 0 }} 个节点 ·
+            {{ result._missionData.edges?.length || 0 }} 条依赖
+          </div>
+        </div>
+
         <!-- 错误 -->
         <div v-if="error" class="text-sm text-red-500 bg-red-50 rounded p-3">{{ error }}</div>
+
+        <!-- 🧪 调试模式：提示词编辑器 -->
+        <div v-if="showPromptEditor" class="space-y-3 bg-gray-50 rounded-lg p-4 border border-yellow-200">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-yellow-700">🧪 提示词编辑器</span>
+            <button class="text-xs text-gray-400 hover:text-gray-600 bg-transparent border-none cursor-pointer" @click="showPromptEditor = false">✕ 关闭</button>
+          </div>
+          <div v-for="(prompt, key) in editablePrompts" :key="key" class="space-y-1">
+            <label class="text-xs text-gray-500">{{ promptLabel(key) }}</label>
+            <textarea
+              v-model="editablePrompts[key]"
+              class="w-full px-2 py-1.5 text-xs font-mono border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-yellow-400 resize-none"
+              rows="6"
+            ></textarea>
+          </div>
+          <div class="flex gap-2">
+            <button class="px-3 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 cursor-pointer border-none" @click="savePrompts">💾 保存</button>
+            <button class="px-3 py-1 text-xs bg-gray-200 text-gray-600 rounded hover:bg-gray-300 cursor-pointer border-none" @click="resetPrompts">↩ 重置默认</button>
+          </div>
+        </div>
       </div>
 
       <!-- 底部 -->
@@ -267,6 +317,41 @@ async function switchToOpenAI() {
   mod.saveAiConfig({ ...aiCfg.value })
 }
 
+// ── 任务生成 ──
+const withMission = ref(false)
+
+// ── 调试模式：提示词编辑器 ──
+const debugMode = computed(() => localStorage.getItem('mermaid-debug') === 'true')
+const showPromptEditor = ref(false)
+const editablePrompts = ref({})
+let aiModule = null
+
+function promptLabel(key) {
+  const labels = { notification: '📰 通知生成提示词', mission: '📋 任务生成提示词', image: '🖼️ 图片理解提示词' }
+  return labels[key] || key
+}
+
+function loadPrompts() {
+  if (!aiModule) return
+  editablePrompts.value = { ...aiModule.getAllPrompts() }
+}
+
+function savePrompts() {
+  if (!aiModule) return
+  for (const [key, value] of Object.entries(editablePrompts.value)) {
+    aiModule.setPrompt(key, value)
+  }
+  alert('✅ 提示词已保存')
+}
+
+function resetPrompts() {
+  if (!confirm('确定重置所有提示词到默认值？')) return
+  if (!aiModule) return
+  aiModule.resetAllPrompts()
+  editablePrompts.value = { ...aiModule.DEFAULT_PROMPTS }
+  alert('✅ 已重置为默认提示词')
+}
+
 /** 提取图片文字 */
 async function extractImageText() {
   if (!uploadedImageUrl.value) return
@@ -301,7 +386,8 @@ async function generateFromText() {
   result.value = null
 
   try {
-    const res = await generateNotification(rawInput.value, props.categories, aiCfg.value)
+    const opts = { ...aiCfg.value, withMission: withMission.value }
+    const res = await generateNotification(rawInput.value, props.categories, opts)
     result.value = res
   } catch (e) {
     error.value = '生成失败: ' + (e.message || e)
@@ -392,10 +478,14 @@ function escapeHtml(str) {
 function apply() {
   if (result.value) {
     const data = { ...result.value }
+    const missionData = data._missionData
     delete data._mermaidMap
+    delete data._missionData
     emit('apply', {
       ...data,
       mermaidMap: result.value._mermaidMap || {},
+      // 如果有配套任务数据，一并传递
+      ...(missionData ? { _missionData: missionData } : {}),
     })
     close()
   }
@@ -419,11 +509,13 @@ function onPaste(e) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('paste', onPaste)
   // 加载最新的 AI 配置
   const cfg = getAiConfig()
   aiCfg.value = cfg
+  // 加载提示词模块供编辑器使用
+  aiModule = await import('@/api/ai')
 })
 
 onUnmounted(() => {

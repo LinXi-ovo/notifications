@@ -409,16 +409,76 @@ function openAiGenerator() {
 }
 
 function handleAiResult(data) {
+  // 分离通知数据和任务数据
+  const missionData = data._missionData
+  const notifData = { ...data }
+  delete notifData._missionData
+
+  // 如有配套任务 → 通知内容追加任务链接
+  if (missionData) {
+    // 先创建任务获得 ID，再补 JumpLink
+    createMissionFromAiAsync(missionData, notifData)
+  }
+
   // 切换到通知管理并打开编辑表单
   activeTab.value = 'notifications'
   showForm.value = true
   showAiGenerator.value = false
-  editingNotification.value = data
+  editingNotification.value = notifData
+
   // Mermaid 数据通过会话级存储传给 WgEditor
   if (data.mermaidMap && Object.keys(data.mermaidMap).length > 0) {
     try {
       sessionStorage.setItem('ai_mermaid_map', JSON.stringify(data.mermaidMap))
     } catch (e) { /* ignore */ }
+  }
+}
+
+/** 异步创建配套任务（不影响通知表单打开） */
+async function createMissionFromAiAsync(missionData, notifData) {
+  try {
+    const { useMissionStore } = await import('@/stores/mission')
+    const missionStore = useMissionStore()
+
+    const mission = {
+      title: missionData.title || `${notifData.title || ''} - 配套任务`,
+      description: missionData.description || '',
+      status: 'active',
+      roles: (missionData.roles || []).map(r => ({
+        id: r.id || 'role-' + Math.random().toString(36).slice(2, 6),
+        name: r.name,
+        emoji: r.emoji || '👤',
+        color: r.color || '#3B82F6',
+        claimPolicy: { type: r.claimType || 'free' },
+        maxAssignees: r.maxAssignees || 99,
+      })),
+      nodes: (missionData.nodes || []).map(n => ({
+        id: n.id || 'node-' + Math.random().toString(36).slice(2, 6),
+        title: n.title,
+        description: n.description || '',
+        assignedRole: n.assignedRole || '',
+        status: 'todo',
+        completionRule: 'single',
+        completions: [],
+      })),
+      edges: (missionData.edges || []).map(e => ({
+        source: e.source,
+        target: e.target,
+        label: e.label || '',
+      })),
+    }
+
+    const created = missionStore.createMission(mission)
+    if (created) {
+      // 任务已创建，通知内容追加 JumpLink
+      const missionLink = `[[mission:${created.id}]]`
+      notifData.content = (notifData.content || '') +
+        `<p style="color:#999;font-size:0.85em;margin-top:1em">📋 配套任务：${missionLink}</p>`
+      alert(`✅ 配套任务已创建：${mission.title}`)
+    }
+  } catch (e) {
+    console.warn('创建配套任务失败:', e)
+    alert('⚠️ 配套任务创建失败: ' + (e.message || e) + '\n通知已保存，可稍后手动创建')
   }
 }
 

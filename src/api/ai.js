@@ -83,33 +83,17 @@ export function saveAiConfig(config) {
 }
 
 // ═══════════════════════════════════
-// 核心函数
+// 可编辑提示词系统
 // ═══════════════════════════════════
 
-/**
- * 调用 AI 生成结构化通知
- * @param {string} rawInput - 原始粘贴内容
- * @param {object[]} categories - 可用分类列表
- * @param {object} [options] - 配置覆盖
- * @param {string} [options.provider]
- * @param {string} [options.apiKey]
- * @param {string} [options.model]
- * @returns {Promise<object>} { title, content, type, sourceGroup, sourcePerson, priority, tags, mermaidMap }
- */
-export async function generateNotification(rawInput, categories, options = {}) {
-  const config = getAiConfig(options)
-  const provider = PROVIDERS[config.provider]
-  if (!provider) throw new Error(`未知 AI 提供商: ${config.provider}`)
-  if (!config.apiKey) throw new Error(`未配置 ${provider.name} API Key`)
-
-  const catInfo = categories.map(c => `${c.name}(${c.value})`).join('、')
-
-  const prompt = `你是一个大学通知整理助手。将以下原始内容整理为一条结构化通知，只返回 JSON 格式（不要其他文字）：
+/** 默认提示词模板 */
+export const DEFAULT_PROMPTS = {
+  notification: `你是一个大学通知整理助手。将以下原始内容整理为一条结构化通知，只返回 JSON 格式（不要其他文字）：
 
 {
   "title": "通知标题",
   "content": "<p>格式化后的HTML正文，段落用</p><p>分隔</p>",
-  "type": "分类标识（从以下选择：${catInfo}）",
+  "type": "分类标识（从以下选择：{categories}）",
   "sourceGroup": "来源群组",
   "sourcePerson": "发布人",
   "originalLink": "原文链接（如果有URL则提取）",
@@ -129,10 +113,125 @@ mermaid 说明：
 - 不需要时留空数组 []
 
 原始内容：
-${rawInput}`
+{input}`,
+  mission: `同时，从以上原始内容中提取出任务信息，生成一个配套的任务 DAG（有向无环图）。
+将任务信息放在 "mission" 字段中，格式如下：
+
+{
+  "notification": { ...以上通知... },
+  "mission": {
+    "title": "任务标题（与通知标题对应）",
+    "description": "任务描述",
+    "roles": [
+      { "id": "role-1", "name": "执行人", "emoji": "👤", "color": "#3B82F6", "claimType": "free", "maxAssignees": 5 }
+    ],
+    "nodes": [
+      { "id": "node-1", "title": "节点标题", "description": "节点描述", "assignedRole": "role-1", "status": "todo" }
+    ],
+    "edges": [
+      { "source": "node-1", "target": "node-2" }
+    ]
+  }
+}
+
+任务设计要求：
+- 根据通知内容设计 2~5 个任务节点，构成完整流程
+- 每个节点必须指定 assignedRole（对应 roles 中的 id）
+- 节点状态统一为 "todo"
+- edges 定义节点间的依赖关系（有向）
+- roles 定义参与的角色（含认领方式）
+- 节点 id 格式：node-1, node-2, ...`,
+  image: `请详细描述这张图片中的文字内容。提取所有可见的文字信息，包括标题、正文、来源、日期。{extra}`,
+}
+
+const PROMPT_STORAGE_KEY = 'ai:prompts'
+
+/** 获取指定 key 的提示词（优先返回 localStorage 中的自定义版本） */
+export function getPrompt(key) {
+  try {
+    const custom = JSON.parse(localStorage.getItem(PROMPT_STORAGE_KEY) || '{}')
+    if (custom[key]) return custom[key]
+  } catch { /* ignore */ }
+  return DEFAULT_PROMPTS[key]
+}
+
+/** 获取所有可编辑的提示词 */
+export function getAllPrompts() {
+  const result = {}
+  for (const key of Object.keys(DEFAULT_PROMPTS)) {
+    result[key] = getPrompt(key)
+  }
+  return result
+}
+
+/** 设置自定义提示词 */
+export function setPrompt(key, value) {
+  try {
+    const custom = JSON.parse(localStorage.getItem(PROMPT_STORAGE_KEY) || '{}')
+    custom[key] = value
+    localStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify(custom))
+  } catch { /* ignore */ }
+}
+
+/** 重置指定提示词到默认 */
+export function resetPrompt(key) {
+  try {
+    const custom = JSON.parse(localStorage.getItem(PROMPT_STORAGE_KEY) || '{}')
+    delete custom[key]
+    localStorage.setItem(PROMPT_STORAGE_KEY, JSON.stringify(custom))
+  } catch { /* ignore */ }
+}
+
+/** 重置所有提示词到默认 */
+export function resetAllPrompts() {
+  localStorage.removeItem(PROMPT_STORAGE_KEY)
+}
+
+/** 调试模式是否开启 */
+export function isAiDebugMode() {
+  return localStorage.getItem('mermaid-debug') === 'true'
+}
+
+// ═══════════════════════════════════
+// 核心函数
+// ═══════════════════════════════════
+
+/**
+ * 调用 AI 生成结构化通知
+ * @param {string} rawInput - 原始粘贴内容
+ * @param {object[]} categories - 可用分类列表
+ * @param {object} [options] - 配置覆盖
+ * @param {boolean} [options.withMission] - 是否同时生成配套任务
+ * @returns {Promise<object>} { title, content, type, ... missionData? }
+ */
+export async function generateNotification(rawInput, categories, options = {}) {
+  const config = getAiConfig(options)
+  const provider = PROVIDERS[config.provider]
+  if (!provider) throw new Error(`未知 AI 提供商: ${config.provider}`)
+  if (!config.apiKey) throw new Error(`未配置 ${provider.name} API Key`)
+
+  // 构建提示词
+  const catInfo = categories.map(c => `${c.name}(${c.value})`).join('、')
+  let prompt = getPrompt('notification')
+    .replace('{categories}', catInfo)
+    .replace('{input}', rawInput)
+
+  // 如需生成任务，追加任务提示词
+  if (options.withMission) {
+    const missionPrompt = getPrompt('mission')
+    prompt += '\n\n' + missionPrompt
+  }
 
   const text = await callLLM(prompt, config)
-  return parseResult(text)
+  const result = parseResult(text)
+
+  // 如果生成了 mission，返回 missionData 供前端处理
+  if (options.withMission && result.mission) {
+    result._missionData = result.mission
+    delete result.mission
+  }
+
+  return result
 }
 
 /**
@@ -187,6 +286,7 @@ export async function understandImage(imageUrl, extraPrompt = '', options = {}) 
  * @param {string} imageUrl - 图片 URL
  * @param {object[]} categories - 可用分类
  * @param {object} [options] - 配置覆盖
+ * @param {boolean} [options.withMission] - 是否同时生成配套任务
  * @returns {Promise<object>} 同 generateNotification
  */
 export async function imageToNotification(imageUrl, categories, options = {}) {
@@ -200,23 +300,20 @@ export async function imageToNotification(imageUrl, categories, options = {}) {
   const endpoint = config.endpoint || provider.defaultEndpoint
   const catInfo = categories.map(c => `${c.name}(${c.value})`).join('、')
 
-  const systemPrompt = `你是一个大学通知整理助手。用户会发一张通知截图给你，请：
+  const template = getPrompt('notification')
+    .replace('{categories}', catInfo)
+    .replace('{input}', '（见图片中的文字内容）')
+
+  let systemPrompt = `你是一个大学通知整理助手。用户会发一张通知截图给你，请：
 1. 提取图片中的所有文字
 2. 将其整理为一条结构化通知
 3. 只返回 JSON 格式（不要其他文字）
 
-{
-  "title": "通知标题",
-  "content": "<p>格式化后的HTML正文，段落用</p><p>分隔</p>",
-  "type": "分类标识（从以下选择：${catInfo}）",
-  "sourceGroup": "来源群组",
-  "sourcePerson": "发布人",
-  "originalLink": "原文链接",
-  "priority": 0,
-  "tags": ["标签1", "标签2"]
-}
+${template}`
 
-优先级：0=普通, 1=置顶, 2=重要, 3=紧急。`
+  if (options.withMission) {
+    systemPrompt += '\n\n' + getPrompt('mission')
+  }
 
   const body = {
     model,
@@ -245,7 +342,14 @@ export async function imageToNotification(imageUrl, categories, options = {}) {
   const data = await response.json()
   if (data.error) throw new Error(data.error.message || JSON.stringify(data.error))
   const text = data.choices?.[0]?.message?.content || ''
-  return parseResult(text)
+  const result = parseResult(text)
+
+  if (options.withMission && result.mission) {
+    result._missionData = result.mission
+    delete result.mission
+  }
+
+  return result
 }
 
 // ═══════════════════════════════════
