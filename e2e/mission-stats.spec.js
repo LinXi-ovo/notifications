@@ -32,8 +32,8 @@ test.describe('任务统计页', () => {
     await expect(page.locator('text=按角色聚合')).toBeVisible()
 
     // 节点明细表
-    await expect(page.locator('text=节点')).toBeVisible()
-    await expect(page.locator('text=状态')).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: '节点' })).toBeVisible()
+    await expect(page.getByRole('columnheader', { name: '状态' })).toBeVisible()
   })
 
   test('空任务统计应显示正确', async ({ page }) => {

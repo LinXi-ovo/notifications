@@ -4,27 +4,62 @@
  * 提供登录、调试模式启用、任务创建等共享工具函数。
  */
 
-import { expect } from '@playwright/test'
+
 
 /** 测试用户凭据 */
 export const TEST_USER = {
-  username: 'admin',
-  password: 'admin123',
+  username: 'e2e_test_admin',
+  password: 'E2eTest@2026',
+  email: 'e2e@test.local',
 }
 
 /**
- * 使用用户名密码登录
+ * 登录（先尝试登录，失败则注册后再登录）
  */
 export async function login(page) {
   await page.goto('/#/login')
-  await page.waitForSelector('h2:has-text("登录")')
+  await page.waitForSelector('h2')
+
+  // 填写登录表单
   await page.fill('input[type="text"]', TEST_USER.username)
   await page.fill('input[type="password"]', TEST_USER.password)
   await page.click('button[type="submit"]')
-  // 等待登录完成，路由跳转到首页
-  await page.waitForURL('**/')
-  // 确认导航栏出现（登录成功标志）
-  await page.waitForSelector('header')
+
+  // 等几秒看是否跳转
+  try {
+    await page.waitForURL('**/', { timeout: 8000 })
+    await page.waitForSelector('header', { timeout: 3000 })
+    return // 登录成功
+  } catch {
+    // 登录失败，需要先注册
+  }
+
+  // 切换到注册
+  await page.click('button:has-text("去注册")')
+  await page.waitForSelector('h2:has-text("注册")')
+  await page.fill('input[type="email"]', TEST_USER.email)
+  await page.fill('input[type="text"]', TEST_USER.username)
+  await page.fill('input[type="password"]', TEST_USER.password)
+  await page.click('button[type="submit"]')
+
+  // 注册后等待处理完成（注册完成不会自动跳转，需要重新登录）
+  await page.waitForTimeout(3000)
+
+  // 重新登录
+  const stillRegister = await page.locator('h2:has-text("注册")').isVisible().catch(() => false)
+  if (stillRegister) {
+    // 切换到登录
+    await page.click('button:has-text("去登录")')
+    await page.waitForSelector('h2:has-text("登录")')
+  }
+  // 确保是登录表单
+  await page.fill('input[type="text"]', TEST_USER.username)
+  await page.fill('input[type="password"]', TEST_USER.password)
+  await page.click('button[type="submit"]')
+
+  // 等待跳转首页
+  await page.waitForURL('**/', { timeout: 10000 })
+  await page.waitForSelector('header', { timeout: 3000 })
 }
 
 /**
@@ -66,12 +101,13 @@ export async function createMission(page, title = 'E2E 测试任务') {
   await page.click('button:has-text("创建")')
 
   // 等待任务出现在列表中
-  await page.waitForSelector(`text=${title}`)
-
-  // 返回任务 ID（从 URL 中提取）
-  const card = page.locator(`text=${title}`).first()
-  const href = await card.getAttribute('href')
-  const missionId = href?.split('/').pop() || ''
+  // 任务卡片是 div@click，不是 <a>，所以从 localStorage 读 ID
+  await page.waitForSelector(`text=${title}`, { timeout: 5000 })
+  const missionId = await page.evaluate(() => {
+    const index = JSON.parse(localStorage.getItem('missions:index') || '[]')
+    if (index.length > 0) return index[index.length - 1].id
+    return ''
+  })
   return missionId
 }
 
