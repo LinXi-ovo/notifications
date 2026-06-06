@@ -10,16 +10,15 @@ export async function getNotifications({ type, search, page = 1, pageSize = 20, 
   q.equalTo('deleted', '!=', true)
 
   // 分类筛选与测试通知过滤
-  // 注意：不能在 type 字段上同时调用两次 equalTo（Bmob SDK 会覆盖），
-  // 所以用 if/else 保证同一时刻只有一个 type 条件
+  // 逻辑：
+  //   type 有值         → 只查该分类（含测试分类）
+  //   type 无值+showTest → 全部包含（管理员调试用）
+  //   type 无值+!showTest→ 排除测试通知（普通用户全部视图）
   if (type) {
-    // 特定分类：直接按分类过滤，测试通知由 type 值自身决定是否包含
     q.equalTo('type', '==', type)
   } else if (!showTest) {
-    // "全部"视图且未开启测试通知显示 → 排除 test 类型
     q.equalTo('type', '!=', 'test')
   }
-  // showTest=true 且 type=null（全部）→ 不添加任何 type 过滤，包含全部类型
   if (search) {
     q.equalTo('title', '==', { $regex: search })
   }

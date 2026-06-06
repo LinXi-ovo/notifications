@@ -26,7 +26,8 @@ export const useNotificationStore = defineStore('notification', {
           search: this.searchQuery || undefined,
           page: this.currentPage,
           pageSize: this.pageSize,
-          showTest: showTest || localStorage.getItem('show-test-notifications') === 'true',
+          // showTest 只有显式传入才生效（管理员调试用），不自动读 localStorage
+          showTest: showTest,
         })
 
         this.list = result.data
