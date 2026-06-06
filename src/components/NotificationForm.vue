@@ -118,6 +118,13 @@ const form = reactive({
 onMounted(async () => {
   try {
     categories.value = await getCategories()
+    // 补入 DEFAULT_CATEGORIES 中 Bmob 缺失的分类
+    for (const defCat of DEFAULT_CATEGORIES) {
+      if (defCat.value === 'test') continue // test 单独处理
+      if (!categories.value.some(c => c.value === defCat.value)) {
+        categories.value.push({ ...defCat })
+      }
+    }
     // 确保 test 分类存在（允许管理员创建测试通知）
     const testCat = DEFAULT_CATEGORIES.find(c => c.value === 'test')
     if (testCat && !categories.value.some(c => c.value === 'test')) {
