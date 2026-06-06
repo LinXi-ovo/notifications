@@ -87,6 +87,15 @@ npm run ws-api:build    # 构建 WS API 为独立 EXE
 - 原理：插件自动注入 `data-v-inspector` 属性，点击时通过 `vscode://file/...` 协议唤起编辑器
 - 配置：`vite.config.js` → `VueInspector()` 插件
 
+### Playwright 源码定位（`e2e/inspect.mjs`）
+当需要从页面元素找到对应的 `.vue` 源码时：
+
+```bash
+node e2e/inspect.mjs 5175 'button:has-text("党团")'
+```
+
+自动登录后查找元素，输出标签、文本、样式类和源码位置。
+
 ## 环境变量
 
 复制 `.env.example` → `.env`：
