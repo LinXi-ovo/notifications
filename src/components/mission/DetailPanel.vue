@@ -15,8 +15,8 @@
         </button>
       </div>
 
-      <!-- 描述 -->
-      <p v-if="node.description" class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{ node.description }}</p>
+      <!-- 描述 — 支持 JumpLink -->
+      <p v-if="node.description" class="text-sm text-gray-600 dark:text-gray-300 mb-3" v-html="renderedDescription"></p>
       <p v-else class="text-sm text-gray-400 dark:text-gray-500 mb-3">暂无描述</p>
 
       <!-- 进度（count/all 模式） -->
@@ -152,6 +152,7 @@
 import { computed } from 'vue'
 import { useMissionStore } from '@/stores/mission'
 import { useUserStore } from '@/stores/user'
+import { renderJumpLinks } from '@/utils/jump-link'
 import ProgressBar from './ProgressBar.vue'
 import StatusBadge from './StatusBadge.vue'
 
@@ -167,6 +168,12 @@ const missionStore = useMissionStore()
 const userStore = useUserStore()
 
 // ── 辅助函数 ──
+
+/** 渲染 JumpLink（支持 [[notif:id]] [[mission:id]] [[node:id]]） */
+const renderedDescription = computed(() => {
+  if (!props.node.description) return ''
+  return renderJumpLinks(props.node.description)
+})
 
 function getRoleName(roleId) {
   return missionStore.currentMission?.roles.find(r => r.id === roleId)?.name || roleId

@@ -362,8 +362,8 @@
           </button>
         </div>
 
-        <!-- 描述 -->
-        <p v-if="selectedNode.description" class="text-sm text-gray-600 dark:text-gray-300 mb-3">{{ selectedNode.description }}</p>
+        <!-- 描述 — 支持 JumpLink -->
+        <p v-if="selectedNode.description" class="text-sm text-gray-600 dark:text-gray-300 mb-3" v-html="renderedDescription"></p>
         <p v-else class="text-sm text-gray-400 dark:text-gray-500 mb-3">暂无描述</p>
 
         <!-- 进度（count/all 模式） -->
@@ -620,6 +620,7 @@ import CustomFieldForm from '@/components/mission/CustomFieldForm.vue'
 import CustomFieldEditor from '@/components/mission/CustomFieldEditor.vue'
 import CommentThread from '@/components/mission/CommentThread.vue'
 import ReminderDialog from '@/components/mission/ReminderDialog.vue'
+import { renderJumpLinks } from '@/utils/jump-link'
 
 const route = useRoute()
 const router = useRouter()
@@ -798,6 +799,12 @@ const userRoleNames = computed(() => {
     const role = missionStore.currentMission.roles.find(r => r.id === a.roleId)
     return role ? `${role.emoji} ${role.name}` : a.roleId
   })
+})
+
+/** 渲染 JumpLink（支持 [[notif:id]] [[mission:id]] [[node:id]]） */
+const renderedDescription = computed(() => {
+  if (!selectedNode.value?.description) return ''
+  return renderJumpLinks(selectedNode.value.description)
 })
 
 /** 全部可能的状态转换（编辑模式用 — 不检查角色权限） */

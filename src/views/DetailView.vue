@@ -108,6 +108,7 @@ import { getNotification } from '@/api/notification'
 import { PRIORITY_LABEL } from '@/utils/constants'
 import Lightbox from '@/components/Lightbox.vue'
 import PdfPreview from '@/components/PdfPreview.vue'
+import { renderJumpLinks } from '@/utils/jump-link'
 
 const route = useRoute()
 const router = useRouter()
@@ -142,7 +143,9 @@ const typeName = computed(() => {
 })
 
 const safeContent = computed(() => {
-  return notification.value?.content || '<p style="color:#999">暂无内容</p>'
+  const raw = notification.value?.content
+  if (!raw) return '<p style="color:#999">暂无内容</p>'
+  return renderJumpLinks(raw)
 })
 
 onMounted(async () => {

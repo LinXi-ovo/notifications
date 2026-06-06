@@ -12,3 +12,48 @@ body {
   background-color: #f5f5f5;
   color: #333;
 }
+
+/* JumpLink 跳转链接样式 */
+.jump-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.jump-link:hover {
+  text-decoration: none !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.jump-notif {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+.jump-notif:hover {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.jump-mission {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+.jump-mission:hover {
+  background: #dcfce7;
+  color: #15803d;
+}
+.jump-node {
+  background: #fefce8;
+  color: #ca8a04;
+  border: 1px solid #fef08a;
+}
+.jump-node:hover {
+  background: #fef9c3;
+  color: #a16207;
+}
