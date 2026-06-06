@@ -66,6 +66,9 @@ npm run build        # 构建生产版本
 npm run preview      # 预览构建结果
 npm run tauri:dev    # [Tauri] 开发模式（Vite HMR + 原生窗口）
 npm run tauri:build  # [Tauri] 构建桌面安装包
+npm run ws-api       # 启动 WS API 服务器（端口 3008，供 AI Agent 接入）
+npm run ws-api:install  # 安装 WS API 依赖
+npm run ws-api:build    # 构建 WS API 为独立 EXE
 ```
 
 **关键注意**：
@@ -195,6 +198,12 @@ src/
 ├── mcp-servers/            # MCP 服务器
 │   ├── filesystem/         # 自定义文件系统 MCP Server（Node.js）
 │   └── write-file/         # 文件写入 MCP Server（Python）
+├── ws-api/                 # WebSocket API 服务器（AI Agent 接入）
+│   ├── src/
+│   │   ├── index.js        # WS 服务器入口（默认端口 3008）
+│   │   ├── bmob-api.js     # Bmob REST API 客户端
+│   │   └── handler.js      # WS 消息路由
+│   └── package.json
 ├── plan/                   # 设计文档和计划
 │   ├── 任务系统/           # 任务系统实施规划 + 设计文档
 │   ├── 每日资讯/           # 每日资讯功能设计
