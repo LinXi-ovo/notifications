@@ -50,7 +50,7 @@
         </div>
 
         <!-- 内容区 -->
-        <div class="flex-1 px-4 py-1 overflow-y-auto text-sm text-gray-700 leading-relaxed [&_a]:text-blue-500 [&_a]:underline" v-html="store.currentItem.content">
+        <div class="flex-1 px-4 py-1 overflow-y-auto text-sm text-gray-700 leading-relaxed [&_a]:text-blue-500 [&_a]:underline" v-html="renderJumpLinks(store.currentItem.content)">
         </div>
 
         <!-- 底部信息 -->
@@ -171,6 +171,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useKnowledgeStore } from '@/stores/knowledge'
+import { renderJumpLinks } from '@/utils/jump-link'
 import { CATEGORY_COLORS, KNOWLEDGE_CATEGORIES } from '@/types/knowledge'
 
 const store = useKnowledgeStore()

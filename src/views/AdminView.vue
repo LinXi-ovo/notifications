@@ -134,7 +134,7 @@
                   <span v-if="previewItem.sourceGroup">📢 {{ previewItem.sourceGroup }}</span>
                   <span v-if="previewItem.sourcePerson">👤 {{ previewItem.sourcePerson }}</span>
                 </div>
-                <div class="prose prose-sm max-w-none [&_a]:text-blue-600 [&_a]:underline" v-html="previewItem.content"></div>
+                <div class="prose prose-sm max-w-none [&_a]:text-blue-600 [&_a]:underline" v-html="renderJumpLinks(previewItem.content)"></div>
                 <div v-if="previewItem.tags?.length" class="flex gap-1 flex-wrap">
                   <span v-for="t in previewItem.tags" :key="t" class="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded">#{{ t }}</span>
                 </div>
@@ -239,6 +239,7 @@ import KnowledgeManager from '@/components/KnowledgeManager.vue'
 import { createNotification } from '@/api/notification'
 import { TEST_PRESETS, PRESET_COUNT } from '@/utils/test-presets'
 import { getCategoryIcon, getCategoryClass } from '@/utils/categories'
+import { renderJumpLinks } from '@/utils/jump-link'
 
 const router = useRouter()
 const userStore = useUserStore()

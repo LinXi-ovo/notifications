@@ -18,7 +18,7 @@
     </div>
 
     <!-- 内容 -->
-    <div class="px-4 py-2 text-sm text-gray-700 leading-relaxed line-clamp-3 [&_a]:text-blue-500 [&_a]:underline" v-html="store.currentItem.content">
+    <div class="px-4 py-2 text-sm text-gray-700 leading-relaxed line-clamp-3 [&_a]:text-blue-500 [&_a]:underline" v-html="renderJumpLinks(store.currentItem.content)">
     </div>
 
     <!-- 底部 -->
@@ -46,6 +46,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useKnowledgeStore } from '@/stores/knowledge'
+import { renderJumpLinks } from '@/utils/jump-link'
 
 const store = useKnowledgeStore()
 
