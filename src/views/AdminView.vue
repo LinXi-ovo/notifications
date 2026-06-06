@@ -440,42 +440,58 @@ async function createMissionFromAiAsync(missionData, notifData) {
     const { useMissionStore } = await import('@/stores/mission')
     const missionStore = useMissionStore()
 
-    const mission = {
-      title: missionData.title || `${notifData.title || ''} - 配套任务`,
-      description: missionData.description || '',
-      status: 'active',
-      roles: (missionData.roles || []).map(r => ({
-        id: r.id || 'role-' + Math.random().toString(36).slice(2, 6),
-        name: r.name,
-        emoji: r.emoji || '👤',
-        color: r.color || '#3B82F6',
-        claimPolicy: { type: r.claimType || 'free' },
-        maxAssignees: r.maxAssignees || 99,
-      })),
-      nodes: (missionData.nodes || []).map(n => ({
-        id: n.id || 'node-' + Math.random().toString(36).slice(2, 6),
-        title: n.title,
-        description: n.description || '',
-        assignedRole: n.assignedRole || '',
-        status: 'todo',
-        completionRule: 'single',
-        completions: [],
-      })),
-      edges: (missionData.edges || []).map(e => ({
-        source: e.source,
-        target: e.target,
-        label: e.label || '',
-      })),
+    const title = missionData.title || `${notifData.title || ''} - 配套任务`
+    const desc = missionData.description || ''
+
+    // 1. 先创建空任务（获得唯一 client ID: mission-xxxxxxxx）
+    const mission = await missionStore.createMission(title, userStore.username)
+    if (!mission) throw new Error('任务创建返回为空')
+    const missionId = mission.id
+    // 清除默认的两个角色（"普通成员""管理员"），替换为 AI 生成的角色
+    for (const r of [...mission.roles]) {
+      missionStore.removeRole(r.id)
     }
 
-    const created = missionStore.createMission(mission)
-    if (created) {
-      // 任务已创建，通知内容追加 JumpLink
-      const missionLink = `[[mission:${created.id}]]`
-      notifData.content = (notifData.content || '') +
-        `<p style="color:#999;font-size:0.85em;margin-top:1em">📋 配套任务：${missionLink}</p>`
-      alert(`✅ 配套任务已创建：${mission.title}`)
+    // 2. 添加角色（映射 AI role-x → 真实 role-xxxx）
+    const roleIdMap = {}
+    for (const r of (missionData.roles || [])) {
+      const created = missionStore.addRole(
+        r.name || '角色',
+        r.color || '#3B82F6',
+        r.emoji || '👤',
+        { type: r.claimType || 'free', password: r.password || '' }
+      )
+      if (created) roleIdMap[r.id] = created.id
     }
+
+    // 3. 添加节点（映射 AI role → 真实 role、AI node-x → 真实 node-xxxx）
+    const nodeIdMap = {}
+    for (const n of (missionData.nodes || [])) {
+      const realRoleId = roleIdMap[n.assignedRole] || ''
+      const created = missionStore.addNode(n.title || '未命名节点', realRoleId, {
+        description: n.description || '',
+      })
+      if (created) nodeIdMap[n.id] = created.id
+    }
+
+    // 4. 添加边（用映射后的真实 ID）
+    for (const e of (missionData.edges || [])) {
+      const src = nodeIdMap[e.source]
+      const tgt = nodeIdMap[e.target]
+      if (src && tgt) missionStore.addEdge(src, tgt, e.label || '')
+    }
+
+    // 5. 更新任务描述
+    if (desc) {
+      missionStore.updateMission(missionId, { description: desc })
+    }
+
+    // 6. 通知内容追加 JumpLink
+    const missionLink = `[[mission:${missionId}]]`
+    notifData.content = (notifData.content || '') +
+      `<p style="color:#999;font-size:0.85em;margin-top:1em">📋 配套任务：《${title}》${missionLink}</p>`
+
+    alert(`✅ 配套任务已创建：「${title}」\nID: ${missionId}\n可在「任务」页面查看`)
   } catch (e) {
     console.warn('创建配套任务失败:', e)
     alert('⚠️ 配套任务创建失败: ' + (e.message || e) + '\n通知已保存，可稍后手动创建')
