@@ -88,20 +88,31 @@ export function saveAiConfig(config) {
 
 /** 默认提示词模板 */
 export const DEFAULT_PROMPTS = {
-  notification: `你是一个大学通知整理助手。将以下原始内容整理为一条结构化通知，只返回 JSON 格式（不要其他文字）：
+  notification: `你是一个大学通知整理助手。将以下原始内容整理为一条结构化通知。
+
+## 处理规则
+
+1. **保持原意**：不要概括、重写或润色通知内容。提取的文字应忠于原文，只修正 OCR 识别错误（如"锿子"→"孩子"）。多条独立通知（不同话题/不同发布人/明显分隔）用 --- 分隔输出，不要合并成一条。
+2. **附件占位符**：如果内容中包含图片/文件/音频，在原文出现的位置插入占位符：{{图片: 描述}}、{{文件: 文件名}}、{{音频: 描述}}
+3. **提取元信息**：从内容中提取来源群组、发布人、截止日期。截止日期格式如"2026-06-20"或"2026年6月20日"
+4. **去除冗余**：过滤系统消息（"你已添加了xx"）、时间戳、无关对话
+5. **时间归一化**：统一日期格式为 ISO（YYYY-MM-DD）
+
+## 输出格式
+
+只返回 JSON 格式（不要其他文字）：
 
 {
   "title": "通知标题",
-  "content": "<p>格式化后的HTML正文，段落用</p><p>分隔</p>",
+  "content": "<p>格式化后的 HTML 正文，附件占位符保留在原文位置，段落用</p><p>分隔</p>",
   "type": "分类标识（从以下选择：{categories}）",
   "sourceGroup": "来源群组",
   "sourcePerson": "发布人",
-  "originalLink": "原文链接（如果有URL则提取）",
+  "originalLink": "原文链接（如果有URL则提取，没有则留空）",
   "priority": 0,
   "tags": ["标签1", "标签2"],
-  "mermaid": [
-    { "title": "图标题", "code": "graph TD\\n  A[\\"开始\\"] --> B[\\"结束\\"]" }
-  ]
+  "deadline": "截止日期（ISO格式如2026-06-20，没有则留空字符串）",
+  "mermaid": []
 }
 
 优先级：0=普通, 1=置顶, 2=重要, 3=紧急。根据内容判断。
@@ -115,32 +126,65 @@ mermaid 说明：
 原始内容：
 {input}`,
   mission: `同时，从以上原始内容中提取出任务信息，生成一个配套的任务 DAG（有向无环图）。
-将任务信息放在 "mission" 字段中，格式如下：
+你必须返回一个包含 "notification" 和 "mission" 两个顶级字段的 JSON 对象，分别输出通知和任务数据。
+
+## 任务生成规则
+
+1. **忠实于原文**：不要添加原文中没有的角色或步骤
+2. **合理拆解**：将原文中的多个步骤拆分为多个节点（2~5个节点），每个节点一个明确的任务
+3. **明确依赖**：有先后顺序的步骤用 dependsOn 表达
+4. **角色精简**：角色数量控制在 1-5 个
+5. **标题简洁**：节点标题控制在 10 字以内，动词开头
+6. **合理使用截止日期**：原文中提到的日期才加 deadline，不自行编造
+
+## 输出格式
 
 {
-  "notification": { ...以上通知... },
+  "notification": {
+    // 同上方通知 JSON 格式：title, content, type, sourceGroup, sourcePerson, originalLink, priority, tags, deadline, mermaid
+  },
   "mission": {
     "title": "任务标题（与通知标题对应）",
-    "description": "任务描述",
+    "description": "任务总体描述",
+    "tags": ["标签1", "标签2"],
     "roles": [
-      { "id": "role-1", "name": "执行人", "emoji": "👤", "color": "#3B82F6", "claimType": "free", "maxAssignees": 5 }
+      {
+        "name": "角色名称（如：普通成员、班长、审核员）",
+        "color": "十六进制颜色如 #3B82F6",
+        "emoji": "Emoji 图标如 👤",
+        "claimPolicy": "free | approval | password | delegated",
+        "maxAssignees": 999
+      }
     ],
     "nodes": [
-      { "id": "node-1", "title": "节点标题", "description": "节点描述", "assignedRole": "role-1", "status": "todo" }
-    ],
-    "edges": [
-      { "source": "node-1", "target": "node-2" }
+      {
+        "title": "节点标题（动词+宾语，如"填写个人信息表"）",
+        "description": "节点描述，说明具体要做什么",
+        "assignedRole": "角色名称（必须匹配 roles 中的 name）",
+        "completionRule": "single | count | all",
+        "completionTarget": 1,
+        "priority": 1,
+        "deadline": "截止日期（ISO格式，选填）",
+        "dependsOn": ["前置节点标题列表，填写对应节点的 title"],
+        "tags": ["标签1", "标签2"]
+      }
     ]
   }
 }
 
-任务设计要求：
-- 根据通知内容设计 2~5 个任务节点，构成完整流程
-- 每个节点必须指定 assignedRole（对应 roles 中的 id）
-- 节点状态统一为 "todo"
-- edges 定义节点间的依赖关系（有向）
-- roles 定义参与的角色（含认领方式）
-- 节点 id 格式：node-1, node-2, ...`,
+### completionRule 说明
+- single: 任意一人完成即完成（单人任务）
+- count: 累计 N 人完成，completionTarget 为目标人数
+- all: 所有认领人必须完成
+
+### claimPolicy 说明
+- free: 自由认领，点击即生效
+- approval: 需管理员审批
+- password: 口令认领（如 { "type": "password", "password": "abc123" }）
+- delegated: 管理员委派，不可自荐
+
+原始内容：
+{input}`,
   image: `请详细描述这张图片中的文字内容。提取所有可见的文字信息，包括标题、正文、来源、日期。{extra}`,
 }
 
@@ -225,8 +269,21 @@ export async function generateNotification(rawInput, categories, options = {}) {
   const text = await callLLM(prompt, config)
   const result = parseResult(text)
 
-  // 如果生成了 mission，返回 missionData 供前端处理
-  if (options.withMission && result.mission) {
+  // 处理 combined 格式：{ notification: {...}, mission: {...} }
+  if (result.notification) {
+    const notificationData = result.notification
+    // 如果有 mission，设置为 _missionData
+    if (result.mission) {
+      notificationData._missionData = result.mission
+    }
+    // 处理 mermaid（从 notification 中提取）
+    const mermaidMap = extractMermaid(notificationData)
+    if (mermaidMap) notificationData._mermaidMap = mermaidMap
+    return notificationData
+  }
+
+  // 处理 flat 格式：{ title, content, ..., mission?: {...} }
+  if (result.mission) {
     result._missionData = result.mission
     delete result.mission
   }
@@ -344,7 +401,18 @@ ${template}`
   const text = data.choices?.[0]?.message?.content || ''
   const result = parseResult(text)
 
-  if (options.withMission && result.mission) {
+  // 处理 combined 格式：{ notification: {...}, mission: {...} }
+  if (result.notification) {
+    const notificationData = result.notification
+    if (result.mission) {
+      notificationData._missionData = result.mission
+    }
+    const mermaidMap = extractMermaid(notificationData)
+    if (mermaidMap) notificationData._mermaidMap = mermaidMap
+    return notificationData
+  }
+
+  if (result.mission) {
     result._missionData = result.mission
     delete result.mission
   }
@@ -382,28 +450,36 @@ async function callLLM(prompt, config) {
   return data.choices?.[0]?.message?.content || ''
 }
 
-/** 解析 AI 返回的 JSON 结果 */
+/** 解析 AI 返回的 JSON 结果并处理 Mermaid */
 function parseResult(text) {
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) throw new Error('AI 返回格式异常，未找到 JSON')
 
   const result = JSON.parse(jsonMatch[0])
 
-  // 处理 Mermaid 代码
-  if (result.mermaid?.length) {
-    const mermaidMap = {}
-    let content = result.content || ''
-    result.mermaid.forEach((item) => {
-      if (!item.code) return
-      const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
-      mermaidMap[id] = { code: item.code, title: item.title || '' }
-      content += `\n\n<p>[[!${id}]]</p>`
-    })
-    result.content = content
-    result._mermaidMap = mermaidMap
-  }
+  // 处理 Mermaid
+  const mermaidMap = extractMermaid(result)
+  if (mermaidMap) result._mermaidMap = mermaidMap
 
   return result
+}
+
+/**
+ * 从结果对象中提取 Mermaid 数据，返回 mermaidMap 或 null
+ * @param {object} obj - 包含 mermaid 数组的对象
+ */
+function extractMermaid(obj) {
+  if (!obj.mermaid?.length) return null
+  const mermaidMap = {}
+  let content = obj.content || ''
+  obj.mermaid.forEach((item) => {
+    if (!item.code) return
+    const id = 'mermaid_' + Math.random().toString(36).slice(2, 10)
+    mermaidMap[id] = { code: item.code, title: item.title || '' }
+    content += `\n\n<p>[[!${id}]]</p>`
+  })
+  obj.content = content
+  return mermaidMap
 }
 
 /** 获取当前可用模型列表 */
