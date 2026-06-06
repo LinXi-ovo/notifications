@@ -44,11 +44,20 @@ export const useFavoriteStore = defineStore('favorite', {
       this.loading = true
       try {
         const ids = await getFavorites()
-        this.ids = new Set(ids)
-        const items = await Promise.all(
-          ids.map(id => getNotification(id).catch(() => null))
+        const results = await Promise.allSettled(
+          ids.map(async id => {
+            try {
+              const item = await getNotification(id)
+              return { id, item }
+            } catch {
+              // 通知已被永久删除 → 清理残留收藏记录
+              try { await removeFavorite(id) } catch { /* 忽略 */ }
+              return { id, item: null }
+            }
+          })
         )
-        this.list = items.filter(Boolean)
+        this.list = results.filter(r => r.value?.item).map(r => r.value.item)
+        this.ids = new Set(results.filter(r => r.value?.item).map(r => r.value.id))
       } catch (e) {
         console.error('加载收藏列表失败:', e)
         this.list = []
