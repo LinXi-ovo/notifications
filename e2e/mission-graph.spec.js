@@ -30,7 +30,7 @@ test.describe('任务图页面 — 编辑模式', () => {
   })
 
   test('页面应正确渲染', async ({ page }) => {
-    await expect(page.locator('h1').first()).toContainText('E2E 图测试')
+    await expect(page.locator('h1').nth(1)).toContainText('E2E 图测试')
     await expect(page.locator('button:has-text("编辑模式")')).toBeVisible()
     await expect(page.locator('button:has-text("执行模式")')).not.toBeVisible()
     await expect(page.locator('button:has-text("添加节点")')).toBeVisible()
@@ -77,9 +77,8 @@ test.describe('任务图页面 — 编辑模式', () => {
     // 添加（force:true 避免模态框 self 拦截）
     await page.click('button:has-text("添加")', { force: true })
 
-    // 验证节点出现在画布中
-    await page.waitForTimeout(1000) // 等待 dagre 布局渲染
-    await expect(page.locator('text=E2E 测试节点').first()).toBeVisible()
+    // 验证节点出现在画布中（dagre 布局可能需要一点时间）
+    await page.waitForSelector('text=E2E 测试节点', { timeout: 5000 })
   })
 
   test('添加边（连线）', async ({ page }) => {

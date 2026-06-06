@@ -78,20 +78,27 @@ test.describe('任务系统 — 执行模式', () => {
   })
 
   test('状态变更按钮在编辑模式下可用', async ({ page }) => {
-    // 先添加节点
+    // 先添加节点（选择第一个角色）
     await page.click('button:has-text("添加节点")')
     await page.fill('input[placeholder="例如：填写个人信息表"]', '状态测试节点')
+    // 选择第一个可用角色
+    const addRoleSelect = page.locator('select').first()
+    const addRoleOpts = await addRoleSelect.locator('option').all()
+    if (addRoleOpts.length > 1) {
+      const val = await addRoleOpts[1].getAttribute('value')
+      if (val) await addRoleSelect.selectOption(val)
+    }
     await page.click('button:has-text("添加")', { force: true })
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000) // 等待 dagre 渲染
 
     // 选中节点
     const node = page.locator('text=状态测试节点').first()
     await node.click()
     await page.waitForTimeout(500)
 
-    // 在编辑模式下应看到状态转换按钮
+    // 在编辑模式下应看到状态转换按钮（底部面板）
     const completedBtn = page.locator('button:has-text("标记完成")')
-    if (await completedBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+    if (await completedBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await completedBtn.click()
       await page.waitForTimeout(500)
     }

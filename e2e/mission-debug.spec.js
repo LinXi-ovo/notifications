@@ -40,9 +40,9 @@ test.describe('任务系统 — 调试模式', () => {
     const singleTest = page.locator('button:has-text("单人测试")')
     if (await singleTest.isVisible()) {
       await singleTest.click()
-      await page.waitForTimeout(1000)
+      await page.waitForTimeout(1500)
       // 加载预设后应有节点
-      await expect(page.locator('text=填写个人信息').first()).toBeVisible({ timeout: 5000 })
+      await page.waitForSelector('text=填写个人信息表', { timeout: 5000 })
     }
   })
 
@@ -92,6 +92,6 @@ test.describe('任务系统 — 调试模式', () => {
   test('调试模式不影响非调试功能', async ({ page }) => {
     // 调试模式下基本操作仍然正常
     await expect(page.locator('button:has-text("添加节点")')).toBeVisible()
-    await expect(page.locator('button:has-text("角色")')).toBeVisible()
+    await expect(page.locator('button:has-text("👥 角色")')).toBeVisible()
   })
 })
