@@ -38,3 +38,5 @@ ws-api/.env
 # E2E test results
 e2e/test-results/
 e2e/playwright-report/
+test-results/
+playwright-report/
