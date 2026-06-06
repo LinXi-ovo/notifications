@@ -96,6 +96,21 @@
       </div>
     </div>
 
+    <!-- 调试模式工具栏 -->
+    <div v-if="debugMode" class="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700/30 rounded-lg flex items-center justify-between">
+      <span class="text-xs text-yellow-700 dark:text-yellow-300 font-medium">🧪 调试模式</span>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-yellow-600 dark:text-yellow-400">{{ lockedIds.size }} 个已保护 / {{ missions.length }} 个任务</span>
+        <button
+          class="text-xs px-3 py-1.5 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors font-medium"
+          :disabled="unlockedCount === 0"
+          @click="bulkDeleteUnlocked"
+        >
+          🗑️ 一键删除未保护 ({{ unlockedCount }})
+        </button>
+      </div>
+    </div>
+
     <!-- 任务列表 -->
     <div v-if="loading" class="text-center py-12 text-gray-400">
       <p class="text-lg">加载中...</p>
@@ -124,7 +139,17 @@
         <!-- 进度条 -->
         <ProgressBar :pct="m._progress || 0" :show-label="true" />
         <div class="flex justify-end gap-2 mt-2">
-          <button class="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20" @click.stop="deleteMission(m.id)">删除</button>
+          <button
+            class="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+            @click.stop="deleteMission(m.id)"
+          >删除</button>
+          <!-- 调试模式：锁定保护 → 不被一键删除 -->
+          <button
+            v-if="debugMode"
+            class="text-xs px-2 py-0.5 rounded border transition-colors"
+            :class="isLocked(m.id) ? 'text-green-600 border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700' : 'text-gray-400 border-gray-200 hover:border-gray-300 dark:border-gray-600'"
+            @click.stop="toggleLock(m.id)"
+          >{{ isLocked(m.id) ? '🔒 已保护' : '🔓 保护' }}</button>
         </div>
       </div>
     </div>
@@ -236,6 +261,48 @@ const missions = computed(() => {
   })
 })
 
+/** 调试模式 */
+const debugMode = ref(localStorage.getItem('mermaid-debug') === 'true')
+
+/** 受保护的任务 ID 集合（不受一键删除影响） */
+const LOCKED_STORAGE_KEY = 'missions:bulk-delete-locked'
+const lockedIds = ref(new Set(loadLockedIds()))
+
+function loadLockedIds() {
+  try {
+    const raw = localStorage.getItem(LOCKED_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch { return [] }
+}
+
+function saveLockedIds() {
+  localStorage.setItem(LOCKED_STORAGE_KEY, JSON.stringify([...lockedIds.value]))
+}
+
+function toggleLock(id) {
+  if (lockedIds.value.has(id)) {
+    lockedIds.value.delete(id)
+  } else {
+    lockedIds.value.add(id)
+  }
+  saveLockedIds()
+}
+
+function isLocked(id) {
+  return lockedIds.value.has(id)
+}
+
+const unlockedCount = computed(() => {
+  return missions.value.filter(m => !lockedIds.value.has(m.id)).length
+})
+
+/** 一键删除所有未保护的任务 */
+function bulkDeleteUnlocked() {
+  const ids = missions.value.filter(m => !lockedIds.value.has(m.id)).map(m => m.id)
+  if (!ids.length) return
+  ids.forEach(id => missionStore.deleteMission(id))
+}
+
 onMounted(async () => {
   // 如果尚未迁移到 Bmob，尝试迁移
   if (!missionStore.migrated) {
@@ -256,9 +323,7 @@ async function createMission() {
 }
 
 function deleteMission(id) {
-  if (confirm('确定删除此任务？可在回收站中恢复。')) {
-    missionStore.deleteMission(id)
-  }
+  missionStore.deleteMission(id)
 }
 
 function restoreMission(id) {
