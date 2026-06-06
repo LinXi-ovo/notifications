@@ -18,9 +18,10 @@
 const TOKEN_RE = /\[\[(notif|mission|node):([^\]]+)\]\]/g
 
 /**
- * 渲染 JumpLink — 将内容中的 [[type:id]] 替换为可点击链接
+ * 渲染 JumpLink — 将内容中的 [[type:id]] 替换为可点击链接，
+ * 并将裸 URL 自动转为可点击链接。
  *
- * @param {string} html - 原始 HTML 内容（可能含 [[...]] 标记）
+ * @param {string} html - 原始 HTML 内容（可能含 [[...]] 标记或裸 URL）
  * @param {Object} [opts] - 选项
  * @param {string} [opts.missionId] - node 类型跳转需要的任务 ID 上下文
  * @returns {string} 替换后的 HTML
@@ -28,7 +29,8 @@ const TOKEN_RE = /\[\[(notif|mission|node):([^\]]+)\]\]/g
 export function renderJumpLinks(html, opts = {}) {
   if (!html) return html
 
-  return html.replace(TOKEN_RE, (match, type, id) => {
+  // Step 1: Render [[...]] jump links
+  let result = html.replace(TOKEN_RE, (match, type, id) => {
     const trimmedId = id.trim()
     if (!trimmedId) return match
 
@@ -43,6 +45,11 @@ export function renderJumpLinks(html, opts = {}) {
         return match
     }
   })
+
+  // Step 2: Auto-linkify bare URLs (not already inside <a> tags)
+  result = autoLinkify(result)
+
+  return result
 }
 
 /**
@@ -112,4 +119,27 @@ export function extractJumpLinks(text) {
     results.push({ type: m[1], id: m[2].trim() })
   }
   return results
+}
+
+/**
+ * 自动链接化 — 将 HTML 正文中的裸 URL 转为可点击 <a> 标签
+ *
+ * 仅在 HTML 标签外的文本中匹配 URL，避免破坏已有 <a> 标签或 href 属性。
+ * 作为 AI 生成内容中链接格式化的兜底保障。
+ *
+ * @param {string} html - 含裸 URL 的 HTML
+ * @returns {string} URL 已包裹 <a> 标签的 HTML
+ */
+function autoLinkify(html) {
+  if (!html) return html
+
+  // 匹配 HTML 标签外的文本段（> 与 < 之间的内容，含首尾），
+  // 对其中的裸 URL 进行链接化
+  return html.replace(/(^|>)([^<]+)(?=<|$)/g, (match, before, text) => {
+    return before + text.replace(
+      // URL 正则：协议://非空白非标签字符（兼容中文标点结尾）
+      /(https?:\/\/[^\s<>"'`（）()，。、；：]+)/g,
+      url => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
+    )
+  })
 }
