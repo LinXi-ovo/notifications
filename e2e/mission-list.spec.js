@@ -25,8 +25,7 @@ test.describe('任务列表页', () => {
     await page.goto('/#/missions')
     await expect(page.locator('text=任务系统')).toBeVisible()
     await expect(page.locator('button:has-text("新建任务")')).toBeVisible()
-    // 回收站区域
-    await expect(page.locator('text=回收站')).toBeVisible()
+    // 回收站初始不可见（需有删除的数据才显示）
   })
 
   test('创建新任务', async ({ page }) => {
@@ -110,10 +109,10 @@ test.describe('任务列表页', () => {
     const sampleJson = JSON.stringify({
       title: 'AI 导入任务',
       description: '通过 AI 导入创建',
-      roles: [{ name: '执行人', color: '#3B82F6', emoji: '👤', claimType: 'free' }],
+      roles: [{ name: '执行人', color: '#3B82F6', emoji: '👤', claimPolicy: 'free' }],
       nodes: [
-        { title: '第一步', assignedRole: 'role-0', description: '做第一件事' },
-        { title: '第二步', assignedRole: 'role-0', description: '做第二件事' },
+        { title: '第一步', assignedRole: '执行人', description: '做第一件事' },
+        { title: '第二步', assignedRole: '执行人', description: '做第二件事' },
       ],
       edges: [{ source: 'node-0', target: 'node-1' }],
     }, null, 2)
@@ -122,7 +121,9 @@ test.describe('任务列表页', () => {
     // 解析并创建
     await page.click('button:has-text("解析并创建")')
 
-    // 验证创建成功
+    // 关闭模态框后刷新页面看列表
+    await page.waitForTimeout(500)
+    await page.reload()
     await expect(page.locator('text=AI 导入任务')).toBeVisible({ timeout: 5000 })
   })
 
@@ -142,15 +143,14 @@ test.describe('任务列表页', () => {
     await expect(page.locator('text=待删除任务').first()).toBeVisible()
   })
 
-  test('空回收站应显示空状态', async ({ page }) => {
+  test('空回收站应不显示回收站区域', async ({ page }) => {
     await page.goto('/#/missions')
     await page.evaluate(() => {
       localStorage.setItem('missions:recycle', '[]')
     })
     await page.reload()
-    // 回收站区域应有空提示
-    const recycleSection = page.locator('text=回收站')
-    await expect(recycleSection).toBeVisible()
+    // 回收站区域没有数据时整个隐藏
+    await expect(page.locator('text=🗑️ 回收站')).not.toBeVisible()
   })
 
   test('一键清空回收站', async ({ page }) => {
